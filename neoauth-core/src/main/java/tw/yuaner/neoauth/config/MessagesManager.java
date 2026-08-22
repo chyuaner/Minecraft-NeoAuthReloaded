@@ -77,6 +77,7 @@ public class MessagesManager {
             case "login.max_tries" -> "§c您已超過密碼嘗試次數上限！";
             case "register.success" -> "§a註冊並登入成功！祝您遊戲愉快。";
             case "register.already_registered" -> "§c此帳號已被註冊！請使用 §e/login <密碼> §c進行登入。";
+            case "register.disabled", "registration.disabled" -> "§c遊戲內不開放註冊！";
             case "register.password_mismatch" -> "§c兩次輸入的密碼不相符！";
             case "register.password_too_short" -> "§c密碼長度過短！最少需要 %d 個字元。";
             case "register.password_too_long" -> "§c密碼長度過長！最多允許 %d 個字元。";
@@ -96,6 +97,7 @@ public class MessagesManager {
             case "player.getip_info" -> "§e您的目前 IP 位址: §f%s";
             case "admin.register_success" -> "§a已成功為玩家 §e%s §a註冊帳號！";
             case "admin.register_already_registered" -> "§c玩家 §e%s §c已經註冊過帳號！";
+            case "admin.setenableregister_success" -> "§a已成功將遊戲內註冊設定為: §e%s";
             case "admin.forcelogin_success" -> "§a已成功強制玩家 §e%s §a登入！";
             case "admin.forcelogin_self_success" -> "§a您已成功強制登入！";
             case "admin.player_not_online" -> "§c玩家 §e%s §c目前不在線上！";

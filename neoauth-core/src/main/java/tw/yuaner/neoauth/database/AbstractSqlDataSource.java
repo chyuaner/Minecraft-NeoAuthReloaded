@@ -106,6 +106,26 @@ public abstract class AbstractSqlDataSource implements IDataSource {
     }
 
     @Override
+    public boolean hasPassword(String username) {
+        if (dataSource == null || username == null) return false;
+        IAuthConfig config = getConfig();
+        String sql = "SELECT " + config.getMySqlColumnPassword() + " FROM " + config.getDbTable() + " WHERE " + config.getMySqlColumnName() + " = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username.toLowerCase());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    String pwd = rs.getString(config.getMySqlColumnPassword());
+                    return pwd != null && !pwd.isBlank();
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.error("NeoAuth: 檢查玩家是否有密碼時發生資料庫錯誤", e);
+        }
+        return false;
+    }
+
+    @Override
     public boolean checkPassword(String username, String password) {
         if (dataSource == null || username == null || password == null) return false;
         IAuthConfig config = getConfig();
@@ -141,13 +161,19 @@ public abstract class AbstractSqlDataSource implements IDataSource {
         boolean hasSaltCol = colSalt != null && !colSalt.isBlank();
         long now = System.currentTimeMillis();
 
+        boolean isEmptyPassword = password == null || password.isEmpty();
         String hash;
         String salt = null;
 
         if (hasSaltCol) {
-            int saltLen = config.getDoubleMD5SaltLength() > 0 ? config.getDoubleMD5SaltLength() : 6;
-            salt = PasswordManager.generateRandomSalt(saltLen);
-            hash = PasswordManager.hashPasswordWithSalt(password, salt, config.getPasswordHash());
+            if (isEmptyPassword) {
+                salt = "";
+                hash = "";
+            } else {
+                int saltLen = config.getDoubleMD5SaltLength() > 0 ? config.getDoubleMD5SaltLength() : 6;
+                salt = PasswordManager.generateRandomSalt(saltLen);
+                hash = PasswordManager.hashPasswordWithSalt(password, salt, config.getPasswordHash());
+            }
 
             String sql = "INSERT INTO " + config.getDbTable() + " (" +
                     config.getMySqlColumnName() + ", " +
@@ -178,7 +204,11 @@ public abstract class AbstractSqlDataSource implements IDataSource {
                 return false;
             }
         } else {
-            hash = PasswordManager.hashPassword(password);
+            if (isEmptyPassword) {
+                hash = "";
+            } else {
+                hash = PasswordManager.hashPassword(password);
+            }
 
             String sql = "INSERT INTO " + config.getDbTable() + " (" +
                     config.getMySqlColumnName() + ", " +

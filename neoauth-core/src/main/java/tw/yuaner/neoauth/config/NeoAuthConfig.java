@@ -61,6 +61,13 @@ public class NeoAuthConfig implements IAuthConfig {
     private boolean slowness = true;
     private boolean displayWelcomeMessage = true;
 
+    // settings.registration (AuthMeReloaded 相容)
+    private boolean registrationEnabled = true;
+    private int registrationMessageInterval = 5;
+    private boolean registrationForced = true;
+    private boolean forceKickAfterRegister = false;
+    private boolean forceLoginAfterRegister = false;
+
     public NeoAuthConfig() {}
 
     @SuppressWarnings("unchecked")
@@ -117,6 +124,17 @@ public class NeoAuthConfig implements IAuthConfig {
             if (setMap.get("messagesLanguage") != null) config.messagesLanguage = String.valueOf(setMap.get("messagesLanguage"));
             if (setMap.get("allowOfflinePlayers") instanceof Boolean b) config.allowOfflinePlayers = b;
             if (setMap.get("keepOfflineUuidCompatibility") instanceof Boolean b) config.keepOfflineUuidCompatibility = b;
+            // registration (AuthMeReloaded 相容結構)
+            Object regObj = setMap.get("registration");
+            if (regObj instanceof Map<?, ?> regMap) {
+                if (regMap.get("enabled") instanceof Boolean b) config.registrationEnabled = b;
+                else if (regMap.get("enable") instanceof Boolean b) config.registrationEnabled = b;
+
+                if (regMap.get("messageInterval") instanceof Number n) config.registrationMessageInterval = n.intValue();
+                if (regMap.get("force") instanceof Boolean b) config.registrationForced = b;
+                if (regMap.get("forceKickAfterRegister") instanceof Boolean b) config.forceKickAfterRegister = b;
+                if (regMap.get("forceLoginAfterRegister") instanceof Boolean b) config.forceLoginAfterRegister = b;
+            }
 
             // security
             Object secObj = setMap.get("security");
@@ -378,5 +396,34 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public boolean isDisplayWelcomeMessage() {
         return displayWelcomeMessage;
+    }
+
+    public void setRegistrationEnabled(boolean registrationEnabled) {
+        this.registrationEnabled = registrationEnabled;
+    }
+
+    @Override
+    public boolean isRegistrationEnabled() {
+        return registrationEnabled;
+    }
+
+    @Override
+    public int getRegistrationMessageInterval() {
+        return registrationMessageInterval;
+    }
+
+    @Override
+    public boolean isRegistrationForced() {
+        return registrationForced;
+    }
+
+    @Override
+    public boolean isForceKickAfterRegister() {
+        return forceKickAfterRegister;
+    }
+
+    @Override
+    public boolean isForceLoginAfterRegister() {
+        return forceLoginAfterRegister;
     }
 }

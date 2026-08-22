@@ -14,6 +14,7 @@ login:
 register:
   success: "&a註冊並登入成功！祝您遊戲愉快。"
   already_registered: "&c此帳號已被註冊！請使用 &e/login <密碼> &c進行登入。"
+  disabled: "&c遊戲內不開放註冊！"
   password_mismatch: "&c兩次輸入的密碼不相符！"
   password_too_short: "&c密碼長度過短！最少需要 %d 個字元。"
   password_too_long: "&c密碼長度過長！最多允許 %d 個字元。"
@@ -59,6 +60,8 @@ admin:
   email_updated: "&a已成功將玩家 &e%s &a的電子郵件設定為: &f%s"
   getip_info: "&6[%s] &eIP 位址: &f%s"
   getip_unknown: "&c無法取得玩家 &e%s &c的 IP 位址！"
+  setenableregister_success: "&a已成功將遊戲內註冊設定為: &e%s"
+  setenableregister_help: "&e/neoauth setenableregister <true|false> &7- 設定是否開放遊戲內註冊"
   recent_header: "&6===== 最近登入玩家清單 ====="
   recent_item: "&e- &f%s &7(%s) - &7IP: %s"
   recent_none: "&c目前尚無任何登入紀錄。"

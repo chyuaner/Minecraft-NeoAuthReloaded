@@ -35,6 +35,19 @@ settings:
   # 是否強制保持離線版 UUID (v3) 相容模式 (預設: false)
   keepOfflineUuidCompatibility: false
 
+  # 註冊相關設定 (AuthMeReloaded 相容結構)
+  registration:
+    # 是否開放伺服器遊戲內註冊 (Enable registration on the server?)
+    enabled: true
+    # 每隔 X 秒向未驗證玩家發送一次提示訊息 (0 為不定期提醒)
+    messageInterval: 5
+    # 是否強制所有玩家必須註冊與登入才能遊玩 (false 則允許未註冊訪客自由遊玩，並自動於資料庫建立空密碼紀錄)
+    force: true
+    # 玩家成功註冊後是否直接踢出伺服器 (不可與 forceLoginAfterRegister 同時使用)
+    forceKickAfterRegister: false
+    # 玩家成功註冊後是否強制要求重新執行 /login 進行登入
+    forceLoginAfterRegister: false
+
   # 密碼安全規則
   security:
     # 密碼雜湊方式 (支援: BCRYPT)

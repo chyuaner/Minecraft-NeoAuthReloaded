@@ -14,6 +14,7 @@ login:
 register:
   success: "&aSuccessfully registered and logged in! Enjoy your game."
   already_registered: "&cThis account is already registered! Please use &e/login <password>&c."
+  disabled: "&cIn-game registration is disabled!"
   password_mismatch: "&cPasswords do not match!"
   password_too_short: "&cPassword is too short! Minimum length is %d characters."
   password_too_long: "&cPassword is too long! Maximum length is %d characters."
@@ -59,6 +60,8 @@ admin:
   email_updated: "&aSuccessfully updated email for player &e%s &ato: &f%s"
   getip_info: "&6[%s] &eIP Address: &f%s"
   getip_unknown: "&cCannot obtain IP address for &e%s&c!"
+  setenableregister_success: "&aSuccessfully set in-game registration to: &e%s"
+  setenableregister_help: "&e/neoauth setenableregister <true|false> &7- Enable or disable in-game registration"
   recent_header: "&6===== Recent Logged In Players ====="
   recent_item: "&e- &f%s &7(%s) - &7IP: %s"
   recent_none: "&cNo login history recorded yet."

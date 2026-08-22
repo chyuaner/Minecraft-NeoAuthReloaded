@@ -68,3 +68,6 @@ help:
     neoauth_recent:
       usage: "/neoauth recent"
       description: "顯示最近登入伺服器的玩家清單（管理員）。"
+    neoauth_setenableregister:
+      usage: "/neoauth setenableregister <true|false>"
+      description: "設定伺服器是否開放遊戲內註冊，並自動保存至設定檔（管理員）。"

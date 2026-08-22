@@ -4,6 +4,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import tw.yuaner.neoauth.config.ConfigManager;
 import tw.yuaner.neoauth.config.NeoAuthConfig;
 import tw.yuaner.neoauth.core.AuthLogic;
 import tw.yuaner.neoauth.database.PlayerAuthData;
@@ -44,6 +45,8 @@ public class SqliteDataSourceTest {
         rootMap.put("DataSource", dsMap);
 
         NeoAuthConfig config = NeoAuthConfig.fromMap(rootMap);
+        ConfigManager.getInstance().setConfig(config);
+        ConfigManager.getInstance().setConfigDir(tempDir.resolve("config/neoauth"));
 
         dataSource = new SqliteDataSource();
         dataSource.connect(config);
@@ -56,6 +59,8 @@ public class SqliteDataSourceTest {
             dataSource.close();
         }
         DatabaseManager.setActiveDataSource(null);
+        ConfigManager.getInstance().setConfig(new NeoAuthConfig());
+        ConfigManager.getInstance().setConfigDir(null);
     }
 
     @Test
@@ -228,5 +233,116 @@ public class SqliteDataSourceTest {
         boolean autoLoggedInSecondTime = AuthLogic.handlePlayerJoin(premiumUuid, username, ip, true);
         assertTrue(autoLoggedInSecondTime, "已註冊之正版玩家應自動完成登入");
         assertTrue(AuthManager.isLoggedIn(premiumUuid), "玩家狀態應自動變更為已登入");
+    }
+
+    @Test
+    public void testRegistrationDisabledBlocksRegistration() {
+        // 設定 settings.registration.enabled 為 false
+        Map<String, Object> regMap = new HashMap<>();
+        regMap.put("enabled", false);
+        Map<String, Object> setMap = new HashMap<>();
+        setMap.put("registration", regMap);
+        Map<String, Object> rootMap = new HashMap<>();
+        rootMap.put("settings", setMap);
+
+        NeoAuthConfig config = NeoAuthConfig.fromMap(rootMap);
+        ConfigManager.getInstance().setConfig(config);
+
+        UUID playerUuid = UUID.randomUUID();
+        String username = "WebOnlyPlayer";
+        String ip = "192.168.1.100";
+
+        // 未註冊玩家進服提示應為「遊戲內不開放註冊！」
+        String prompt = AuthLogic.getPromptMessage(username);
+        assertEquals("§c遊戲內不開放註冊！", prompt);
+
+        // 嘗試在遊戲內 /register 應被阻擋
+        AuthLogic.RegisterResult regResult = AuthLogic.attemptRegister(playerUuid, username, ip, "Pass123", "Pass123");
+        assertEquals(AuthLogic.RegisterResult.REGISTRATION_DISABLED, regResult);
+        assertFalse(AuthManager.isLoggedIn(playerUuid));
+        assertFalse(dataSource.isRegistered(username));
+
+        // 恢復 registration.enabled 為 true
+        regMap.put("enabled", true);
+        config = NeoAuthConfig.fromMap(rootMap);
+        ConfigManager.getInstance().setConfig(config);
+
+        assertEquals("§c請先註冊！使用指令: §e/register <密碼> <確認密碼>", AuthLogic.getPromptMessage(username));
+        regResult = AuthLogic.attemptRegister(playerUuid, username, ip, "Pass123", "Pass123");
+        assertEquals(AuthLogic.RegisterResult.SUCCESS, regResult);
+        assertTrue(AuthManager.isLoggedIn(playerUuid));
+    }
+
+    @Test
+    public void testRegistrationForceOption() {
+        Map<String, Object> regMap = new HashMap<>();
+        regMap.put("force", false);
+        Map<String, Object> setMap = new HashMap<>();
+        setMap.put("registration", regMap);
+        Map<String, Object> rootMap = new HashMap<>();
+        rootMap.put("settings", setMap);
+
+        NeoAuthConfig config = NeoAuthConfig.fromMap(rootMap);
+        ConfigManager.getInstance().setConfig(config);
+
+        UUID guestUuid = UUID.randomUUID();
+        String username = "GuestPlayer";
+        String ip = "192.168.1.101";
+
+        // 非強制註冊模式：未註冊訪客進服應直接放行並登入，且資料庫中已建立空密碼帳號
+        boolean allowed = AuthLogic.handlePlayerJoin(guestUuid, username, ip, false);
+        assertTrue(allowed, "非強制註冊模式下未註冊訪客應直接放行");
+        assertTrue(AuthManager.isLoggedIn(guestUuid), "未註冊訪客狀態應為已登入（免驗證）");
+        assertTrue(dataSource.isRegistered(username), "資料庫應已自動建立該使用者紀錄");
+        assertFalse(dataSource.hasPassword(username), "訪客使用者的密碼應為空");
+
+        // 訪客第二次進入伺服器
+        boolean allowedSecond = AuthLogic.handlePlayerJoin(guestUuid, username, ip, false);
+        assertTrue(allowedSecond, "空密碼訪客第二次進入應繼續自動放行");
+        assertTrue(AuthManager.isLoggedIn(guestUuid));
+
+        // 訪客玩家希望主動為自己設定密碼，執行 /register
+        AuthLogic.RegisterResult regResult = AuthLogic.attemptRegister(guestUuid, username, ip, "Secret123", "Secret123");
+        assertEquals(AuthLogic.RegisterResult.SUCCESS, regResult, "空密碼訪客應可透過 /register 設定正式密碼");
+        assertTrue(dataSource.hasPassword(username), "設定密碼後 hasPassword 應為 true");
+        assertTrue(dataSource.checkPassword(username, "Secret123"), "新密碼應可正確校驗");
+
+        // 已經有密碼的已登入玩家再次執行 /register 應被拒絕
+        AuthLogic.RegisterResult regAgain = AuthLogic.attemptRegister(guestUuid, username, ip, "Another123", "Another123");
+        assertEquals(AuthLogic.RegisterResult.ALREADY_LOGGED_IN, regAgain);
+    }
+
+    @Test
+    public void testForceLoginAfterRegister() {
+        Map<String, Object> regMap = new HashMap<>();
+        regMap.put("enabled", true);
+        regMap.put("forceLoginAfterRegister", true);
+        Map<String, Object> setMap = new HashMap<>();
+        setMap.put("registration", regMap);
+        Map<String, Object> rootMap = new HashMap<>();
+        rootMap.put("settings", setMap);
+
+        NeoAuthConfig config = NeoAuthConfig.fromMap(rootMap);
+        ConfigManager.getInstance().setConfig(config);
+
+        UUID playerUuid = UUID.randomUUID();
+        String username = "NeedLoginPlayer";
+        String ip = "192.168.1.102";
+
+        AuthLogic.RegisterResult regResult = AuthLogic.attemptRegister(playerUuid, username, ip, "Pass123", "Pass123");
+        assertEquals(AuthLogic.RegisterResult.SUCCESS, regResult);
+        assertTrue(dataSource.isRegistered(username), "帳號應已成功建立");
+        assertFalse(AuthManager.isLoggedIn(playerUuid), "forceLoginAfterRegister 啟用時註冊完畢不應直接處於登入狀態");
+    }
+
+    @Test
+    public void testSetEnableRegisterPersistence() {
+        boolean result = ConfigManager.getInstance().setEnableRegister(false);
+        assertTrue(result);
+        assertFalse(ConfigManager.getInstance().getConfig().isRegistrationEnabled());
+
+        result = ConfigManager.getInstance().setEnableRegister(true);
+        assertTrue(result);
+        assertTrue(ConfigManager.getInstance().getConfig().isRegistrationEnabled());
     }
 }

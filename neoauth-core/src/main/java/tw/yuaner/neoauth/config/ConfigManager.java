@@ -26,8 +26,8 @@ public class ConfigManager {
     private static final Logger LOGGER = LoggerFactory.getLogger("NeoAuth-Config");
     private static final ConfigManager INSTANCE = new ConfigManager();
 
-    private final Path configDir = Path.of("config", "neoauth");
-    private final Path messagesDir = configDir.resolve("messages");
+    private Path configDir = Path.of("config", "neoauth");
+    private Path messagesDir = configDir.resolve("messages");
 
     private NeoAuthConfig config = new NeoAuthConfig();
     private CommandsConfig commandsConfig = new CommandsConfig();
@@ -38,6 +38,11 @@ public class ConfigManager {
 
     public static ConfigManager getInstance() {
         return INSTANCE;
+    }
+
+    public void setConfigDir(Path dir) {
+        this.configDir = dir != null ? dir : Path.of("config", "neoauth");
+        this.messagesDir = this.configDir.resolve("messages");
     }
 
     /**
@@ -240,6 +245,10 @@ public class ConfigManager {
         return config;
     }
 
+    public void setConfig(NeoAuthConfig config) {
+        this.config = config != null ? config : new NeoAuthConfig();
+    }
+
     public CommandsConfig getCommandsConfig() {
         return commandsConfig;
     }
@@ -259,5 +268,53 @@ public class ConfigManager {
         if (welcomeMessage == null || welcomeMessage.isEmpty()) return "";
         String text = welcomeMessage.replace("{PLAYER}", playerName != null ? playerName : "Player");
         return MessagesManager.colorize(text);
+    }
+
+    /**
+     * 動態設定是否開放遊戲內註冊，並將變更回寫至 config/neoauth/config.yml (保留所有註解)。
+     *
+     * @param enabled 是否開放註冊
+     * @return true 若更新並儲存成功，false 若發生錯誤
+     */
+    @SuppressWarnings("unchecked")
+    public synchronized boolean setEnableRegister(boolean enabled) {
+        this.config.setRegistrationEnabled(enabled);
+
+        Path configPath = configDir.resolve("config.yml");
+        try {
+            ensureDirectories();
+            Yaml yaml = new Yaml();
+            Map<String, Object> diskMap = new LinkedHashMap<>();
+            if (Files.exists(configPath)) {
+                try (InputStream in = new FileInputStream(configPath.toFile())) {
+                    Map<String, Object> loaded = yaml.load(in);
+                    if (loaded != null) {
+                        diskMap = loaded;
+                    }
+                }
+            }
+
+            Map<String, Object> settingsMap = (Map<String, Object>) diskMap.computeIfAbsent("settings", k -> new LinkedHashMap<String, Object>());
+            Map<String, Object> regMap = (Map<String, Object>) settingsMap.computeIfAbsent("registration", k -> new LinkedHashMap<String, Object>());
+            regMap.put("enabled", enabled);
+
+            String templateText = "";
+            try (InputStream in = getClass().getResourceAsStream("/defaults/config.yml")) {
+                if (in != null) {
+                    templateText = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            }
+            if (templateText.isEmpty() && Files.exists(configPath)) {
+                templateText = Files.readString(configPath, StandardCharsets.UTF_8);
+            }
+
+            String mergedText = YamlCommentPreserver.mergePreservingComments(templateText, diskMap);
+            Files.writeString(configPath, mergedText, StandardCharsets.UTF_8);
+            LOGGER.info("NeoAuth: 已成功將 settings.registration.enabled 設定為 {} 並回寫至 {}", enabled, configPath);
+            return true;
+        } catch (Exception e) {
+            LOGGER.error("NeoAuth: 回寫 config.yml 時發生錯誤！", e);
+            return false;
+        }
     }
 }

@@ -68,3 +68,6 @@ help:
     neoauth_recent:
       usage: "/neoauth recent"
       description: "Show list of recent logged-in players (Admin)."
+    neoauth_setenableregister:
+      usage: "/neoauth setenableregister <true|false>"
+      description: "Enable or disable in-game registration and save to config file (Admin)."

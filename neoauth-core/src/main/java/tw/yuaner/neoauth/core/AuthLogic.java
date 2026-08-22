@@ -48,6 +48,7 @@ public class AuthLogic {
         SUCCESS("register.success"),
         ALREADY_LOGGED_IN("login.already_logged_in"),
         ALREADY_REGISTERED("register.already_registered"),
+        REGISTRATION_DISABLED("register.disabled"),
         PASSWORD_MISMATCH("register.password_mismatch"),
         PASSWORD_TOO_SHORT("register.password_too_short"),
         PASSWORD_TOO_LONG("register.password_too_long"),
@@ -115,10 +116,17 @@ public class AuthLogic {
      */
     public static RegisterResult attemptRegister(UUID uuid, String username, String ip, String password, String confirmPassword) {
         if (AuthManager.isLoggedIn(uuid)) {
-            return RegisterResult.ALREADY_LOGGED_IN;
+            if (DatabaseManager.hasPassword(username)) {
+                return RegisterResult.ALREADY_LOGGED_IN;
+            }
         }
 
-        if (DatabaseManager.isRegistered(username)) {
+        IAuthConfig config = ConfigManager.getInstance().getConfig();
+        if (config != null && !config.isRegistrationEnabled()) {
+            return RegisterResult.REGISTRATION_DISABLED;
+        }
+
+        if (DatabaseManager.isRegistered(username) && DatabaseManager.hasPassword(username)) {
             return RegisterResult.ALREADY_REGISTERED;
         }
 
@@ -126,17 +134,27 @@ public class AuthLogic {
             return RegisterResult.PASSWORD_MISMATCH;
         }
 
-        IAuthConfig config = ConfigManager.getInstance().getConfig();
-        if (config.getMinPasswordLength() > 0 && password.length() < config.getMinPasswordLength()) {
+        if (config != null && config.getMinPasswordLength() > 0 && password.length() < config.getMinPasswordLength()) {
             return RegisterResult.PASSWORD_TOO_SHORT;
         }
-        if (config.getMaxPasswordLength() > 0 && password.length() > config.getMaxPasswordLength()) {
+        if (config != null && config.getMaxPasswordLength() > 0 && password.length() > config.getMaxPasswordLength()) {
             return RegisterResult.PASSWORD_TOO_LONG;
         }
 
-        boolean success = DatabaseManager.registerPlayer(username, password, ip);
+        boolean success;
+        if (DatabaseManager.isRegistered(username)) {
+            success = DatabaseManager.changePassword(username, password);
+            if (success) {
+                DatabaseManager.updateLogin(username, ip);
+            }
+        } else {
+            success = DatabaseManager.registerPlayer(username, password, ip);
+        }
+
         if (success) {
-            AuthManager.setLoggedIn(uuid);
+            if (config == null || !config.isForceLoginAfterRegister()) {
+                AuthManager.setLoggedIn(uuid);
+            }
             return RegisterResult.SUCCESS;
         } else {
             return RegisterResult.DATABASE_ERROR;
@@ -340,10 +358,25 @@ public class AuthLogic {
             AuthManager.setLoggedIn(uuid);
             DatabaseManager.updateLogin(username, ip);
             return true;
-        } else {
-            AuthManager.setLoggedOut(uuid);
-            return false;
         }
+
+        IAuthConfig config = ConfigManager.getInstance().getConfig();
+        if (config != null && !config.isRegistrationForced()) {
+            if (!DatabaseManager.isRegistered(username)) {
+                // 非強制註冊模式：未註冊訪客玩家自動於資料庫建立紀錄（密碼為空）並直接放行
+                DatabaseManager.registerPlayer(username, "", ip);
+                AuthManager.setLoggedIn(uuid);
+                return true;
+            } else if (!DatabaseManager.hasPassword(username)) {
+                // 訪客帳號（密碼為空）：直接放行並更新登入資訊
+                AuthManager.setLoggedIn(uuid);
+                DatabaseManager.updateLogin(username, ip);
+                return true;
+            }
+        }
+
+        AuthManager.setLoggedOut(uuid);
+        return false;
     }
 
     /**
@@ -354,9 +387,13 @@ public class AuthLogic {
      */
     public static String getPromptMessage(String username) {
         MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
-        if (DatabaseManager.isRegistered(username)) {
+        if (DatabaseManager.isRegistered(username) && DatabaseManager.hasPassword(username)) {
             return msgMgr.get("login.login_prompt");
         } else {
+            IAuthConfig config = ConfigManager.getInstance().getConfig();
+            if (config != null && !config.isRegistrationEnabled()) {
+                return msgMgr.get("register.disabled");
+            }
             return msgMgr.get("register.register_prompt");
         }
     }

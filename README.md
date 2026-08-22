@@ -156,7 +156,13 @@ config/neoauth/
 - `DataSource`：配置 MariaDB / MySQL 連線主機、埠號、資料庫帳密、資料表名稱與連線池參數。
 - `settings.messagesLanguage`：設定提示訊息語言，預設 `zhtw` (正體中文)，可設為 `en` (英文)。
 - `settings.allowOfflinePlayers`：是否允許離線（非官方）玩家在線上模式伺服器進入並進行帳密驗證。
-- `settings.security`：密碼最短與最長長度設定、密碼雜湊方式 (BCRYPT)。
+- `settings.registration`：AuthMeReloaded 相容註冊設定區塊：
+  - `enabled`：是否開放遊戲內註冊 (`/register`)，預設 `true`。若關閉 (設為 `false`)，則玩家僅能於外部網站或論壇註冊帳號。
+  - `messageInterval`：未驗證玩家定期提示間隔秒數（預設 `5` 秒）。
+  - `force`：是否強制玩家註冊/登入（設為 `false` 允許未註冊訪客自由遊玩）。
+  - `forceKickAfterRegister`：註冊成功後是否直接踢出伺服器（預設 `false`）。
+  - `forceLoginAfterRegister`：註冊成功後是否強制要求重新執行 `/login`（預設 `false`）。
+- `settings.security`：密碼最短與最長長度設定、密碼雜湊方式 (SHA256 / BCRYPT 等)。
 - `settings.restrictions`：登入超時、錯誤密碼次數限制、定身失明與緩速效果開關、歡迎公告顯示開關。
 
 ---
@@ -210,6 +216,7 @@ docker compose down
 | `/neoauth email set` | `<player> <email>` | 為指定玩家設定或更新電子信箱（別名 `/neoauth setemail`） | `/neoauth email set Steve steve@example.com` |
 | `/neoauth setemail` | `<player> <email>` | 為指定玩家設定或更新電子信箱 | `/neoauth setemail Steve steve@example.com` |
 | `/neoauth getip` | `<player>` | 查詢指定玩家的 IP 位址（線上或最後紀錄） | `/neoauth getip Steve` |
+| `/neoauth setenableregister` | `<true \| false>` | 動態切換是否開放遊戲內註冊，並自動保存至 `config.yml` | `/neoauth setenableregister false` |
 | `/neoauth reload` | - | 熱重載所有設定檔 (`config.yml`, `commands.yml`, `welcome.txt`) 與訊息檔 | `/neoauth reload` |
 | `/neoauth version` | - | 顯示 NeoAuth 模組版本與目前運行的平台 (Forge / NeoForge) | `/neoauth version` |
 | `/neoauth recent` | - | 顯示伺服器最近登入的玩家清單與登入時間 | `/neoauth recent` |

@@ -45,6 +45,14 @@ public interface IDataSource {
     boolean isRegistered(String username);
 
     /**
+     * 檢查指定使用者名稱在資料庫中是否已有設定密碼。
+     *
+     * @param username 玩家名稱
+     * @return true 若已設定密碼，若為訪客（密碼為空）或帳號不存在則為 false
+     */
+    boolean hasPassword(String username);
+
+    /**
      * 檢查玩家輸入的密碼是否正確。
      *
      * @param username 玩家名稱

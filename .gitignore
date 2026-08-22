@@ -5,6 +5,7 @@ bin/
 
 # NeoForge runtime directory
 run/
+config/
 
 # IDE files
 .idea/

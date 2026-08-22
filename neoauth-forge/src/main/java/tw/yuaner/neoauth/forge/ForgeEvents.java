@@ -1,6 +1,7 @@
 package tw.yuaner.neoauth.forge;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -23,6 +24,7 @@ import tw.yuaner.neoauth.AuthManager;
 import tw.yuaner.neoauth.DatabaseManager;
 import tw.yuaner.neoauth.database.PlayerAuthData;
 import tw.yuaner.neoauth.config.ConfigManager;
+import tw.yuaner.neoauth.config.IAuthConfig;
 import tw.yuaner.neoauth.config.MessagesManager;
 import tw.yuaner.neoauth.core.AuthLogic;
 import tw.yuaner.neoauth.platform.Services;
@@ -181,7 +183,10 @@ public class ForgeEvents {
                 .then(Commands.literal("version")
                         .executes(context -> executeAdminVersion(context.getSource())))
                 .then(Commands.literal("recent")
-                        .executes(context -> executeAdminRecent(context.getSource()))));
+                        .executes(context -> executeAdminRecent(context.getSource())))
+                .then(Commands.literal("setenableregister")
+                        .then(Commands.argument("enabled", BoolArgumentType.bool())
+                                .executes(context -> executeAdminSetEnableRegister(context.getSource(), BoolArgumentType.getBool(context, "enabled"))))));
     }
 
     private static int executeLogin(CommandSourceStack source, String password) {
@@ -218,6 +223,16 @@ public class ForgeEvents {
         AuthLogic.RegisterResult result = AuthLogic.attemptRegister(player.getUUID(), username, ip, password, confirm);
 
         if (result == AuthLogic.RegisterResult.SUCCESS) {
+            IAuthConfig config = ConfigManager.getInstance().getConfig();
+            if (config != null && config.isForceKickAfterRegister()) {
+                player.connection.disconnect(Component.literal(result.getMessage()));
+                return 1;
+            }
+            if (config != null && config.isForceLoginAfterRegister()) {
+                source.sendSuccess(() -> Component.literal(result.getMessage()), false);
+                source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("login.login_prompt")));
+                return 1;
+            }
             Services.PLATFORM.removeFreezeEffects(player);
             source.sendSuccess(() -> Component.literal(result.getMessage()), false);
             AuthLogic.executeHooks(source.getServer(), player, username,
@@ -608,7 +623,20 @@ public class ForgeEvents {
         source.sendSuccess(() -> Component.literal("§e/neoauth reload §7- Reload configs and messages"), false);
         source.sendSuccess(() -> Component.literal("§e/neoauth version §7- Show version info"), false);
         source.sendSuccess(() -> Component.literal("§e/neoauth recent §7- Show recent logged in players"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth setenableregister <true|false> §7- Enable/disable registration"), false);
         return 1;
+    }
+
+    private static int executeAdminSetEnableRegister(CommandSourceStack source, boolean enabled) {
+        boolean success = ConfigManager.getInstance().setEnableRegister(enabled);
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        if (success) {
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.setenableregister_success", String.valueOf(enabled))), true);
+            return 1;
+        } else {
+            source.sendFailure(Component.literal("§c設定儲存失敗，請檢查伺服器日誌！"));
+            return 0;
+        }
     }
 
     private static void promptAuth(ServerPlayer player) {
@@ -641,15 +669,17 @@ public class ForgeEvents {
 
             boolean autoLoggedIn = AuthLogic.handlePlayerJoin(uuid, username, player.getIpAddress(), isPremium);
             if (autoLoggedIn) {
-                // 已註冊之正版驗證玩家：自動放行並登入
+                // 已註冊之正版驗證玩家 或 非強制註冊模式下的訪客玩家：放行並登入
                 Services.PLATFORM.removeFreezeEffects(player);
-                String msg = ConfigManager.getInstance().getMessagesManager().get("general.welcome_premium", username);
-                Services.PLATFORM.sendMessage(player, msg);
-                AuthLogic.executeHooks(player.getServer(), player, username,
-                        ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
-                        ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());
+                if (DatabaseManager.isRegistered(username)) {
+                    String msg = ConfigManager.getInstance().getMessagesManager().get("general.welcome_premium", username);
+                    Services.PLATFORM.sendMessage(player, msg);
+                    AuthLogic.executeHooks(player.getServer(), player, username,
+                            ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
+                            ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());
+                }
             } else {
-                // 未註冊玩家（包含第一次進入的正版玩家）或離線玩家：進入待註冊/待登入狀態
+                // 未註冊玩家（強制註冊模式下）或離線玩家：進入待註冊/待登入狀態
                 Services.PLATFORM.applyFreezeEffects(player);
                 String msg = AuthLogic.getPromptMessage(username);
                 Services.PLATFORM.sendMessage(player, msg);
@@ -770,6 +800,10 @@ public class ForgeEvents {
         if (event.phase == TickEvent.Phase.END && event.player instanceof ServerPlayer player) {
             if (!AuthManager.isLoggedIn(player.getUUID())) {
                 Services.PLATFORM.applyFreezeEffects(player);
+                int interval = ConfigManager.getInstance().getConfig().getRegistrationMessageInterval();
+                if (interval > 0 && player.tickCount % (interval * 20) == 0) {
+                    promptAuth(player);
+                }
             }
         }
     }

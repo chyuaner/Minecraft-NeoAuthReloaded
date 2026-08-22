@@ -284,5 +284,30 @@ public interface IAuthConfig {
      * @return true 若啟用
      */
     boolean isDisplayWelcomeMessage();
+
+    /**
+     * 是否開放伺服器遊戲內註冊 (對應 settings.registration.enabled，預設: true)
+     */
+    boolean isRegistrationEnabled();
+
+    /**
+     * 提醒玩家登入/註冊的時間間隔秒數 (對應 settings.registration.messageInterval，預設: 5，0 為不定期提醒)
+     */
+    int getRegistrationMessageInterval();
+
+    /**
+     * 是否強制所有玩家必須註冊與登入才能遊玩 (對應 settings.registration.force，預設: true)
+     */
+    boolean isRegistrationForced();
+
+    /**
+     * 玩家成功註冊後是否直接踢出伺服器 (對應 settings.registration.forceKickAfterRegister，預設: false)
+     */
+    boolean isForceKickAfterRegister();
+
+    /**
+     * 玩家成功註冊後是否強制要求重新執行 /login 進行登入 (對應 settings.registration.forceLoginAfterRegister，預設: false)
+     */
+    boolean isForceLoginAfterRegister();
 }
 

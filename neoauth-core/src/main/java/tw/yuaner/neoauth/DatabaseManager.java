@@ -97,6 +97,16 @@ public class DatabaseManager {
     }
 
     /**
+     * 檢查指定使用者在資料庫中是否已設定密碼。
+     *
+     * @param username 玩家名稱
+     * @return true 若已設定密碼，若為訪客（密碼為空）或帳號不存在則為 false
+     */
+    public static boolean hasPassword(String username) {
+        return activeDataSource != null && activeDataSource.hasPassword(username);
+    }
+
+    /**
      * 檢查玩家輸入的密碼是否正確。
      *
      * @param username 玩家名稱

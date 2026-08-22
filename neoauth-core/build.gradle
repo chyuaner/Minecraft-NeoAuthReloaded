@@ -1,0 +1,28 @@
+plugins {
+    id 'java-library'
+}
+
+base {
+    archivesName = 'neoauth-core'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+    withSourcesJar()
+}
+
+dependencies {
+    // MariaDB JDBC 驅動
+    api "org.mariadb.jdbc:mariadb-java-client:${mariadb_client_version}"
+
+    // HikariCP 高效連線池
+    api "com.zaxxer:HikariCP:${hikaricp_version}"
+
+    // BCrypt 密碼雜湊函式庫
+    api "at.favre.lib:bcrypt:${bcrypt_version}"
+
+    // SLF4J 日誌介面
+    compileOnly "org.slf4j:slf4j-api:${slf4j_version}"
+}

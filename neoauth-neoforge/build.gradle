@@ -1,0 +1,84 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.144'
+}
+
+base {
+    archivesName = "${mod_id}-neoforge-${minecraft_version_neoforge}"
+}
+
+version = "${mod_version}"
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = "${neoforge_version}"
+
+    runs {
+        client {
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'neoauth'
+        }
+        server {
+            server()
+            systemProperty 'neoforge.enabledGameTestNamespaces', 'neoauth'
+            programArgument '--nogui'
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(project.sourceSets.main)
+            sourceSet(project(':neoauth-core').sourceSets.main)
+        }
+    }
+}
+
+dependencies {
+    implementation project(':neoauth-core')
+
+    // MariaDB JDBC 驅動
+    implementation "org.mariadb.jdbc:mariadb-java-client:${mariadb_client_version}"
+    jarJar(group: 'org.mariadb.jdbc', name: 'mariadb-java-client', version: "[${mariadb_client_version},)")
+
+    // HikariCP 連線池
+    implementation "com.zaxxer:HikariCP:${hikaricp_version}"
+    jarJar(group: 'com.zaxxer', name: 'HikariCP', version: "[${hikaricp_version},)")
+
+    // BCrypt 密碼函式庫
+    implementation "at.favre.lib:bcrypt:${bcrypt_version}"
+    jarJar(group: 'at.favre.lib', name: 'bcrypt', version: "[${bcrypt_version},)")
+}
+
+def replaceProperties = [
+    minecraft_version_neoforge: minecraft_version_neoforge,
+    neoforge_version: neoforge_version,
+    mod_id: mod_id,
+    mod_name: mod_name,
+    mod_version: mod_version,
+    mod_authors: mod_authors,
+    mod_description: mod_description
+]
+
+tasks.named('processResources', ProcessResources).configure {
+    inputs.properties replaceProperties
+    filesMatching(['META-INF/neoforge.mods.toml', '*.mixins.json']) {
+        expand replaceProperties
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    from(project(':neoauth-core').sourceSets.main.output)
+    manifest {
+        attributes([
+            'Specification-Title'     : mod_name,
+            'Specification-Vendor'    : mod_authors,
+            'Specification-Version'   : '1',
+            'Implementation-Title'    : project.name,
+            'Implementation-Version'  : project.version,
+            'Implementation-Vendor'   : mod_authors,
+            'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+            'MixinConfigs'            : 'neoauth-neoforge.mixins.json'
+        ])
+    }
+}

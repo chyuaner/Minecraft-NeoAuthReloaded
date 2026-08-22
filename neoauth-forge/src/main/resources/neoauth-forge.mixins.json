@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "tw.yuaner.neoauth.forge.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refMap": "neoauth-forge.refmap.json",
+  "mixins": [
+    "ForgeServerLoginMixin"
+  ],
+  "client": [],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

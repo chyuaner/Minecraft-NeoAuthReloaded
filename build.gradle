@@ -1,56 +1,58 @@
 plugins {
-    id 'java-library'
-    id 'net.neoforged.moddev' version '1.0.17'
+    id 'base'
 }
 
-version = '1.0.0'
-group = 'tw.yuaner.neoauth'
-base {
-    archivesName = 'neoauth'
-}
+allprojects {
+    group = property('mod_group_id')
+    version = property('mod_version')
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
-
-neoForge {
-    version = '21.1.41'
-
-    runs {
-        client {
-            client()
-            systemProperty 'neoforge.enabledGameTestNamespaces', 'neoauth'
-        }
-        server {
-            server()
-            systemProperty 'neoforge.enabledGameTestNamespaces', 'neoauth'
-            programArgument '--nogui'
-        }
-    }
-
-    mods {
-        neoauth {
-            sourceSet(project.sourceSets.main)
-        }
+    repositories {
+        mavenCentral()
+        maven { url = 'https://maven.neoforged.net/releases' }
+        maven { url = 'https://maven.minecraftforge.net' }
     }
 }
 
-repositories {
-    mavenCentral()
+subprojects {
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
 }
 
-dependencies {
-    // MariaDB
-    implementation 'org.mariadb.jdbc:mariadb-java-client:3.4.1'
-    jarJar(group: 'org.mariadb.jdbc', name: 'mariadb-java-client', version: '[3.4.1,)')
-
-    // HikariCP
-    implementation 'com.zaxxer:HikariCP:5.1.0'
-    jarJar(group: 'com.zaxxer', name: 'HikariCP', version: '[5.1.0,)')
-
-    // BCrypt
-    implementation 'at.favre.lib:bcrypt:0.10.2'
-    jarJar(group: 'at.favre.lib', name: 'bcrypt', version: '[0.10.2,)')
+// 建立建置目標別名任務 (方便指令執行)
+tasks.register('buildForge') {
+    group = 'build'
+    description = '建置 Minecraft 1.20.1 Forge 專用模組'
+    dependsOn ':neoauth-forge:build'
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.encoding = 'UTF-8'
+tasks.register('buildNeoForge') {
+    group = 'build'
+    description = '建置 Minecraft 1.21.1 NeoForge 專用模組'
+    dependsOn ':neoauth-neoforge:build'
 }
+
+tasks.register('buildAll') {
+    group = 'build'
+    description = '同時建置 1.20.1 Forge 與 1.21.1 NeoForge 模組'
+    dependsOn ':neoauth-forge:build', ':neoauth-neoforge:build'
+}
+
+// 將各子模組產出的 JAR 聚合複製到根目錄的 build/libs/
+tasks.register('collectJars', Copy) {
+    group = 'build'
+    description = '收集所有子模組產出的 JAR 檔案至根目錄 build/libs/'
+    dependsOn 'buildAll'
+    
+    from(project(':neoauth-forge').layout.buildDirectory.dir('libs')) {
+        include '*.jar'
+        exclude '*-sources.jar', '*-dev.jar'
+    }
+    from(project(':neoauth-neoforge').layout.buildDirectory.dir('libs')) {
+        include '*.jar'
+        exclude '*-sources.jar', '*-dev.jar'
+    }
+    into layout.buildDirectory.dir('libs')
+}
+
+build.dependsOn 'collectJars'

@@ -46,6 +46,7 @@ public class NeoAuthConfig implements IAuthConfig {
 
     private String messagesLanguage = "zhtw";
     private boolean allowOfflinePlayers = true;
+    private boolean keepOfflineUuidCompatibility = false;
 
     private String passwordHash = "SHA256";
     private int minPasswordLength = 0;
@@ -112,6 +113,7 @@ public class NeoAuthConfig implements IAuthConfig {
         if (settingsObj instanceof Map<?, ?> setMap) {
             if (setMap.get("messagesLanguage") != null) config.messagesLanguage = String.valueOf(setMap.get("messagesLanguage"));
             if (setMap.get("allowOfflinePlayers") instanceof Boolean b) config.allowOfflinePlayers = b;
+            if (setMap.get("keepOfflineUuidCompatibility") instanceof Boolean b) config.keepOfflineUuidCompatibility = b;
 
             // security
             Object secObj = setMap.get("security");
@@ -308,6 +310,11 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public boolean isAllowOfflinePlayers() {
         return allowOfflinePlayers;
+    }
+
+    @Override
+    public boolean isKeepOfflineUuidCompatibility() {
+        return keepOfflineUuidCompatibility;
     }
 
     @Override

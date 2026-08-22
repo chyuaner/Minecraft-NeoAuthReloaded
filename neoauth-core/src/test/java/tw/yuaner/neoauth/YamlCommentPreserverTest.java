@@ -48,7 +48,7 @@ public class YamlCommentPreserverTest {
         assertTrue(mergedYaml.contains("# NeoAuth 主設定檔"));
         assertTrue(mergedYaml.contains("# 資料庫類型 (支援: MARIADB, MYSQL)"));
         assertTrue(mergedYaml.contains("# 玩家未驗證時的行為限制"));
-        assertTrue(mergedYaml.contains("# 重生點與登入傳送設定"));
+        assertTrue(mergedYaml.contains("# 是否強制保持離線版 UUID (v3) 相容模式"));
 
         // 2. 驗證使用者的自訂值被正確替換
         assertTrue(mergedYaml.contains("mySQLHost: \"192.168.1.100\""));
@@ -73,8 +73,7 @@ public class YamlCommentPreserverTest {
         assertTrue(mergedYaml.contains("timeout: 90"));
         assertTrue(mergedYaml.contains("minPasswordLength: 0"));
         assertTrue(mergedYaml.contains("maxPasswordLength: 0"));
-        assertTrue(mergedYaml.contains("teleportUnAuthedToSpawn: false"));
-        assertTrue(mergedYaml.contains("saveQuitLocation: true"));
+        assertTrue(mergedYaml.contains("keepOfflineUuidCompatibility: false"));
 
         // 4. 驗證合併後的 YAML 可被完整解析為 NeoAuthConfig 物件
         Map<String, Object> mergedMap = yaml.load(mergedYaml);

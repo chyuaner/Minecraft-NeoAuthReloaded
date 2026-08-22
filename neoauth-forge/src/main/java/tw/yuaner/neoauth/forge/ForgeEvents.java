@@ -626,7 +626,7 @@ public class ForgeEvents {
             boolean isOffline = AuthManager.isOfflineUuid(username, uuid);
             boolean hasTextures = player.getGameProfile().getProperties() != null
                     && player.getGameProfile().getProperties().containsKey("textures");
-            boolean isPremium = !isOffline && (hasTextures || AuthManager.isPremiumVerified(uuid));
+            boolean isPremium = AuthManager.isPremiumVerified(uuid) || (!isOffline && hasTextures);
 
             // 發送 welcome.txt 歡迎公告 (若啟用)
             if (ConfigManager.getInstance().getConfig().isDisplayWelcomeMessage()) {

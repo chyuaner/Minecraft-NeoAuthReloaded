@@ -29,6 +29,9 @@ settings:
   # 是否允許離線（非官方）玩家在線上模式伺服器進入
   allowOfflinePlayers: true
 
+  # 是否強制保持離線版 UUID (v3) 相容模式 (預設: false)
+  keepOfflineUuidCompatibility: false
+
   # 密碼安全規則
   security:
     # 密碼雜湊方式 (支援: BCRYPT)

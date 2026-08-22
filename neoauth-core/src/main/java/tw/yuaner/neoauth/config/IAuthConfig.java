@@ -193,6 +193,15 @@ public interface IAuthConfig {
     boolean isAllowOfflinePlayers();
 
     /**
+     * 是否強制將所有通過 Mojang 驗證的正版玩家之 UUID 保持/改寫為離線版 UUID (v3)。
+     * 啟用後，可確保玩家無論使用離線版或正版登入，存檔與插件資料皆使用同一組離線 UUID，
+     * 正版驗證僅作為免密碼自動登入之憑證（且官方皮膚仍會正常保留）。
+     *
+     * @return true 若啟用離線 UUID 相容模式 (預設為 false)
+     */
+    boolean isKeepOfflineUuidCompatibility();
+
+    /**
      * 取得訊息語言代碼 (例如: "zhtw", "en")
      *
      * @return 語言代碼

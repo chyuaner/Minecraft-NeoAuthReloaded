@@ -84,6 +84,13 @@ settings:
   # 是否允許離線（非官方）玩家在線上模式伺服器進入
   allowOfflinePlayers: true
 
+  # 是否強制保持離線版 UUID (v3) 相容模式 (預設: false)
+  # - false: 通過 Mojang 驗證的正版玩家將使用 Mojang 原生 UUID (v4)
+  # - true: 所有玩家（包含正版玩家）在伺服器端一律使用固定的離線 UUID (v3) 儲存存檔與插件資料
+  #         正版玩家的官方 Skin 造型仍會完整保留，並享有免密碼自動登入功能。
+  #         此設定可徹底避免玩家更換啟動器或 Mojang 伺服器異常時存檔被重設或分裂的問題。
+  keepOfflineUuidCompatibility: false
+
   # 密碼安全規則 (0 為不限制)
   security:
     # 密碼雜湊方式 (支援: SHA256, SALTED2MD5, SALTEDSHA512, BCRYPT)

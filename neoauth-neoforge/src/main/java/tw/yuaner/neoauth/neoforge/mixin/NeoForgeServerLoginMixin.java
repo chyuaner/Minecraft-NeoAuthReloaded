@@ -58,13 +58,25 @@ public abstract class NeoForgeServerLoginMixin {
     /**
      * 攔截登入完成階段，標記通過 Mojang 線上驗證的正版玩家。
      */
-    @Inject(method = "finishLoginAndWaitForClient", at = @At("HEAD"))
+    @Inject(method = "finishLoginAndWaitForClient", at = @At("HEAD"), cancellable = true)
     private void neoauth$onMojangVerifiedProfile(GameProfile profile, CallbackInfo ci) {
         if (profile == null) return;
 
         // 若帶有 Mojang Session 簽署之 textures 屬性，表示為正版驗證登入
         if (profile.getProperties() != null && profile.getProperties().containsKey("textures")) {
-            AuthManager.markPremiumVerified(profile.getId());
+            if (Services.PLATFORM.getConfig().isKeepOfflineUuidCompatibility()) {
+                String username = profile.getName();
+                UUID offlineUuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes(StandardCharsets.UTF_8));
+                AuthManager.markPremiumVerified(offlineUuid);
+
+                // 保持離線 UUID 相容：建立帶有離線 UUID 的 Profile，但完整保留 Mojang 的 textures/Skin 屬性
+                GameProfile offlineCompatibleProfile = new GameProfile(offlineUuid, username);
+                offlineCompatibleProfile.getProperties().putAll(profile.getProperties());
+                this.startClientVerification(offlineCompatibleProfile);
+                ci.cancel();
+            } else {
+                AuthManager.markPremiumVerified(profile.getId());
+            }
         }
     }
 }

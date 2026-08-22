@@ -80,8 +80,42 @@ public abstract class ForgeServerLoginMixin {
 
         // 若帶有 Mojang Session 簽署之 textures 屬性，表示為正版驗證登入
         if (profile.getProperties() != null && profile.getProperties().containsKey("textures")) {
-            AuthManager.markPremiumVerified(profile.getId());
+            if (Services.PLATFORM.getConfig().isKeepOfflineUuidCompatibility()) {
+                String username = profile.getName();
+                UUID offlineUuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes(StandardCharsets.UTF_8));
+                AuthManager.markPremiumVerified(offlineUuid);
+
+                // 保持離線 UUID 相容：建立帶有離線 UUID 的 Profile，但完整保留 Mojang 的 textures/Skin 屬性
+                GameProfile offlineCompatibleProfile = new GameProfile(offlineUuid, username);
+                offlineCompatibleProfile.getProperties().putAll(profile.getProperties());
+                setGameProfile(offlineCompatibleProfile);
+            } else {
+                AuthManager.markPremiumVerified(profile.getId());
+            }
         }
+    }
+
+    private boolean setGameProfile(GameProfile profile) {
+        for (String name : new String[]{"f_10021_", "gameProfile", "profile", "authenticatedProfile", "field_14160"}) {
+            try {
+                Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
+                f.setAccessible(true);
+                f.set(this, profile);
+                return true;
+            } catch (Exception ignored) {
+            }
+        }
+        for (Field field : ServerLoginPacketListenerImpl.class.getDeclaredFields()) {
+            if (GameProfile.class.isAssignableFrom(field.getType())) {
+                try {
+                    field.setAccessible(true);
+                    field.set(this, profile);
+                    return true;
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return false;
     }
 
     private MinecraftServer getServerInstance() {

@@ -3,7 +3,7 @@
 # ==============================================================================
 
 help:
-  title: "&6--- NeoAuth Help Guide ---"
+  title: "&6--- NeoAuthReloaded Help Guide ---"
   commands:
     login:
       usage: "/login <password>"
@@ -64,7 +64,7 @@ help:
       description: "Reload all configuration files and messages (Admin)."
     neoauth_version:
       usage: "/neoauth version"
-      description: "Display NeoAuth version and runtime info (Admin)."
+      description: "Display NeoAuthReloaded version and runtime info (Admin)."
     neoauth_recent:
       usage: "/neoauth recent"
       description: "Show list of recent logged-in players (Admin)."

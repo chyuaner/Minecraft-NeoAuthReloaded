@@ -16,10 +16,10 @@ import tw.yuaner.neoauth.config.ConfigManager;
  * <p>
  * 負責初始化 NeoAuth 設定檔系統，並監聽伺服器生命週期（啟動時初始化資料庫、關閉時釋放連線池）。
  */
-@Mod("neoauth")
+@Mod("neoauthreloaded")
 public class ForgeAuthMod {
 
-    public static final String MODID = "neoauth";
+    public static final String MODID = "neoauthreloaded";
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public ForgeAuthMod() {

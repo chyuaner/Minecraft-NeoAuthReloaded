@@ -1,4 +1,4 @@
-# 🔐 NeoAuth
+# 🔐 NeoAuthReloaded
 
 <div align="center">
 

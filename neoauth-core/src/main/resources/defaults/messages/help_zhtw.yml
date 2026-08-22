@@ -3,7 +3,7 @@
 # ==============================================================================
 
 help:
-  title: "&6--- NeoAuth 指令幫助指南 ---"
+  title: "&6--- NeoAuthReloaded 指令幫助指南 ---"
   commands:
     login:
       usage: "/login <密碼>"
@@ -61,10 +61,10 @@ help:
       description: "取得指定玩家的連線 IP（管理員）。"
     neoauth_reload:
       usage: "/neoauth reload"
-      description: "重新載入 NeoAuth 所有設定檔與語言訊息（管理員）。"
+      description: "重新載入 NeoAuthReloaded 所有設定檔與語言訊息（管理員）。"
     neoauth_version:
       usage: "/neoauth version"
-      description: "顯示 NeoAuth 模組版本與運行資訊（管理員）。"
+      description: "顯示 NeoAuthReloaded 模組版本與運行資訊（管理員）。"
     neoauth_recent:
       usage: "/neoauth recent"
       description: "顯示最近登入伺服器的玩家清單（管理員）。"

@@ -62,7 +62,7 @@ admin:
   recent_header: "&6===== Recent Logged In Players ====="
   recent_item: "&e- &f%s &7(%s) - &7IP: %s"
   recent_none: "&cNo login history recorded yet."
-  version_info: "&6===== &eNeoAuth Version Information &6=====\n&eMod Name: &fNeoAuth\n&eMod Version: &f%s\n&ePlatform: &f%s\n&eAuthor: &fYuan Chiu\n&eCompatible: &fAuthMeReloaded / Blessing Skin / MariaDB / MySQL"
+  version_info: "&6===== &eNeoAuthReloaded Version Information &6=====\n&eMod Name: &fNeoAuthReloaded\n&eMod Version: &f%s\n&ePlatform: &f%s\n&eAuthor: &fYuan Chiu\n&eCompatible: &fAuthMeReloaded / Blessing Skin / MariaDB / SQLite / MySQL"
 
 general:
   only_players: "&cOnly players can use this command!"
@@ -70,8 +70,8 @@ general:
   welcome_premium: "&aWelcome back, %s! &7(Verified with Mojang Official Account)"
   command_not_allowed: "&cYou must authenticate before using other commands!"
   action_blocked: "&cYou must authenticate before performing this action!"
-  reload_success: "&aNeoAuth configuration and messages reloaded successfully."
-  reload_failed: "&cFailed to reload NeoAuth configuration: %s"
+  reload_success: "&aNeoAuthReloaded configuration and messages reloaded successfully."
+  reload_failed: "&cFailed to reload NeoAuthReloaded configuration: %s"
   no_permission: "&cYou do not have permission to execute this command!"
 
 help:

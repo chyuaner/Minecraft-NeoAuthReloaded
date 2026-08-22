@@ -43,7 +43,7 @@ import java.util.UUID;
  *   <li>未登入玩家的行為防護（阻擋對話、指令、方塊破壞/放置、互動、丟棄物品、傷害及移動）</li>
  * </ul>
  */
-@Mod.EventBusSubscriber(modid = "neoauth", bus = Mod.EventBusSubscriber.Bus.FORGE)
+@Mod.EventBusSubscriber(modid = "neoauthreloaded", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class ForgeEvents {
 
     /**

@@ -1,0 +1,27 @@
+# Gradle build files and cache
+.gradle/
+build/
+bin/
+
+# NeoForge runtime directory
+run/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.eclipse/
+.settings/
+.classpath
+.project
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.zip
+*.tar.gz

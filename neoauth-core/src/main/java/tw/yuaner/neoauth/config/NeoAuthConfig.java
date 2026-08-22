@@ -7,7 +7,8 @@ import java.util.Map;
  */
 public class NeoAuthConfig implements IAuthConfig {
 
-    private String dbBackend = "MARIADB";
+    private String dbBackend = "SQLITE";
+    private String sqLiteFile = "config/neoauth/neoauth.db";
     private String dbHost = "127.0.0.1";
     private String dbPort = "3306";
     private String dbName = "neoauth";
@@ -71,6 +72,8 @@ public class NeoAuthConfig implements IAuthConfig {
         Object dsObj = map.get("DataSource");
         if (dsObj instanceof Map<?, ?> dsMap) {
             if (dsMap.get("backend") != null) config.dbBackend = String.valueOf(dsMap.get("backend"));
+            if (dsMap.get("sqLiteFile") != null) config.sqLiteFile = String.valueOf(dsMap.get("sqLiteFile"));
+            else if (dsMap.get("sqliteFile") != null) config.sqLiteFile = String.valueOf(dsMap.get("sqliteFile"));
             if (dsMap.get("mySQLHost") != null) config.dbHost = String.valueOf(dsMap.get("mySQLHost"));
             if (dsMap.get("mySQLPort") != null) config.dbPort = String.valueOf(dsMap.get("mySQLPort"));
             if (dsMap.get("mySQLDatabase") != null) config.dbName = String.valueOf(dsMap.get("mySQLDatabase"));
@@ -150,6 +153,11 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public String getDbBackend() {
         return dbBackend;
+    }
+
+    @Override
+    public String getSqLiteFile() {
+        return sqLiteFile;
     }
 
     @Override

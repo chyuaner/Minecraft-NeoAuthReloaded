@@ -3,9 +3,12 @@
 # ==============================================================================
 
 DataSource:
-  # 資料庫類型 (支援: MARIADB, MYSQL)
-  backend: "MARIADB"
-  # 資料庫伺服器主機 IP 或域名
+  # 資料庫類型 (支援: SQLITE, MARIADB, MYSQL)
+  backend: "SQLITE"
+  # SQLite 資料庫檔案路徑 (當 backend 為 SQLITE 時生效)
+  # 支援相對路徑 (例如: "config/neoauth/neoauth.db" 或跨目錄 "../plugins/AuthMe/authme.db") 與絕對路徑
+  sqLiteFile: "config/neoauth/neoauth.db"
+  # 資料庫伺服器主機 IP 或域名 (MySQL / MariaDB 使用)
   mySQLHost: "127.0.0.1"
   # 資料庫連接埠 (預設: 3306)
   mySQLPort: "3306"

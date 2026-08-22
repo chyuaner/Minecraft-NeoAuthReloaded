@@ -12,8 +12,9 @@
 ## 🌟 模組特色
 
 - **雙平台架構抽象化**：基於模組化設計，一套核心邏輯 (`neoauth-core`) 同時驅動 **Forge 1.20.1** 與 **NeoForge 1.21.1**。
-- **AuthMeReloaded 無縫相容**：使用相同的 MariaDB 資料表結構與加密格式（預設加鹽 SHA-256、BCrypt），可直接與既有 AuthMe 資料庫共用！
-- **高效能資料庫連線池**：內建 HikariCP 高效連線池，連線快速、穩定且支援自動斷線重連與伺服器關閉時安全釋放。
+- **預設開箱即用 SQLite**：為一般服主提供零配置的 SQLite 支援，預設檔案為 `config/neoauth/neoauth.db`，亦支援絕對路徑與相對路徑（支援 `../` 跨目錄）。
+- **AuthMeReloaded 無縫相容**：無論是 SQLite 或 MySQL/MariaDB，資料表結構與欄位均 100% 與 AuthMeReloaded (`authme.db` 或 SQL 資料庫) 相容，加密格式預設加鹽 SHA-256 / BCrypt，可直接共用！
+- **可擴充之資料庫抽象層 (IDataSource)**：統一封裝 ANSI SQL 操作，並透過 HikariCP 提供執行緒安全且高效能的連線管理（SQLite 啟用 WAL 高效並行模式）。
 - **正版自動登入 / 混合模式支援**：
   - 正版（Mojang Online-Mode）玩家進入伺服器時自動辨識並通過驗證，無需輸入密碼。
   - 支援 `allowOfflinePlayers` 混合模式：即使伺服器開啟 `online-mode=true`，亦可放行離線玩家並要求密碼驗證。
@@ -39,12 +40,18 @@ neoauth/
 ├── neoauth-core/                         # 共用核心模組 (純 Java 業務邏輯、設定檔管理器與抽象層)
 │   ├── src/main/java/tw/yuaner/neoauth/
 │   │   ├── AuthManager.java              # 登入狀態與 Mojang 正版狀態管理 (執行緒安全)
-│   │   ├── DatabaseManager.java          # MariaDB / MySQL 連線池與 SQL 操作
+│   │   ├── DatabaseManager.java          # 資料庫操作靜態 Facade 門面與工廠
 │   │   ├── PasswordManager.java          # 密碼加密與比對 (AuthMe 相容加鹽 SHA256 / BCrypt)
+│   │   ├── database/                     # 資料庫抽象架構層
+│   │   │   ├── IDataSource.java          # 資料庫操作抽象合約介面
+│   │   │   ├── AbstractSqlDataSource.java# 共用 ANSI SQL 核心實作
+│   │   │   ├── SqliteDataSource.java     # SQLite 資料來源實作 (WAL 模式、路徑自動解析)
+│   │   │   ├── MySqlDataSource.java      # MariaDB / MySQL 資料來源實作 (HikariCP 連線池)
+│   │   │   └── PlayerAuthData.java       # 玩家帳號資料模型
 │   │   ├── config/
 │   │   │   ├── ConfigManager.java        # 設定檔載入、熱重載與範本釋出管理器
 │   │   │   ├── IAuthConfig.java          # 設定檔抽象介面
-│   │   │   ├── NeoAuthConfig.java        # config.yml 主設定實作
+│   │   │   ├── NeoAuthConfig.java        # config.yml 主設定實作 (支援 sqLiteFile 等)
 │   │   │   ├── CommandsConfig.java       # commands.yml 指令設定實作
 │   │   │   └── MessagesManager.java      # 多國語言訊息與顏色碼轉換管理器
 │   │   ├── platform/
@@ -141,6 +148,8 @@ config/neoauth/
 ```
 
 ### `config.yml` 重點設定一覽：
+- `DataSource.backend`：資料庫後端類型，預設 `SQLITE`（開箱即用），亦可設定為 `MARIADB` 或 `MYSQL`。
+- `DataSource.sqLiteFile`：SQLite 資料庫檔案路徑，預設 `config/neoauth/neoauth.db`，支援相對路徑（如 `../plugins/AuthMe/authme.db`）與絕對路徑。
 - `DataSource`：配置 MariaDB / MySQL 連線主機、埠號、資料庫帳密、資料表名稱與連線池參數。
 - `settings.messagesLanguage`：設定提示訊息語言，預設 `zhtw` (正體中文)，可設為 `en` (英文)。
 - `settings.allowOfflinePlayers`：是否允許離線（非官方）玩家在線上模式伺服器進入並進行帳密驗證。

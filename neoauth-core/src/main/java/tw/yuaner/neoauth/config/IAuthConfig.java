@@ -8,11 +8,18 @@ package tw.yuaner.neoauth.config;
 public interface IAuthConfig {
 
     /**
-     * 取得資料庫後端類型 (例如: MARIADB, MYSQL)
+     * 取得資料庫後端類型 (例如: SQLITE, MARIADB, MYSQL)
      *
      * @return 後端類型字串
      */
     String getDbBackend();
+
+    /**
+     * 取得 SQLite 資料庫檔案路徑 (預設: config/neoauth/neoauth.db)
+     *
+     * @return SQLite 檔案路徑
+     */
+    String getSqLiteFile();
 
     /**
      * 取得資料庫主機位址 (例如: 127.0.0.1)

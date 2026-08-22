@@ -17,6 +17,9 @@ dependencies {
     // MariaDB JDBC 驅動
     api "org.mariadb.jdbc:mariadb-java-client:${mariadb_client_version}"
 
+    // SQLite JDBC 驅動
+    api "org.xerial:sqlite-jdbc:${sqlite_jdbc_version}"
+
     // HikariCP 高效連線池
     api "com.zaxxer:HikariCP:${hikaricp_version}"
 

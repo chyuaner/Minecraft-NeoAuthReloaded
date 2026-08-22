@@ -21,6 +21,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import tw.yuaner.neoauth.AuthManager;
 import tw.yuaner.neoauth.DatabaseManager;
+import tw.yuaner.neoauth.database.PlayerAuthData;
 import tw.yuaner.neoauth.config.ConfigManager;
 import tw.yuaner.neoauth.config.MessagesManager;
 import tw.yuaner.neoauth.core.AuthLogic;
@@ -285,7 +286,7 @@ public class ForgeEvents {
         }
 
         String username = player.getGameProfile().getName();
-        DatabaseManager.PlayerAuthData data = DatabaseManager.getPlayerData(username);
+        PlayerAuthData data = DatabaseManager.getPlayerData(username);
         if (data == null) {
             source.sendFailure(Component.literal(msgMgr.get("general.database_error")));
             return 0;
@@ -463,7 +464,7 @@ public class ForgeEvents {
 
     private static int executeAdminLastLogin(CommandSourceStack source, String targetPlayer) {
         MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
-        DatabaseManager.PlayerAuthData data = DatabaseManager.getPlayerData(targetPlayer);
+        PlayerAuthData data = DatabaseManager.getPlayerData(targetPlayer);
         if (data == null) {
             source.sendFailure(Component.literal(msgMgr.get("admin.player_not_found", targetPlayer)));
             return 0;
@@ -577,7 +578,7 @@ public class ForgeEvents {
 
     private static int executeAdminRecent(CommandSourceStack source) {
         MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
-        List<DatabaseManager.PlayerAuthData> recent = DatabaseManager.getRecentPlayers(10);
+        List<PlayerAuthData> recent = DatabaseManager.getRecentPlayers(10);
         if (recent.isEmpty()) {
             source.sendSuccess(() -> Component.literal(msgMgr.get("admin.recent_none")), false);
             return 1;
@@ -585,7 +586,7 @@ public class ForgeEvents {
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         source.sendSuccess(() -> Component.literal(msgMgr.get("admin.recent_header")), false);
-        for (DatabaseManager.PlayerAuthData data : recent) {
+        for (PlayerAuthData data : recent) {
             String timeStr = data.getLastLogin() > 0 ? sdf.format(new Date(data.getLastLogin())) : msgMgr.get("admin.lastlogin_never");
             String ipStr = data.getIp() != null && !data.getIp().isBlank() ? data.getIp() : "127.0.0.1";
             source.sendSuccess(() -> Component.literal(msgMgr.get("admin.recent_item", data.getRealName(), timeStr, ipStr)), false);

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tw.yuaner.neoauth.config.NeoAuthConfig;
+import tw.yuaner.neoauth.core.AuthLogic;
 import tw.yuaner.neoauth.database.PlayerAuthData;
 import tw.yuaner.neoauth.database.SqliteDataSource;
 
@@ -19,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -45,6 +47,7 @@ public class SqliteDataSourceTest {
 
         dataSource = new SqliteDataSource();
         dataSource.connect(config);
+        DatabaseManager.setActiveDataSource(dataSource);
     }
 
     @AfterEach
@@ -52,6 +55,7 @@ public class SqliteDataSourceTest {
         if (dataSource != null) {
             dataSource.close();
         }
+        DatabaseManager.setActiveDataSource(null);
     }
 
     @Test
@@ -197,5 +201,32 @@ public class SqliteDataSourceTest {
         assertTrue(ds.isConnected());
         assertTrue(Files.exists(relDb), "巢狀 SQLite 資料庫檔案應已自動建立");
         ds.close();
+    }
+
+    @Test
+    public void testFirstTimePremiumPlayerRequiresRegistration() {
+        UUID premiumUuid = UUID.randomUUID();
+        String username = "PremiumPlayer";
+        String ip = "203.0.113.10";
+
+        // 1. 正版玩家第一次進服（尚未註冊）：應回傳 false 並保持未登入狀態，要求註冊
+        boolean autoLoggedInFirstTime = AuthLogic.handlePlayerJoin(premiumUuid, username, ip, true);
+        assertFalse(autoLoggedInFirstTime, "未註冊之正版玩家第一次進服不可直接自動登入");
+        assertFalse(AuthManager.isLoggedIn(premiumUuid), "玩家狀態應為未登入");
+
+        // 2. 玩家執行 /register 註冊帳號
+        AuthLogic.RegisterResult regResult = AuthLogic.attemptRegister(premiumUuid, username, ip, "SecurePass123", "SecurePass123");
+        assertEquals(AuthLogic.RegisterResult.SUCCESS, regResult, "註冊應成功");
+        assertTrue(AuthManager.isLoggedIn(premiumUuid), "註冊完成後應設定為登入狀態");
+        assertTrue(dataSource.isRegistered(username), "資料庫應已成功儲存該正版玩家的帳號資料");
+
+        // 3. 模擬玩家離線後重新連線
+        AuthManager.setLoggedOut(premiumUuid);
+        assertFalse(AuthManager.isLoggedIn(premiumUuid));
+
+        // 4. 正版玩家第二次進服（已有資料庫帳號）：應自動通過驗證並登入
+        boolean autoLoggedInSecondTime = AuthLogic.handlePlayerJoin(premiumUuid, username, ip, true);
+        assertTrue(autoLoggedInSecondTime, "已註冊之正版玩家應自動完成登入");
+        assertTrue(AuthManager.isLoggedIn(premiumUuid), "玩家狀態應自動變更為已登入");
     }
 }

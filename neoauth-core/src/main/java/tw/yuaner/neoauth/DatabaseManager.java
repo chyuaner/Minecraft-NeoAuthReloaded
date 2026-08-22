@@ -69,6 +69,15 @@ public class DatabaseManager {
     }
 
     /**
+     * 設定目前作用中的資料庫來源實例（供測試或外部自訂資料庫注入使用）。
+     *
+     * @param dataSource 資料庫來源實例
+     */
+    public static synchronized void setActiveDataSource(IDataSource dataSource) {
+        activeDataSource = dataSource;
+    }
+
+    /**
      * 檢查資料庫連線是否正常可用。
      *
      * @return true 若連線有效可用
@@ -119,6 +128,17 @@ public class DatabaseManager {
     public static void updateLogin(String username, String ip) {
         if (activeDataSource != null) {
             activeDataSource.updateLogin(username, ip);
+        }
+    }
+
+    /**
+     * 更新玩家登出狀態。
+     *
+     * @param username 玩家名稱
+     */
+    public static void updateQuit(String username) {
+        if (activeDataSource != null) {
+            activeDataSource.updateQuit(username);
         }
     }
 

@@ -72,6 +72,13 @@ public interface IDataSource {
     void updateLogin(String username, String ip);
 
     /**
+     * 更新玩家最後登出狀態 (將 isLogged 設為 0)。
+     *
+     * @param username 玩家名稱
+     */
+    void updateQuit(String username);
+
+    /**
      * 修改玩家密碼。
      *
      * @param username    玩家名稱

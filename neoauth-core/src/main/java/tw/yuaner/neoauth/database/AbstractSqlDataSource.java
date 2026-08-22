@@ -231,6 +231,23 @@ public abstract class AbstractSqlDataSource implements IDataSource {
     }
 
     @Override
+    public void updateQuit(String username) {
+        if (dataSource == null || username == null) return;
+        IAuthConfig config = getConfig();
+        String sql = "UPDATE " + config.getDbTable() + " SET " +
+                config.getMySqlColumnLogged() + " = 0 WHERE " +
+                config.getMySqlColumnName() + " = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username.toLowerCase());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.error("NeoAuth: 更新登出資訊時發生資料庫錯誤", e);
+        }
+    }
+
+    @Override
     public boolean changePassword(String username, String newPassword) {
         if (dataSource == null || username == null || newPassword == null) return false;
         if (!isRegistered(username)) return false;

@@ -261,12 +261,12 @@ public class NeoForgeEvents {
             return 0;
         }
 
-        AuthLogic.attemptLogout(uuid);
+        String username = player.getGameProfile().getName();
+        AuthLogic.attemptLogout(uuid, username);
         Services.PLATFORM.applyFreezeEffects(player);
         source.sendSuccess(() -> Component.literal(msgMgr.get("logout.success")), false);
         promptAuth(player);
 
-        String username = player.getGameProfile().getName();
         AuthLogic.executeHooks(source.getServer(), player, username,
                 ConfigManager.getInstance().getCommandsConfig().getOnLogoutConsole(),
                 ConfigManager.getInstance().getCommandsConfig().getOnLogoutPlayer());
@@ -639,9 +639,9 @@ public class NeoForgeEvents {
                 }
             }
 
-            if (isPremium) {
-                // 正版驗證通過，自動放行並登入
-                AuthManager.setLoggedIn(uuid);
+            boolean autoLoggedIn = AuthLogic.handlePlayerJoin(uuid, username, player.getIpAddress(), isPremium);
+            if (autoLoggedIn) {
+                // 已註冊之正版驗證玩家：自動放行並登入
                 Services.PLATFORM.removeFreezeEffects(player);
                 String msg = ConfigManager.getInstance().getMessagesManager().get("general.welcome_premium", username);
                 Services.PLATFORM.sendMessage(player, msg);
@@ -649,8 +649,8 @@ public class NeoForgeEvents {
                         ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
                         ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());
             } else {
-                // 離線玩家或未通過正版驗證玩家，進入待登入狀態
-                AuthManager.setLoggedOut(uuid);
+                // 未註冊玩家（包含第一次進入的正版玩家）或離線玩家：進入待註冊/待登入狀態
+                Services.PLATFORM.applyFreezeEffects(player);
                 String msg = AuthLogic.getPromptMessage(username);
                 Services.PLATFORM.sendMessage(player, msg);
             }
@@ -663,7 +663,8 @@ public class NeoForgeEvents {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            AuthManager.setLoggedOut(player.getUUID());
+            String username = player.getGameProfile().getName();
+            AuthLogic.attemptLogout(player.getUUID(), username);
             AuthManager.clearPremiumVerified(player.getUUID());
         }
     }

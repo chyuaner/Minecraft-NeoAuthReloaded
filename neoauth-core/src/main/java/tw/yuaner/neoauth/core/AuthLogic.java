@@ -257,15 +257,29 @@ public class AuthLogic {
     /**
      * 嘗試執行玩家登出流程。
      *
-     * @param uuid 玩家 UUID
+     * @param uuid     玩家 UUID
+     * @param username 玩家名稱
      * @return true 若原本已登入並成功登出，否則為 false
      */
-    public static boolean attemptLogout(UUID uuid) {
+    public static boolean attemptLogout(UUID uuid, String username) {
         if (!AuthManager.isLoggedIn(uuid)) {
             return false;
         }
         AuthManager.setLoggedOut(uuid);
+        if (username != null) {
+            DatabaseManager.updateQuit(username);
+        }
         return true;
+    }
+
+    /**
+     * 嘗試執行玩家登出流程。
+     *
+     * @param uuid 玩家 UUID
+     * @return true 若原本已登入並成功登出，否則為 false
+     */
+    public static boolean attemptLogout(UUID uuid) {
+        return attemptLogout(uuid, null);
     }
 
     /**
@@ -305,6 +319,31 @@ public class AuthLogic {
      */
     public static boolean isCommandAllowed(String rawCommand) {
         return ConfigManager.getInstance().getCommandsConfig().isCommandAllowed(rawCommand);
+    }
+
+    /**
+     * 處理玩家登入進服事件的核心判定。
+     * <p>
+     * 規則：
+     * 1. 若玩家為正版（isPremium）且已在資料庫完成註冊，則自動放行並登入，且更新登入時間與 IP。
+     * 2. 若玩家為正版但「第一次進入」（資料庫無帳號紀錄），仍然要求先執行 /register 註冊。
+     * 3. 若玩家為離線玩家，進入待登入/註冊狀態。
+     *
+     * @param uuid      玩家 UUID
+     * @param username  玩家名稱
+     * @param ip        玩家連線 IP
+     * @param isPremium 是否為通過 Mojang 驗證之正版玩家
+     * @return true 若玩家成功自動正版登入，false 若需要玩家手動註冊或登入
+     */
+    public static boolean handlePlayerJoin(UUID uuid, String username, String ip, boolean isPremium) {
+        if (isPremium && DatabaseManager.isRegistered(username)) {
+            AuthManager.setLoggedIn(uuid);
+            DatabaseManager.updateLogin(username, ip);
+            return true;
+        } else {
+            AuthManager.setLoggedOut(uuid);
+            return false;
+        }
     }
 
     /**

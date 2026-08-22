@@ -1,5 +1,5 @@
 # ==============================================================================
-# NeoAuth 主設定檔
+# NeoAuth 主設定檔 (AuthMeReloaded 風格)
 # ==============================================================================
 
 DataSource:
@@ -17,7 +17,57 @@ DataSource:
   mySQLPassword: ""
   # 使用者資料表名稱
   mySQLTablename: "neoauth"
-  # 連線池最大連線數
+
+  # 是否啟用 SSL 連線 (Connect to MySQL database over SSL)
+  mySQLUseSSL: false
+  # 是否驗證伺服器憑證 (Verification of server's certificate)
+  mySQLCheckServerCertificate: true
+  # 是否允許客戶端檢索 RSA 伺服器公鑰 (Authorize client to retrieve RSA server public key)
+  mySQLAllowPublicKeyRetrieval: true
+
+  # 自訂資料庫欄位名稱 (自訂資料表對應，比照 AuthMeReloaded 規範)
+  # 主鍵 ID 欄位 (Column of IDs to sort data)
+  mySQLColumnId: "id"
+  # 玩家帳號名稱欄位 (Column for storing or checking players nickname)
+  mySQLColumnName: "username"
+  # 玩家真實名稱欄位 (Column for storing or checking players RealName)
+  mySQLRealName: "realname"
+  # 密碼欄位 (Column for storing players passwords)
+  mySQLColumnPassword: "password"
+  # 密碼鹽值欄位 (Column for storing players passwords salts)
+  mySQLColumnSalt: ""
+  # 電子郵件欄位 (Column for storing players emails)
+  mySQLColumnEmail: "email"
+  # 是否登入狀態欄位 (Column for storing if a player is logged in or not)
+  mySQLColumnLogged: "isLogged"
+  # Session 狀態欄位 (Column for storing if a player has a valid session or not)
+  mySQLColumnHasSession: "hasSession"
+  # TOTP 雙層驗證密鑰欄位 (Column for storing a player's TOTP key)
+  mySQLtotpKey: "totp"
+  # 最後登入 IP 欄位 (Column for storing the player's last IP)
+  mySQLColumnIp: "ip"
+  # 最後登入時間戳記欄位 (Column for storing players lastlogins)
+  mySQLColumnLastLogin: "lastlogin"
+  # 註冊時間戳記欄位 (Column storing the registration date)
+  mySQLColumnRegisterDate: "regdate"
+  # 註冊時 IP 欄位 (Column for storing the IP address at the time of registration)
+  mySQLColumnRegisterIp: "regip"
+  # 最後離線位置 X 座標欄位 (Column for storing player LastLocation - X)
+  mySQLlastlocX: "x"
+  # 最後離線位置 Y 座標欄位 (Column for storing player LastLocation - Y)
+  mySQLlastlocY: "y"
+  # 最後離線位置 Z 座標欄位 (Column for storing player LastLocation - Z)
+  mySQLlastlocZ: "z"
+  # 最後離線世界名稱欄位 (Column for storing player LastLocation - World Name)
+  mySQLlastlocWorld: "world"
+  # 最後離線 Yaw 偏航角欄位 (Column for storing player LastLocation - Yaw)
+  mySQLlastlocYaw: "yaw"
+  # 最後離線 Pitch 俯仰角欄位 (Column for storing player LastLocation - Pitch)
+  mySQLlastlocPitch: "pitch"
+  # 玩家 UUID 欄位 (Column for storing players uuids, optional)
+  mySQLPlayerUUID: "playerUUID"
+
+  # 連線池最大連線數 (Overrides the size of the DB Connection Pool)
   poolSize: 10
   # 連線最大存活時間 (秒)
   maxLifetime: 1800

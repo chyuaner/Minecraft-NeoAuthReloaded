@@ -59,7 +59,15 @@ public class YamlCommentPreserverTest {
         assertTrue(mergedYaml.contains("messagesLanguage: \"en\""));
         assertTrue(mergedYaml.contains("allowOfflinePlayers: false"));
 
-        // 3. 驗證範本中缺失的區塊與預設值被自動補齊
+        // 3. 驗證範本中缺失的區塊與預設值被自動補齊 (包含 SSL 與自訂欄位名稱)
+        assertTrue(mergedYaml.contains("mySQLUseSSL: false"));
+        assertTrue(mergedYaml.contains("mySQLCheckServerCertificate: true"));
+        assertTrue(mergedYaml.contains("mySQLAllowPublicKeyRetrieval: true"));
+        assertTrue(mergedYaml.contains("mySQLColumnId: \"id\""));
+        assertTrue(mergedYaml.contains("mySQLColumnName: \"username\""));
+        assertTrue(mergedYaml.contains("mySQLRealName: \"realname\""));
+        assertTrue(mergedYaml.contains("mySQLColumnPassword: \"password\""));
+        assertTrue(mergedYaml.contains("mySQLtotpKey: \"totp\""));
         assertTrue(mergedYaml.contains("poolSize: 10"));
         assertTrue(mergedYaml.contains("maxLifetime: 1800"));
         assertTrue(mergedYaml.contains("timeout: 90"));
@@ -80,6 +88,14 @@ public class YamlCommentPreserverTest {
         assertEquals(90, config.getTimeout());
         assertEquals(0, config.getMinPasswordLength());
         assertEquals(0, config.getMaxPasswordLength());
+        assertFalse(config.isMySqlUseSSL());
+        assertTrue(config.isMySqlCheckServerCertificate());
+        assertTrue(config.isMySqlAllowPublicKeyRetrieval());
+        assertEquals("id", config.getMySqlColumnId());
+        assertEquals("username", config.getMySqlColumnName());
+        assertEquals("realname", config.getMySqlRealName());
+        assertEquals("password", config.getMySqlColumnPassword());
+        assertEquals("totp", config.getMySqlTotpKey());
     }
 
     @Test

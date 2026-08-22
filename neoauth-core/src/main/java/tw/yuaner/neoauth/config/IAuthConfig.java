@@ -57,6 +57,121 @@ public interface IAuthConfig {
     String getDbTable();
 
     /**
+     * 是否啟用 SSL 連線至 MySQL/MariaDB 資料庫
+     */
+    boolean isMySqlUseSSL();
+
+    /**
+     * 是否驗證資料庫伺服器 SSL 憑證
+     */
+    boolean isMySqlCheckServerCertificate();
+
+    /**
+     * 是否允許客戶端取得 RSA 伺服器公鑰
+     */
+    boolean isMySqlAllowPublicKeyRetrieval();
+
+    /**
+     * 取得主鍵 ID 欄位名稱
+     */
+    String getMySqlColumnId();
+
+    /**
+     * 取得玩家帳號使用者名稱欄位名稱
+     */
+    String getMySqlColumnName();
+
+    /**
+     * 取得玩家 RealName 欄位名稱
+     */
+    String getMySqlRealName();
+
+    /**
+     * 取得密碼欄位名稱
+     */
+    String getMySqlColumnPassword();
+
+    /**
+     * 取得密碼鹽值欄位名稱
+     */
+    String getMySqlColumnSalt();
+
+    /**
+     * 取得電子郵件欄位名稱
+     */
+    String getMySqlColumnEmail();
+
+    /**
+     * 取得是否登入狀態欄位名稱
+     */
+    String getMySqlColumnLogged();
+
+    /**
+     * 取得 Session 狀態欄位名稱
+     */
+    String getMySqlColumnHasSession();
+
+    /**
+     * 取得 TOTP 雙層驗證密鑰欄位名稱
+     */
+    String getMySqlTotpKey();
+
+    /**
+     * 取得最後登入 IP 欄位名稱
+     */
+    String getMySqlColumnIp();
+
+    /**
+     * 取得最後登入時間戳記欄位名稱
+     */
+    String getMySqlColumnLastLogin();
+
+    /**
+     * 取得註冊時間戳記欄位名稱
+     */
+    String getMySqlColumnRegisterDate();
+
+    /**
+     * 取得註冊時 IP 欄位名稱
+     */
+    String getMySqlColumnRegisterIp();
+
+    /**
+     * 取得最後位置 X 座標欄位名稱
+     */
+    String getMySqlLastLocX();
+
+    /**
+     * 取得最後位置 Y 座標欄位名稱
+     */
+    String getMySqlLastLocY();
+
+    /**
+     * 取得最後位置 Z 座標欄位名稱
+     */
+    String getMySqlLastLocZ();
+
+    /**
+     * 取得最後位置世界名稱欄位名稱
+     */
+    String getMySqlLastLocWorld();
+
+    /**
+     * 取得最後位置 Yaw 偏航角欄位名稱
+     */
+    String getMySqlLastLocYaw();
+
+    /**
+     * 取得最後位置 Pitch 俯仰角欄位名稱
+     */
+    String getMySqlLastLocPitch();
+
+    /**
+     * 取得玩家 UUID 欄位名稱
+     */
+    String getMySqlPlayerUUID();
+
+    /**
      * 取得連線池最大連線數
      *
      * @return 最大連線數

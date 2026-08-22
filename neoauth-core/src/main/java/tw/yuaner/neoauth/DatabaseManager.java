@@ -13,10 +13,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * MariaDB 資料庫連線池與 SQL 查詢操作管理員。
+ * MariaDB / MySQL 資料庫連線池與 SQL 查詢操作管理員。
  * <p>
- * 使用高效能的 {@link HikariDataSource} 連線池連線至 MariaDB，
- * 支援自動建表並與 Bukkit 的 AuthMeReloaded 資料表結構保持高度相容。
+ * 使用高效能的 {@link HikariDataSource} 連線池連線至資料庫，
+ * 支援自訂欄位名稱並與 Bukkit 的 AuthMeReloaded 資料表結構保持 100% 相容。
  */
 public class DatabaseManager {
 
@@ -26,7 +26,7 @@ public class DatabaseManager {
     /**
      * 初始化資料庫連線池並建立必要資料表。
      * <p>
-     * 讀取當前設定檔中的主機、埠號、帳密與資料庫名稱。
+     * 讀取當前設定檔中的主機、埠號、帳密、SSL 設定與自訂欄位名稱。
      */
     public static synchronized void init() {
         close();
@@ -55,6 +55,11 @@ public class DatabaseManager {
         hikariConfig.addDataSourceProperty("prepStmtCacheSize", "250");
         hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
 
+        // SSL 與 RSA 公鑰檢索設定
+        hikariConfig.addDataSourceProperty("useSSL", String.valueOf(config.isMySqlUseSSL()));
+        hikariConfig.addDataSourceProperty("verifyServerCertificate", String.valueOf(config.isMySqlCheckServerCertificate()));
+        hikariConfig.addDataSourceProperty("allowPublicKeyRetrieval", String.valueOf(config.isMySqlAllowPublicKeyRetrieval()));
+
         try {
             dataSource = new HikariDataSource(hikariConfig);
             createTableIfNotExists();
@@ -71,29 +76,60 @@ public class DatabaseManager {
     private static void createTableIfNotExists() {
         IAuthConfig config = Services.PLATFORM.getConfig();
         String table = config.getDbTable();
-        String sql = "CREATE TABLE IF NOT EXISTS " + table + " (" +
-                "id INTEGER AUTO_INCREMENT PRIMARY KEY," +
-                "username VARCHAR(255) NOT NULL UNIQUE," +
-                "password VARCHAR(255) NOT NULL," +
-                "totp VARCHAR(16)," +
-                "ip VARCHAR(40)," +
-                "lastlogin BIGINT," +
-                "regdate BIGINT NOT NULL," +
-                "regip VARCHAR(40)," +
-                "x DOUBLE NOT NULL DEFAULT '0.0'," +
-                "y DOUBLE NOT NULL DEFAULT '0.0'," +
-                "z DOUBLE NOT NULL DEFAULT '0.0'," +
-                "world VARCHAR(255) NOT NULL DEFAULT 'world'," +
-                "yaw FLOAT," +
-                "pitch FLOAT," +
-                "email VARCHAR(255)," +
-                "isLogged INT DEFAULT '0'," +
-                "realname VARCHAR(255) NOT NULL DEFAULT 'Player'," +
-                "salt varchar(255)," +
-                "hasSession INT NOT NULL DEFAULT '0'," +
-                "premiumUUID VARCHAR(36)," +
-                "playerUUID VARCHAR(36)" +
-                ");";
+        String colId = config.getMySqlColumnId();
+        String colName = config.getMySqlColumnName();
+        String colPassword = config.getMySqlColumnPassword();
+        String colTotp = config.getMySqlTotpKey();
+        String colIp = config.getMySqlColumnIp();
+        String colLastLogin = config.getMySqlColumnLastLogin();
+        String colRegDate = config.getMySqlColumnRegisterDate();
+        String colRegIp = config.getMySqlColumnRegisterIp();
+        String colX = config.getMySqlLastLocX();
+        String colY = config.getMySqlLastLocY();
+        String colZ = config.getMySqlLastLocZ();
+        String colWorld = config.getMySqlLastLocWorld();
+        String colYaw = config.getMySqlLastLocYaw();
+        String colPitch = config.getMySqlLastLocPitch();
+        String colEmail = config.getMySqlColumnEmail();
+        String colLogged = config.getMySqlColumnLogged();
+        String colRealName = config.getMySqlRealName();
+        String colSalt = config.getMySqlColumnSalt();
+        String colHasSession = config.getMySqlColumnHasSession();
+        String colPlayerUUID = config.getMySqlPlayerUUID();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("CREATE TABLE IF NOT EXISTS ").append(table).append(" (");
+        sb.append(colId).append(" INTEGER AUTO_INCREMENT PRIMARY KEY, ");
+        sb.append(colName).append(" VARCHAR(255) NOT NULL UNIQUE, ");
+        sb.append(colPassword).append(" VARCHAR(255) NOT NULL, ");
+        if (colTotp != null && !colTotp.isBlank()) {
+            sb.append(colTotp).append(" VARCHAR(16), ");
+        }
+        sb.append(colIp).append(" VARCHAR(40), ");
+        sb.append(colLastLogin).append(" BIGINT, ");
+        sb.append(colRegDate).append(" BIGINT NOT NULL, ");
+        sb.append(colRegIp).append(" VARCHAR(40), ");
+        sb.append(colX).append(" DOUBLE NOT NULL DEFAULT '0.0', ");
+        sb.append(colY).append(" DOUBLE NOT NULL DEFAULT '0.0', ");
+        sb.append(colZ).append(" DOUBLE NOT NULL DEFAULT '0.0', ");
+        sb.append(colWorld).append(" VARCHAR(255) NOT NULL DEFAULT 'world', ");
+        sb.append(colYaw).append(" FLOAT, ");
+        sb.append(colPitch).append(" FLOAT, ");
+        sb.append(colEmail).append(" VARCHAR(255), ");
+        sb.append(colLogged).append(" INT DEFAULT '0', ");
+        sb.append(colRealName).append(" VARCHAR(255) NOT NULL DEFAULT 'Player', ");
+        if (colSalt != null && !colSalt.isBlank()) {
+            sb.append(colSalt).append(" VARCHAR(255), ");
+        }
+        sb.append(colHasSession).append(" INT NOT NULL DEFAULT '0', ");
+        if (colPlayerUUID != null && !colPlayerUUID.isBlank()) {
+            sb.append(colPlayerUUID).append(" VARCHAR(36)");
+        } else {
+            sb.append("playerUUID VARCHAR(36)");
+        }
+        sb.append(");");
+
+        String sql = sb.toString();
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -111,7 +147,8 @@ public class DatabaseManager {
      */
     public static boolean isRegistered(String username) {
         if (dataSource == null || username == null) return false;
-        String sql = "SELECT id FROM " + Services.PLATFORM.getConfig().getDbTable() + " WHERE username = ?";
+        IAuthConfig config = Services.PLATFORM.getConfig();
+        String sql = "SELECT " + config.getMySqlColumnId() + " FROM " + config.getDbTable() + " WHERE " + config.getMySqlColumnName() + " = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, username.toLowerCase());
@@ -133,13 +170,14 @@ public class DatabaseManager {
      */
     public static boolean checkPassword(String username, String password) {
         if (dataSource == null || username == null || password == null) return false;
-        String sql = "SELECT password FROM " + Services.PLATFORM.getConfig().getDbTable() + " WHERE username = ?";
+        IAuthConfig config = Services.PLATFORM.getConfig();
+        String sql = "SELECT " + config.getMySqlColumnPassword() + " FROM " + config.getDbTable() + " WHERE " + config.getMySqlColumnName() + " = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, username.toLowerCase());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    String hash = rs.getString("password");
+                    String hash = rs.getString(config.getMySqlColumnPassword());
                     return PasswordManager.checkPassword(password, hash);
                 }
             }
@@ -161,10 +199,20 @@ public class DatabaseManager {
         if (dataSource == null) return false;
         if (isRegistered(username)) return false;
 
+        IAuthConfig config = Services.PLATFORM.getConfig();
         String hash = PasswordManager.hashPassword(password);
         long now = System.currentTimeMillis();
 
-        String sql = "INSERT INTO " + Services.PLATFORM.getConfig().getDbTable() + " (username, realname, password, ip, regip, regdate, lastlogin) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO " + config.getDbTable() + " (" +
+                config.getMySqlColumnName() + ", " +
+                config.getMySqlRealName() + ", " +
+                config.getMySqlColumnPassword() + ", " +
+                config.getMySqlColumnIp() + ", " +
+                config.getMySqlColumnRegisterIp() + ", " +
+                config.getMySqlColumnRegisterDate() + ", " +
+                config.getMySqlColumnLastLogin() +
+                ") VALUES (?, ?, ?, ?, ?, ?, ?)";
+
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, username.toLowerCase());
@@ -191,7 +239,13 @@ public class DatabaseManager {
      */
     public static void updateLogin(String username, String ip) {
         if (dataSource == null || username == null) return;
-        String sql = "UPDATE " + Services.PLATFORM.getConfig().getDbTable() + " SET lastlogin = ?, ip = ?, isLogged = 1 WHERE username = ?";
+        IAuthConfig config = Services.PLATFORM.getConfig();
+        String sql = "UPDATE " + config.getDbTable() + " SET " +
+                config.getMySqlColumnLastLogin() + " = ?, " +
+                config.getMySqlColumnIp() + " = ?, " +
+                config.getMySqlColumnLogged() + " = 1 WHERE " +
+                config.getMySqlColumnName() + " = ?";
+
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, System.currentTimeMillis());
@@ -208,7 +262,7 @@ public class DatabaseManager {
      */
     public static void close() {
         if (dataSource != null && !dataSource.isClosed()) {
-            LOGGER.info("NeoAuth: 正在關閉 MariaDB 連線池...");
+            LOGGER.info("NeoAuth: 正在關閉資料庫連線池...");
             dataSource.close();
             dataSource = null;
         }

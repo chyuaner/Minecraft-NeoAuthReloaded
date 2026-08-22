@@ -17,6 +17,33 @@ public class NeoAuthConfig implements IAuthConfig {
     private int dbPoolSize = 10;
     private int dbMaxLifetime = 1800;
 
+    // SSL 與連線進階設定
+    private boolean mySQLUseSSL = false;
+    private boolean mySQLCheckServerCertificate = true;
+    private boolean mySQLAllowPublicKeyRetrieval = true;
+
+    // 自訂資料庫欄位名稱 (AuthMeReloaded 相容)
+    private String mySQLColumnId = "id";
+    private String mySQLColumnName = "username";
+    private String mySQLRealName = "realname";
+    private String mySQLColumnPassword = "password";
+    private String mySQLColumnSalt = "";
+    private String mySQLColumnEmail = "email";
+    private String mySQLColumnLogged = "isLogged";
+    private String mySQLColumnHasSession = "hasSession";
+    private String mySQLTotpKey = "totp";
+    private String mySQLColumnIp = "ip";
+    private String mySQLColumnLastLogin = "lastlogin";
+    private String mySQLColumnRegisterDate = "regdate";
+    private String mySQLColumnRegisterIp = "regip";
+    private String mySQLLastLocX = "x";
+    private String mySQLLastLocY = "y";
+    private String mySQLLastLocZ = "z";
+    private String mySQLLastLocWorld = "world";
+    private String mySQLLastLocYaw = "yaw";
+    private String mySQLLastLocPitch = "pitch";
+    private String mySQLPlayerUUID = "playerUUID";
+
     private String messagesLanguage = "zhtw";
     private boolean allowOfflinePlayers = true;
 
@@ -53,6 +80,33 @@ public class NeoAuthConfig implements IAuthConfig {
             if (dsMap.get("mySQLTablename") != null) config.dbTable = String.valueOf(dsMap.get("mySQLTablename"));
             if (dsMap.get("poolSize") instanceof Number n) config.dbPoolSize = n.intValue();
             if (dsMap.get("maxLifetime") instanceof Number n) config.dbMaxLifetime = n.intValue();
+
+            // SSL & 連線設定
+            if (dsMap.get("mySQLUseSSL") instanceof Boolean b) config.mySQLUseSSL = b;
+            if (dsMap.get("mySQLCheckServerCertificate") instanceof Boolean b) config.mySQLCheckServerCertificate = b;
+            if (dsMap.get("mySQLAllowPublicKeyRetrieval") instanceof Boolean b) config.mySQLAllowPublicKeyRetrieval = b;
+
+            // 欄位名稱
+            if (dsMap.get("mySQLColumnId") != null) config.mySQLColumnId = String.valueOf(dsMap.get("mySQLColumnId"));
+            if (dsMap.get("mySQLColumnName") != null) config.mySQLColumnName = String.valueOf(dsMap.get("mySQLColumnName"));
+            if (dsMap.get("mySQLRealName") != null) config.mySQLRealName = String.valueOf(dsMap.get("mySQLRealName"));
+            if (dsMap.get("mySQLColumnPassword") != null) config.mySQLColumnPassword = String.valueOf(dsMap.get("mySQLColumnPassword"));
+            if (dsMap.get("mySQLColumnSalt") != null) config.mySQLColumnSalt = String.valueOf(dsMap.get("mySQLColumnSalt"));
+            if (dsMap.get("mySQLColumnEmail") != null) config.mySQLColumnEmail = String.valueOf(dsMap.get("mySQLColumnEmail"));
+            if (dsMap.get("mySQLColumnLogged") != null) config.mySQLColumnLogged = String.valueOf(dsMap.get("mySQLColumnLogged"));
+            if (dsMap.get("mySQLColumnHasSession") != null) config.mySQLColumnHasSession = String.valueOf(dsMap.get("mySQLColumnHasSession"));
+            if (dsMap.get("mySQLtotpKey") != null) config.mySQLTotpKey = String.valueOf(dsMap.get("mySQLtotpKey"));
+            if (dsMap.get("mySQLColumnIp") != null) config.mySQLColumnIp = String.valueOf(dsMap.get("mySQLColumnIp"));
+            if (dsMap.get("mySQLColumnLastLogin") != null) config.mySQLColumnLastLogin = String.valueOf(dsMap.get("mySQLColumnLastLogin"));
+            if (dsMap.get("mySQLColumnRegisterDate") != null) config.mySQLColumnRegisterDate = String.valueOf(dsMap.get("mySQLColumnRegisterDate"));
+            if (dsMap.get("mySQLColumnRegisterIp") != null) config.mySQLColumnRegisterIp = String.valueOf(dsMap.get("mySQLColumnRegisterIp"));
+            if (dsMap.get("mySQLlastlocX") != null) config.mySQLLastLocX = String.valueOf(dsMap.get("mySQLlastlocX"));
+            if (dsMap.get("mySQLlastlocY") != null) config.mySQLLastLocY = String.valueOf(dsMap.get("mySQLlastlocY"));
+            if (dsMap.get("mySQLlastlocZ") != null) config.mySQLLastLocZ = String.valueOf(dsMap.get("mySQLlastlocZ"));
+            if (dsMap.get("mySQLlastlocWorld") != null) config.mySQLLastLocWorld = String.valueOf(dsMap.get("mySQLlastlocWorld"));
+            if (dsMap.get("mySQLlastlocYaw") != null) config.mySQLLastLocYaw = String.valueOf(dsMap.get("mySQLlastlocYaw"));
+            if (dsMap.get("mySQLlastlocPitch") != null) config.mySQLLastLocPitch = String.valueOf(dsMap.get("mySQLlastlocPitch"));
+            if (dsMap.get("mySQLPlayerUUID") != null) config.mySQLPlayerUUID = String.valueOf(dsMap.get("mySQLPlayerUUID"));
         }
 
         // settings
@@ -124,6 +178,121 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public String getDbTable() {
         return dbTable;
+    }
+
+    @Override
+    public boolean isMySqlUseSSL() {
+        return mySQLUseSSL;
+    }
+
+    @Override
+    public boolean isMySqlCheckServerCertificate() {
+        return mySQLCheckServerCertificate;
+    }
+
+    @Override
+    public boolean isMySqlAllowPublicKeyRetrieval() {
+        return mySQLAllowPublicKeyRetrieval;
+    }
+
+    @Override
+    public String getMySqlColumnId() {
+        return mySQLColumnId;
+    }
+
+    @Override
+    public String getMySqlColumnName() {
+        return mySQLColumnName;
+    }
+
+    @Override
+    public String getMySqlRealName() {
+        return mySQLRealName;
+    }
+
+    @Override
+    public String getMySqlColumnPassword() {
+        return mySQLColumnPassword;
+    }
+
+    @Override
+    public String getMySqlColumnSalt() {
+        return mySQLColumnSalt;
+    }
+
+    @Override
+    public String getMySqlColumnEmail() {
+        return mySQLColumnEmail;
+    }
+
+    @Override
+    public String getMySqlColumnLogged() {
+        return mySQLColumnLogged;
+    }
+
+    @Override
+    public String getMySqlColumnHasSession() {
+        return mySQLColumnHasSession;
+    }
+
+    @Override
+    public String getMySqlTotpKey() {
+        return mySQLTotpKey;
+    }
+
+    @Override
+    public String getMySqlColumnIp() {
+        return mySQLColumnIp;
+    }
+
+    @Override
+    public String getMySqlColumnLastLogin() {
+        return mySQLColumnLastLogin;
+    }
+
+    @Override
+    public String getMySqlColumnRegisterDate() {
+        return mySQLColumnRegisterDate;
+    }
+
+    @Override
+    public String getMySqlColumnRegisterIp() {
+        return mySQLColumnRegisterIp;
+    }
+
+    @Override
+    public String getMySqlLastLocX() {
+        return mySQLLastLocX;
+    }
+
+    @Override
+    public String getMySqlLastLocY() {
+        return mySQLLastLocY;
+    }
+
+    @Override
+    public String getMySqlLastLocZ() {
+        return mySQLLastLocZ;
+    }
+
+    @Override
+    public String getMySqlLastLocWorld() {
+        return mySQLLastLocWorld;
+    }
+
+    @Override
+    public String getMySqlLastLocYaw() {
+        return mySQLLastLocYaw;
+    }
+
+    @Override
+    public String getMySqlLastLocPitch() {
+        return mySQLLastLocPitch;
+    }
+
+    @Override
+    public String getMySqlPlayerUUID() {
+        return mySQLPlayerUUID;
     }
 
     @Override

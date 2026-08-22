@@ -14,6 +14,8 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
+import java.util.UUID;
+
 @EventBusSubscriber(modid = NeoAuth.MODID)
 public class ProtectionListener {
 
@@ -29,17 +31,31 @@ public class ProtectionListener {
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             AuthManager.setLoggedOut(player);
+            AuthManager.clearPremiumVerified(player.getUUID());
         }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            AuthManager.setLoggedOut(player); // ensure they are logged out
-            if (DatabaseManager.isRegistered(player.getGameProfile().getName())) {
-                player.sendSystemMessage(Component.literal("§aWelcome back! Please /login <password>"));
+            String username = player.getGameProfile().getName();
+            UUID uuid = player.getUUID();
+            boolean isOffline = AuthManager.isOfflineUuid(username, uuid);
+            boolean isPremium = !isOffline && AuthManager.isPremiumVerified(uuid);
+
+            if (isPremium) {
+                AuthManager.setLoggedIn(player);
+                player.removeEffect(net.minecraft.world.effect.MobEffects.MOVEMENT_SLOWDOWN);
+                player.removeEffect(net.minecraft.world.effect.MobEffects.JUMP);
+                player.removeEffect(net.minecraft.world.effect.MobEffects.BLINDNESS);
+                player.sendSystemMessage(Component.literal("§aWelcome back, " + username + "! §7(Authenticated via Mojang Online-Mode)"));
             } else {
-                player.sendSystemMessage(Component.literal("§aWelcome! Please /register <password> <confirm>"));
+                AuthManager.setLoggedOut(player); // ensure they are logged out
+                if (DatabaseManager.isRegistered(username)) {
+                    player.sendSystemMessage(Component.literal("§aWelcome back! Please /login <password>"));
+                } else {
+                    player.sendSystemMessage(Component.literal("§aWelcome! Please /register <password> <confirm>"));
+                }
             }
         }
     }

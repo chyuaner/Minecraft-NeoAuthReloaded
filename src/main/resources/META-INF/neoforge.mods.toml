@@ -13,6 +13,9 @@ description='''
 NeoAuth is a lightweight authentication mod for NeoForge 1.21.1 with MariaDB and AuthMeReloaded parity.
 '''
 
+[[mixins]]
+config = "neoauth.mixins.json"
+
 [[dependencies.neoauth]]
 modId="neoforge"
 type="required"

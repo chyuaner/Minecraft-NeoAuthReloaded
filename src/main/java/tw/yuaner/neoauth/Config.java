@@ -43,6 +43,14 @@ public class Config {
                     .comment("Table Name")
                     .define("table", "authme");
             builder.pop();
+
+            builder.push("Authentication");
+            allowOfflinePlayers = builder
+                    .comment("Allow offline-mode / cracked players to join even when server online-mode is true")
+                    .define("allowOfflinePlayers", true);
+            builder.pop();
         }
+
+        public final ModConfigSpec.ConfigValue<Boolean> allowOfflinePlayers;
     }
 }

@@ -18,17 +18,23 @@ help:
       usage: "/reg <密碼> [確認密碼]"
       description: "/register 的簡寫別名。"
     changepassword:
-      usage: "/changepassword <舊密碼> <新密碼>"
+      usage: "/changepassword <舊密碼> <新密碼> <確認新密碼>"
       description: "修改已登入帳號的密碼。"
     cp:
-      usage: "/cp <舊密碼> <新密碼>"
+      usage: "/cp <舊密碼> <新密碼> <確認新密碼>"
       description: "/changepassword 的簡寫別名。"
     logout:
       usage: "/logout"
       description: "登出目前帳號。"
     email:
-      usage: "/email show"
-      description: "查詢您目前綁定的電子郵件。"
+      usage: "/email [show | set <電子郵件>]"
+      description: "查詢或設定您綁定的電子郵件。"
+    lastlogin:
+      usage: "/lastlogin"
+      description: "查詢您自己的最後登入時間與註冊日期。"
+    getip:
+      usage: "/getip"
+      description: "查詢您目前的連線 IP 位址。"
     neoauth_register:
       usage: "/neoauth register <玩家> <密碼>"
       description: "為指定玩家手動註冊帳號與密碼（管理員）。"
@@ -45,8 +51,8 @@ help:
       usage: "/neoauth accounts [玩家/IP]"
       description: "查詢同 IP 所關聯的所有帳號名稱（管理員）。"
     neoauth_email:
-      usage: "/neoauth email [玩家]"
-      description: "查詢指定玩家登記的電子郵件（管理員）。"
+      usage: "/neoauth email [show <玩家> | set <玩家> <電子郵件>]"
+      description: "查詢或設定指定玩家的電子郵件（管理員）。"
     neoauth_setemail:
       usage: "/neoauth setemail <玩家> <電子郵件>"
       description: "設定指定玩家的電子郵件（管理員）。"

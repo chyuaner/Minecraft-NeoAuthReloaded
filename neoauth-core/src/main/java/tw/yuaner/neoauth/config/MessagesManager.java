@@ -85,10 +85,15 @@ public class MessagesManager {
             case "changepassword.wrong_old_password" -> "§c舊密碼輸入錯誤！";
             case "changepassword.not_logged_in" -> "§c您必須先完成登入才能修改密碼！";
             case "changepassword.password_same" -> "§c新密碼不可與舊密碼相同！";
+            case "changepassword.password_mismatch" -> "§c兩次輸入的新密碼不相符！";
             case "logout.success" -> "§a您已成功登出！請使用 §e/login <密碼> §a重新登入。";
             case "logout.not_logged_in" -> "§c您目前尚未登入！";
             case "email.show" -> "§e您目前綁定的電子郵件為: §f%s";
-            case "email.none" -> "§c您目前尚未綁定任何電子郵件。";
+            case "email.none" -> "§c您目前尚未綁定任何電子郵件。使用 §e/email set <電子郵件> §c進行綁定。";
+            case "email.set_success" -> "§a電子郵件已成功更新為: §f%s";
+            case "email.invalid" -> "§c電子郵件格式無效！請輸入正確的 Email 地址。";
+            case "player.lastlogin_info" -> "§e最後登入時間: §f%s §e| 註冊時間: §f%s";
+            case "player.getip_info" -> "§e您的目前 IP 位址: §f%s";
             case "admin.register_success" -> "§a已成功為玩家 §e%s §a註冊帳號！";
             case "admin.register_already_registered" -> "§c玩家 §e%s §c已經註冊過帳號！";
             case "admin.forcelogin_success" -> "§a已成功強制玩家 §e%s §a登入！";

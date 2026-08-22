@@ -89,7 +89,7 @@ public class NeoForgeEvents {
                         .then(Commands.argument("confirm", StringArgumentType.string())
                                 .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "confirm"))))));
 
-        // 註冊 /changepassword 與 /cp
+        // 註冊 /changepassword 與 /cp (<舊密碼> <新密碼> <確認新密碼>)
         dispatcher.register(Commands.literal("changepassword")
                 .then(Commands.literal("help")
                         .executes(context -> executeHelp(context.getSource(), "changepassword"))
@@ -97,7 +97,11 @@ public class NeoForgeEvents {
                                 .executes(context -> executeHelp(context.getSource(), "changepassword"))))
                 .then(Commands.argument("oldPassword", StringArgumentType.string())
                         .then(Commands.argument("newPassword", StringArgumentType.string())
-                                .executes(context -> executeChangePassword(context.getSource(), StringArgumentType.getString(context, "oldPassword"), StringArgumentType.getString(context, "newPassword"))))));
+                                .then(Commands.argument("confirmPassword", StringArgumentType.string())
+                                        .executes(context -> executeChangePassword(context.getSource(),
+                                                StringArgumentType.getString(context, "oldPassword"),
+                                                StringArgumentType.getString(context, "newPassword"),
+                                                StringArgumentType.getString(context, "confirmPassword")))))));
         dispatcher.register(Commands.literal("cp")
                 .then(Commands.literal("help")
                         .executes(context -> executeHelp(context.getSource(), "changepassword"))
@@ -105,7 +109,11 @@ public class NeoForgeEvents {
                                 .executes(context -> executeHelp(context.getSource(), "changepassword"))))
                 .then(Commands.argument("oldPassword", StringArgumentType.string())
                         .then(Commands.argument("newPassword", StringArgumentType.string())
-                                .executes(context -> executeChangePassword(context.getSource(), StringArgumentType.getString(context, "oldPassword"), StringArgumentType.getString(context, "newPassword"))))));
+                                .then(Commands.argument("confirmPassword", StringArgumentType.string())
+                                        .executes(context -> executeChangePassword(context.getSource(),
+                                                StringArgumentType.getString(context, "oldPassword"),
+                                                StringArgumentType.getString(context, "newPassword"),
+                                                StringArgumentType.getString(context, "confirmPassword")))))));
 
         // 註冊 /logout
         dispatcher.register(Commands.literal("logout")
@@ -115,11 +123,30 @@ public class NeoForgeEvents {
                         .then(Commands.argument("query", StringArgumentType.string())
                                 .executes(context -> executeHelp(context.getSource(), "logout")))));
 
-        // 註冊 /email
+        // 註冊 /lastlogin (開放給一般玩家查看自己的最後登入)
+        dispatcher.register(Commands.literal("lastlogin")
+                .executes(context -> executePlayerLastLogin(context.getSource()))
+                .then(Commands.literal("help")
+                        .executes(context -> executeHelp(context.getSource(), "lastlogin"))
+                        .then(Commands.argument("query", StringArgumentType.string())
+                                .executes(context -> executeHelp(context.getSource(), "lastlogin")))));
+
+        // 註冊 /getip (開放給一般玩家查看自己的連線 IP)
+        dispatcher.register(Commands.literal("getip")
+                .executes(context -> executePlayerGetIp(context.getSource()))
+                .then(Commands.literal("help")
+                        .executes(context -> executeHelp(context.getSource(), "getip"))
+                        .then(Commands.argument("query", StringArgumentType.string())
+                                .executes(context -> executeHelp(context.getSource(), "getip")))));
+
+        // 註冊 /email (支援 /email, /email show, /email set <新地址>)
         dispatcher.register(Commands.literal("email")
-                .executes(context -> executeHelp(context.getSource(), "email"))
+                .executes(context -> executeEmailShow(context.getSource()))
                 .then(Commands.literal("show")
                         .executes(context -> executeEmailShow(context.getSource())))
+                .then(Commands.literal("set")
+                        .then(Commands.argument("email", StringArgumentType.string())
+                                .executes(context -> executeEmailSet(context.getSource(), StringArgumentType.getString(context, "email")))))
                 .then(Commands.literal("help")
                         .executes(context -> executeHelp(context.getSource(), "email"))
                         .then(Commands.argument("query", StringArgumentType.string())
@@ -170,6 +197,13 @@ public class NeoForgeEvents {
                                 .executes(context -> executeAdminAccounts(context.getSource(), StringArgumentType.getString(context, "player")))))
                 .then(Commands.literal("email")
                         .executes(context -> executeAdminEmailSelf(context.getSource()))
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("player", StringArgumentType.word())
+                                        .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
+                                        .then(Commands.argument("email", StringArgumentType.string())
+                                                .executes(context -> executeAdminSetEmail(context.getSource(),
+                                                        StringArgumentType.getString(context, "player"),
+                                                        StringArgumentType.getString(context, "email"))))))
                         .then(Commands.argument("player", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
                                 .executes(context -> executeAdminEmail(context.getSource(), StringArgumentType.getString(context, "player")))))
@@ -252,14 +286,14 @@ public class NeoForgeEvents {
         }
     }
 
-    private static int executeChangePassword(CommandSourceStack source, String oldPassword, String newPassword) {
+    private static int executeChangePassword(CommandSourceStack source, String oldPassword, String newPassword, String confirmPassword) {
         if (!(source.getEntity() instanceof ServerPlayer player)) {
             source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.only_players")));
             return 0;
         }
 
         String username = player.getGameProfile().getName();
-        AuthLogic.ChangePasswordResult result = AuthLogic.attemptChangePassword(player.getUUID(), username, oldPassword, newPassword);
+        AuthLogic.ChangePasswordResult result = AuthLogic.attemptChangePassword(player.getUUID(), username, oldPassword, newPassword, confirmPassword);
 
         if (result == AuthLogic.ChangePasswordResult.SUCCESS) {
             source.sendSuccess(() -> Component.literal(result.getMessage()), false);
@@ -295,6 +329,58 @@ public class NeoForgeEvents {
         return 1;
     }
 
+    private static int executePlayerLastLogin(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.only_players")));
+            return 0;
+        }
+
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        if (!AuthManager.isLoggedIn(player.getUUID())) {
+            source.sendFailure(Component.literal(msgMgr.get("login.login_prompt")));
+            return 0;
+        }
+
+        String username = player.getGameProfile().getName();
+        DatabaseManager.PlayerAuthData data = DatabaseManager.getPlayerData(username);
+        if (data == null) {
+            source.sendFailure(Component.literal(msgMgr.get("general.database_error")));
+            return 0;
+        }
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String lastLoginStr = data.getLastLogin() > 0 ? sdf.format(new Date(data.getLastLogin())) : msgMgr.get("admin.lastlogin_never");
+        String regDateStr = data.getRegDate() > 0 ? sdf.format(new Date(data.getRegDate())) : "Unknown";
+
+        source.sendSuccess(() -> Component.literal(msgMgr.get("player.lastlogin_info", lastLoginStr, regDateStr)), false);
+        return 1;
+    }
+
+    private static int executePlayerGetIp(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.only_players")));
+            return 0;
+        }
+
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        if (!AuthManager.isLoggedIn(player.getUUID())) {
+            source.sendFailure(Component.literal(msgMgr.get("login.login_prompt")));
+            return 0;
+        }
+
+        String ip = player.getIpAddress();
+        if (ip == null || ip.isBlank()) {
+            ip = DatabaseManager.getIp(player.getGameProfile().getName());
+        }
+        if (ip == null || ip.isBlank()) {
+            ip = "127.0.0.1";
+        }
+
+        String finalIp = ip;
+        source.sendSuccess(() -> Component.literal(msgMgr.get("player.getip_info", finalIp)), false);
+        return 1;
+    }
+
     private static int executeEmailShow(CommandSourceStack source) {
         if (!(source.getEntity() instanceof ServerPlayer player)) {
             source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.only_players")));
@@ -314,6 +400,34 @@ public class NeoForgeEvents {
         }
     }
 
+    private static int executeEmailSet(CommandSourceStack source, String email) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.only_players")));
+            return 0;
+        }
+
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        if (!AuthManager.isLoggedIn(player.getUUID())) {
+            source.sendFailure(Component.literal(msgMgr.get("changepassword.not_logged_in")));
+            return 0;
+        }
+
+        if (email == null || !email.contains("@") || !email.contains(".")) {
+            source.sendFailure(Component.literal(msgMgr.get("email.invalid")));
+            return 0;
+        }
+
+        String username = player.getGameProfile().getName();
+        boolean success = DatabaseManager.setEmail(username, email);
+        if (success) {
+            source.sendSuccess(() -> Component.literal(msgMgr.get("email.set_success", email)), false);
+            return 1;
+        } else {
+            source.sendFailure(Component.literal(msgMgr.get("general.database_error")));
+            return 0;
+        }
+    }
+
     private static int executeHelp(CommandSourceStack source, String commandName) {
         MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
         source.sendSuccess(() -> Component.literal(msgMgr.get("help.header")), false);
@@ -323,12 +437,16 @@ public class NeoForgeEvents {
             case "changepassword" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.changepassword")), false);
             case "logout" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.logout")), false);
             case "email" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.email")), false);
+            case "lastlogin" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.lastlogin")), false);
+            case "getip" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.getip")), false);
             default -> {
                 source.sendSuccess(() -> Component.literal(msgMgr.get("help.login")), false);
                 source.sendSuccess(() -> Component.literal(msgMgr.get("help.register")), false);
                 source.sendSuccess(() -> Component.literal(msgMgr.get("help.changepassword")), false);
                 source.sendSuccess(() -> Component.literal(msgMgr.get("help.logout")), false);
                 source.sendSuccess(() -> Component.literal(msgMgr.get("help.email")), false);
+                source.sendSuccess(() -> Component.literal(msgMgr.get("help.lastlogin")), false);
+                source.sendSuccess(() -> Component.literal(msgMgr.get("help.getip")), false);
                 source.sendSuccess(() -> Component.literal(msgMgr.get("help.reload")), false);
             }
         }

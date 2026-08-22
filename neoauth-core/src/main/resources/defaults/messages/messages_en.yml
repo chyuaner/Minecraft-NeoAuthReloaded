@@ -24,6 +24,7 @@ changepassword:
   wrong_old_password: "&cCurrent password does not match!"
   not_logged_in: "&cYou must be logged in to change your password!"
   password_same: "&cNew password cannot be the same as old password!"
+  password_mismatch: "&cNew passwords do not match!"
 
 logout:
   success: "&aYou have been logged out successfully! Use &e/login <password> &ato log in again."
@@ -31,7 +32,13 @@ logout:
 
 email:
   show: "&eYour registered email address is: &f%s"
-  none: "&cYou do not have a registered email address."
+  none: "&cYou do not have a registered email address. Use &e/email set <email> &cto set one."
+  set_success: "&aSuccessfully updated your email to: &f%s"
+  invalid: "&cInvalid email address format!"
+
+player:
+  lastlogin_info: "&eLast Login: &f%s &e| Registered: &f%s"
+  getip_info: "&eYour current IP Address: &f%s"
 
 admin:
   register_success: "&aSuccessfully registered account for player &e%s&a!"
@@ -78,7 +85,9 @@ help:
   header: "&6===== &eNeoAuth Commands &6====="
   login: "&e/login <password> &7- Log into the server"
   register: "&e/register <password> [confirmPassword] &7- Register your account"
-  changepassword: "&e/changepassword <oldPassword> <newPassword> &7- Change password (alias: /cp)"
+  changepassword: "&e/changepassword <oldPassword> <newPassword> <confirmPassword> &7- Change password (alias: /cp)"
   logout: "&e/logout &7- Log out from the server"
-  email: "&e/email show &7- Display registered email"
+  email: "&e/email &7or &e/email show &7- Show email | &e/email set <email> &7- Set email"
+  lastlogin: "&e/lastlogin &7- View your last login history"
+  getip: "&e/getip &7- View your current IP address"
   reload: "&e/neoauth reload &7- Reload NeoAuth configurations"

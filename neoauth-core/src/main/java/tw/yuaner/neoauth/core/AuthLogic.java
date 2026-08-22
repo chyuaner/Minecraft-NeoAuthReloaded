@@ -150,6 +150,7 @@ public class AuthLogic {
         SUCCESS("changepassword.success"),
         NOT_LOGGED_IN("changepassword.not_logged_in"),
         WRONG_OLD_PASSWORD("changepassword.wrong_old_password"),
+        PASSWORD_MISMATCH("changepassword.password_mismatch"),
         PASSWORD_SAME("changepassword.password_same"),
         PASSWORD_TOO_SHORT("register.password_too_short"),
         PASSWORD_TOO_LONG("register.password_too_long"),
@@ -187,8 +188,26 @@ public class AuthLogic {
      * @return 修改結果 {@link ChangePasswordResult}
      */
     public static ChangePasswordResult attemptChangePassword(UUID uuid, String username, String oldPassword, String newPassword) {
+        return attemptChangePassword(uuid, username, oldPassword, newPassword, newPassword);
+    }
+
+    /**
+     * 嘗試執行玩家自訂修改密碼流程 (含新密碼二次確認)。
+     *
+     * @param uuid            玩家 UUID
+     * @param username        玩家名稱
+     * @param oldPassword     舊密碼
+     * @param newPassword     新密碼
+     * @param confirmPassword 確認新密碼
+     * @return 修改結果 {@link ChangePasswordResult}
+     */
+    public static ChangePasswordResult attemptChangePassword(UUID uuid, String username, String oldPassword, String newPassword, String confirmPassword) {
         if (!AuthManager.isLoggedIn(uuid)) {
             return ChangePasswordResult.NOT_LOGGED_IN;
+        }
+
+        if (confirmPassword != null && !newPassword.equals(confirmPassword)) {
+            return ChangePasswordResult.PASSWORD_MISMATCH;
         }
 
         if (!DatabaseManager.checkPassword(username, oldPassword)) {

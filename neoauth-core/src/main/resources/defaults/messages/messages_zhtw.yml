@@ -24,6 +24,7 @@ changepassword:
   wrong_old_password: "&c舊密碼輸入錯誤！"
   not_logged_in: "&c您必須先完成登入才能修改密碼！"
   password_same: "&c新密碼不可與舊密碼相同！"
+  password_mismatch: "&c兩次輸入的新密碼不相符！"
 
 logout:
   success: "&a您已成功登出！請使用 &e/login <密碼> &a重新登入。"
@@ -31,7 +32,13 @@ logout:
 
 email:
   show: "&e您目前綁定的電子郵件為: &f%s"
-  none: "&c您目前尚未綁定任何電子郵件。"
+  none: "&c您目前尚未綁定任何電子郵件。使用 &e/email set <電子郵件> &c進行綁定。"
+  set_success: "&a電子郵件已成功更新為: &f%s"
+  invalid: "&c電子郵件格式無效！請輸入正確的 Email 地址。"
+
+player:
+  lastlogin_info: "&e最後登入時間: &f%s &e| 註冊時間: &f%s"
+  getip_info: "&e您的目前 IP 位址: &f%s"
 
 admin:
   register_success: "&a已成功為玩家 &e%s &a註冊帳號！"
@@ -78,7 +85,9 @@ help:
   header: "&6===== &eNeoAuth 指令清單 &6====="
   login: "&e/login <密碼> &7- 登入伺服器"
   register: "&e/register <密碼> [確認密碼] &7- 註冊帳號"
-  changepassword: "&e/changepassword <舊密碼> <新密碼> &7- 修改密碼 (別名: /cp)"
+  changepassword: "&e/changepassword <舊密碼> <新密碼> <確認新密碼> &7- 修改密碼 (別名: /cp)"
   logout: "&e/logout &7- 登出伺服器"
-  email: "&e/email show &7- 顯示綁定的電子郵件"
+  email: "&e/email &7或 &e/email show &7- 顯示綁定信箱 | &e/email set <地址> &7- 設定信箱"
+  lastlogin: "&e/lastlogin &7- 查詢自己的最後登入紀錄"
+  getip: "&e/getip &7- 查詢自己的 IP 位址"
   reload: "&e/neoauth reload &7- 重新載入 NeoAuth 設定檔"

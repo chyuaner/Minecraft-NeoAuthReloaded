@@ -1,0 +1,13 @@
+[Database]
+	#MariaDB Host
+	host = "localhost"
+	#MariaDB Port
+	port = "3306"
+	#Database Name
+	database = "neoauth"
+	#Database Username
+	username = "neoauth"
+	#Database Password
+	password = "a12345"
+	#Table Name
+	table = "neoauth"

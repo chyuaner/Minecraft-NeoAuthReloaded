@@ -1,0 +1,17 @@
+services:
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb-neoauth
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: "rootpassword"
+      MARIADB_DATABASE: "neoauth"
+      MARIADB_USER: "neoauth"
+      MARIADB_PASSWORD: "a12345"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+volumes:
+  mariadb_data:

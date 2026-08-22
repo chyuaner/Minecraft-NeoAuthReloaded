@@ -59,18 +59,6 @@ help:
     neoauth_getip:
       usage: "/neoauth getip <玩家>"
       description: "取得指定玩家的連線 IP（管理員）。"
-    neoauth_spawn:
-      usage: "/neoauth spawn"
-      description: "傳送至登入重生點（管理員）。"
-    neoauth_setspawn:
-      usage: "/neoauth setspawn"
-      description: "將登入重生點設定為當前位置（管理員）。"
-    neoauth_firstspawn:
-      usage: "/neoauth firstspawn"
-      description: "傳送至新玩家首次登入點（管理員）。"
-    neoauth_setfirstspawn:
-      usage: "/neoauth setfirstspawn"
-      description: "將新玩家首次登入點設定為當前位置（管理員）。"
     neoauth_resetpos:
       usage: "/neoauth resetpos <玩家/*>"
       description: "清除玩家（或全體 *）最後離線座標（管理員）。"

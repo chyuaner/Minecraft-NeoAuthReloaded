@@ -59,18 +59,6 @@ help:
     neoauth_getip:
       usage: "/neoauth getip <player>"
       description: "Get connection IP for specified player (Admin)."
-    neoauth_spawn:
-      usage: "/neoauth spawn"
-      description: "Teleport to login spawn location (Admin)."
-    neoauth_setspawn:
-      usage: "/neoauth setspawn"
-      description: "Set general login spawn to current location (Admin)."
-    neoauth_firstspawn:
-      usage: "/neoauth firstspawn"
-      description: "Teleport to first spawn location (Admin)."
-    neoauth_setfirstspawn:
-      usage: "/neoauth setfirstspawn"
-      description: "Set first spawn location to current location (Admin)."
     neoauth_resetpos:
       usage: "/neoauth resetpos <player/*>"
       description: "Reset last location for player or all players (Admin)."

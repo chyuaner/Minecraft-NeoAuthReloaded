@@ -59,9 +59,6 @@ public class NeoAuthConfig implements IAuthConfig {
     private boolean slowness = true;
     private boolean displayWelcomeMessage = true;
 
-    private boolean teleportUnAuthedToSpawn = false;
-    private boolean saveQuitLocation = true;
-
     public NeoAuthConfig() {}
 
     @SuppressWarnings("unchecked")
@@ -134,13 +131,6 @@ public class NeoAuthConfig implements IAuthConfig {
                 if (restMap.get("blindness") instanceof Boolean b) config.blindness = b;
                 if (restMap.get("slowness") instanceof Boolean b) config.slowness = b;
                 if (restMap.get("displayWelcomeMessage") instanceof Boolean b) config.displayWelcomeMessage = b;
-            }
-
-            // spawn
-            Object spawnObj = setMap.get("spawn");
-            if (spawnObj instanceof Map<?, ?> spawnMap) {
-                if (spawnMap.get("teleportUnAuthedToSpawn") instanceof Boolean b) config.teleportUnAuthedToSpawn = b;
-                if (spawnMap.get("saveQuitLocation") instanceof Boolean b) config.saveQuitLocation = b;
             }
         }
 
@@ -373,15 +363,5 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public boolean isDisplayWelcomeMessage() {
         return displayWelcomeMessage;
-    }
-
-    @Override
-    public boolean isTeleportUnAuthedToSpawn() {
-        return teleportUnAuthedToSpawn;
-    }
-
-    @Override
-    public boolean isSaveQuitLocation() {
-        return saveQuitLocation;
     }
 }

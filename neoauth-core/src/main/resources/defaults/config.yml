@@ -115,10 +115,3 @@ settings:
     slowness: true
     # 玩家進服時是否顯示 welcome.txt 歡迎文字公告
     displayWelcomeMessage: true
-
-  # 重生點與登入傳送設定
-  spawn:
-    # 是否在未登入時傳送玩家至 spawn.yml 指定之登入點
-    teleportUnAuthedToSpawn: false
-    # 登入成功後是否傳送回玩家登出時的位置
-    saveQuitLocation: true

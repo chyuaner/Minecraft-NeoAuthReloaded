@@ -31,7 +31,6 @@ public class ConfigManager {
 
     private NeoAuthConfig config = new NeoAuthConfig();
     private CommandsConfig commandsConfig = new CommandsConfig();
-    private SpawnConfig spawnConfig = new SpawnConfig();
     private MessagesManager messagesManager = new MessagesManager();
     private String welcomeMessage = "";
 
@@ -63,11 +62,7 @@ public class ConfigManager {
             Map<String, Object> commandsData = loadAndMergeYaml("commands.yml", configDir.resolve("commands.yml"));
             this.commandsConfig = CommandsConfig.fromMap(commandsData);
 
-            // 3. 載入並合併 spawn.yml
-            Map<String, Object> spawnData = loadAndMergeYaml("spawn.yml", configDir.resolve("spawn.yml"));
-            this.spawnConfig = SpawnConfig.fromMap(spawnData);
-
-            // 4. 載入 welcome.txt
+            // 3. 載入 welcome.txt
             Path welcomePath = configDir.resolve("welcome.txt");
             if (!Files.exists(welcomePath)) {
                 copyDefaultResource("welcome.txt", welcomePath);
@@ -247,38 +242,6 @@ public class ConfigManager {
 
     public CommandsConfig getCommandsConfig() {
         return commandsConfig;
-    }
-
-    public SpawnConfig getSpawnConfig() {
-        return spawnConfig;
-    }
-
-    /**
-     * 儲存並更新 spawn.yml 設定檔（保留註解與格式）。
-     *
-     * @param newConfig 更新後的 SpawnConfig
-     * @return true 若儲存成功，否則為 false
-     */
-    public synchronized boolean saveSpawnConfig(SpawnConfig newConfig) {
-        if (newConfig == null) return false;
-        this.spawnConfig = newConfig;
-        Path spawnPath = configDir.resolve("spawn.yml");
-        try {
-            String templateText = "";
-            try (InputStream in = getClass().getResourceAsStream("/defaults/spawn.yml")) {
-                if (in != null) {
-                    templateText = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-                }
-            }
-            Map<String, Object> map = newConfig.toMap();
-            String merged = YamlCommentPreserver.mergePreservingComments(templateText, map);
-            Files.writeString(spawnPath, merged, StandardCharsets.UTF_8);
-            LOGGER.info("NeoAuth: 已成功更新並儲存 spawn.yml！");
-            return true;
-        } catch (Exception e) {
-            LOGGER.error("NeoAuth: 儲存 spawn.yml 失敗: {}", e.getMessage());
-            return false;
-        }
     }
 
     public MessagesManager getMessagesManager() {

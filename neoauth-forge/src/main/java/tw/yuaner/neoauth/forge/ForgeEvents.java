@@ -23,7 +23,6 @@ import tw.yuaner.neoauth.AuthManager;
 import tw.yuaner.neoauth.DatabaseManager;
 import tw.yuaner.neoauth.config.ConfigManager;
 import tw.yuaner.neoauth.config.MessagesManager;
-import tw.yuaner.neoauth.config.SpawnConfig;
 import tw.yuaner.neoauth.core.AuthLogic;
 import tw.yuaner.neoauth.platform.Services;
 
@@ -216,14 +215,6 @@ public class ForgeEvents {
                         .then(Commands.argument("player", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
                                 .executes(context -> executeAdminGetIp(context.getSource(), StringArgumentType.getString(context, "player")))))
-                .then(Commands.literal("spawn")
-                        .executes(context -> executeAdminSpawn(context.getSource())))
-                .then(Commands.literal("setspawn")
-                        .executes(context -> executeAdminSetSpawn(context.getSource())))
-                .then(Commands.literal("firstspawn")
-                        .executes(context -> executeAdminFirstSpawn(context.getSource())))
-                .then(Commands.literal("setfirstspawn")
-                        .executes(context -> executeAdminSetFirstSpawn(context.getSource())))
                 .then(Commands.literal("resetpos")
                         .then(Commands.argument("player", StringArgumentType.word())
                                 .suggests((c, b) -> {
@@ -650,86 +641,6 @@ public class ForgeEvents {
         }
     }
 
-    private static int executeAdminSpawn(CommandSourceStack source) {
-        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
-        if (!(source.getEntity() instanceof ServerPlayer player)) {
-            source.sendFailure(Component.literal(msgMgr.get("general.only_players")));
-            return 0;
-        }
-
-        SpawnConfig.Location spawn = ConfigManager.getInstance().getSpawnConfig().getSpawn();
-        if (!spawn.isEnabled()) {
-            source.sendFailure(Component.literal(msgMgr.get("admin.spawn_not_enabled")));
-            return 0;
-        }
-
-        Services.PLATFORM.teleportPlayer(player, spawn.getWorld(), spawn.getX(), spawn.getY(), spawn.getZ(), spawn.getYaw(), spawn.getPitch());
-        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.spawn_teleport_success")), false);
-        return 1;
-    }
-
-    private static int executeAdminSetSpawn(CommandSourceStack source) {
-        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
-        if (!(source.getEntity() instanceof ServerPlayer player)) {
-            source.sendFailure(Component.literal(msgMgr.get("general.only_players")));
-            return 0;
-        }
-
-        SpawnConfig spawnConfig = ConfigManager.getInstance().getSpawnConfig();
-        SpawnConfig.Location spawn = spawnConfig.getSpawn();
-        spawn.setWorld(player.level().dimension().location().toString());
-        spawn.setX(player.getX());
-        spawn.setY(player.getY());
-        spawn.setZ(player.getZ());
-        spawn.setYaw(player.getYRot());
-        spawn.setPitch(player.getXRot());
-        spawn.setEnabled(true);
-
-        ConfigManager.getInstance().saveSpawnConfig(spawnConfig);
-        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.spawn_set_success")), true);
-        return 1;
-    }
-
-    private static int executeAdminFirstSpawn(CommandSourceStack source) {
-        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
-        if (!(source.getEntity() instanceof ServerPlayer player)) {
-            source.sendFailure(Component.literal(msgMgr.get("general.only_players")));
-            return 0;
-        }
-
-        SpawnConfig.Location firstSpawn = ConfigManager.getInstance().getSpawnConfig().getFirstSpawn();
-        if (!firstSpawn.isEnabled()) {
-            source.sendFailure(Component.literal(msgMgr.get("admin.firstspawn_not_enabled")));
-            return 0;
-        }
-
-        Services.PLATFORM.teleportPlayer(player, firstSpawn.getWorld(), firstSpawn.getX(), firstSpawn.getY(), firstSpawn.getZ(), firstSpawn.getYaw(), firstSpawn.getPitch());
-        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.spawn_teleport_success")), false);
-        return 1;
-    }
-
-    private static int executeAdminSetFirstSpawn(CommandSourceStack source) {
-        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
-        if (!(source.getEntity() instanceof ServerPlayer player)) {
-            source.sendFailure(Component.literal(msgMgr.get("general.only_players")));
-            return 0;
-        }
-
-        SpawnConfig spawnConfig = ConfigManager.getInstance().getSpawnConfig();
-        SpawnConfig.Location firstSpawn = spawnConfig.getFirstSpawn();
-        firstSpawn.setWorld(player.level().dimension().location().toString());
-        firstSpawn.setX(player.getX());
-        firstSpawn.setY(player.getY());
-        firstSpawn.setZ(player.getZ());
-        firstSpawn.setYaw(player.getYRot());
-        firstSpawn.setPitch(player.getXRot());
-        firstSpawn.setEnabled(true);
-
-        ConfigManager.getInstance().saveSpawnConfig(spawnConfig);
-        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.firstspawn_set_success")), true);
-        return 1;
-    }
-
     private static int executeAdminResetPos(CommandSourceStack source, String targetPlayerOrWildcard) {
         MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
         int affected = DatabaseManager.resetPosition(targetPlayerOrWildcard);
@@ -827,21 +738,6 @@ public class ForgeEvents {
             } else {
                 // 離線玩家或未通過正版驗證玩家，進入待登入狀態
                 AuthManager.setLoggedOut(uuid);
-
-                // 首次進入或未驗證傳送至重生點處理
-                boolean registered = DatabaseManager.isRegistered(username);
-                if (!registered) {
-                    SpawnConfig.Location firstSpawn = ConfigManager.getInstance().getSpawnConfig().getFirstSpawn();
-                    if (firstSpawn.isEnabled()) {
-                        Services.PLATFORM.teleportPlayer(player, firstSpawn.getWorld(), firstSpawn.getX(), firstSpawn.getY(), firstSpawn.getZ(), firstSpawn.getYaw(), firstSpawn.getPitch());
-                    }
-                } else if (ConfigManager.getInstance().getConfig().isTeleportUnAuthedToSpawn()) {
-                    SpawnConfig.Location spawn = ConfigManager.getInstance().getSpawnConfig().getSpawn();
-                    if (spawn.isEnabled()) {
-                        Services.PLATFORM.teleportPlayer(player, spawn.getWorld(), spawn.getX(), spawn.getY(), spawn.getZ(), spawn.getYaw(), spawn.getPitch());
-                    }
-                }
-
                 String msg = AuthLogic.getPromptMessage(username);
                 Services.PLATFORM.sendMessage(player, msg);
             }

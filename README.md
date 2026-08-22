@@ -24,7 +24,7 @@
   - 🛡️ **傷害保護**：未登入玩家無法受到任何傷害，亦無法攻擊其他玩家或生物。
   - 🧊 **原地凍結**：自動套用高強度定身效果（緩速、跳躍抑制、失明），防止未驗證玩家移動或窺探地圖。
 - **AuthMeReloaded 風格設定檔與多國語言 (i18n)**：
-  - 採用 `config/neoauth/` 資料夾架構，包含 `config.yml`、`commands.yml`、`spawn.yml`、`welcome.txt` 與 `messages/` 目錄。
+  - 採用 `config/neoauth/` 資料夾架構，包含 `config.yml`、`commands.yml`、`welcome.txt` 與 `messages/` 目錄。
   - 內建繁體中文 (`zhtw`) 與英文 (`en`) 語言檔與幫助指南。
   - 支援熱重載管理員指令 `/neoauth reload`。
 
@@ -46,7 +46,6 @@ neoauth/
 │   │   │   ├── IAuthConfig.java          # 設定檔抽象介面
 │   │   │   ├── NeoAuthConfig.java        # config.yml 主設定實作
 │   │   │   ├── CommandsConfig.java       # commands.yml 指令設定實作
-│   │   │   ├── SpawnConfig.java          # spawn.yml 重生點設定實作
 │   │   │   └── MessagesManager.java      # 多國語言訊息與顏色碼轉換管理器
 │   │   ├── platform/
 │   │   │   ├── IPlatformHelper.java      # 平台服務介面 (藥水效果、訊息發送、設定實例等)
@@ -133,7 +132,6 @@ neoauth/
 config/neoauth/
  ├── commands.yml          # 指令白名單與登入/註冊/登出時自動執行之指令掛鉤
  ├── config.yml            # 主設定檔 (資料庫連線、密碼規則、防護限制、語言切換等)
- ├── spawn.yml             # 登入點與首次登入點設定
  ├── welcome.txt           # 玩家進服顯示之彩色歡迎公告 (支援 {PLAYER} 變數與顏色代碼)
  └── messages/             # 多國語言訊息與幫助指南目錄
      ├── help_en.yml       # 英文幫助說明
@@ -207,12 +205,8 @@ docker compose down
 | `/neoauth email set` | `<player> <email>` | 為指定玩家設定或更新電子信箱（別名 `/neoauth setemail`） | `/neoauth email set Steve steve@example.com` |
 | `/neoauth setemail` | `<player> <email>` | 為指定玩家設定或更新電子信箱 | `/neoauth setemail Steve steve@example.com` |
 | `/neoauth getip` | `<player>` | 查詢指定玩家的 IP 位址（線上或最後紀錄） | `/neoauth getip Steve` |
-| `/neoauth spawn` | - | 傳送至登入重生點（`spawn.yml` 定義） | `/neoauth spawn` |
-| `/neoauth setspawn` | - | 將當前站立位置儲存為登入重生點並寫入 `spawn.yml` | `/neoauth setspawn` |
-| `/neoauth firstspawn` | - | 傳送至首次加入重生點（`spawn.yml` 定義） | `/neoauth firstspawn` |
-| `/neoauth setfirstspawn` | - | 將當前站立位置儲存為首次加入重生點並寫入 `spawn.yml` | `/neoauth setfirstspawn` |
 | `/neoauth resetpos` | `<player \| *>` | 重設指定玩家（或全部玩家 `*`）在資料庫中的登出座標 | `/neoauth resetpos Steve` 或 `/neoauth resetpos *` |
-| `/neoauth reload` | - | 熱重載所有設定檔 (`config.yml`, `commands.yml`, `spawn.yml`, `welcome.txt`) 與訊息檔 | `/neoauth reload` |
+| `/neoauth reload` | - | 熱重載所有設定檔 (`config.yml`, `commands.yml`, `welcome.txt`) 與訊息檔 | `/neoauth reload` |
 | `/neoauth version` | - | 顯示 NeoAuth 模組版本與目前運行的平台 (Forge / NeoForge) | `/neoauth version` |
 | `/neoauth recent` | - | 顯示伺服器最近登入的玩家清單與登入時間 | `/neoauth recent` |
 

@@ -268,19 +268,5 @@ public interface IAuthConfig {
      * @return true 若啟用
      */
     boolean isDisplayWelcomeMessage();
-
-    /**
-     * 是否在未登入時傳送玩家至 spawn.yml 指定之登入點
-     *
-     * @return true 若啟用
-     */
-    boolean isTeleportUnAuthedToSpawn();
-
-    /**
-     * 登入成功後是否傳送回玩家登出時的位置
-     *
-     * @return true 若啟用
-     */
-    boolean isSaveQuitLocation();
 }
 

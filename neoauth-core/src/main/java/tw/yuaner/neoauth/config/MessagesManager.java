@@ -112,11 +112,6 @@ public class MessagesManager {
             case "admin.email_updated" -> "§a已成功將玩家 §e%s §a的電子郵件設定為: §f%s";
             case "admin.getip_info" -> "§6[%s] §eIP 位址: §f%s";
             case "admin.getip_unknown" -> "§c無法取得玩家 §e%s §c的 IP 位址！";
-            case "admin.spawn_set_success" -> "§a已成功將一般登入點設定為您當前的位置！";
-            case "admin.firstspawn_set_success" -> "§a已成功將首次進入登入點設定為您當前的位置！";
-            case "admin.spawn_teleport_success" -> "§a已將您傳送至登入點。";
-            case "admin.spawn_not_enabled" -> "§c登入點尚未設定或未啟用！請先使用 §e/neoauth setspawn §c設定。";
-            case "admin.firstspawn_not_enabled" -> "§c首次登入點尚未設定或未啟用！請先使用 §e/neoauth setfirstspawn §c設定。";
             case "admin.resetpos_player_success" -> "§a已重設玩家 §e%s §a的離線座標！下次進入伺服器時將於重生點出現。";
             case "admin.resetpos_all_success" -> "§a已重設全體玩家 (%d 筆) 的離線座標！";
             case "admin.recent_header" -> "§6===== 最近登入玩家清單 =====";

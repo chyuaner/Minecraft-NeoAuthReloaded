@@ -119,7 +119,9 @@ public class ForgeEvents {
             String username = player.getGameProfile().getName();
             UUID uuid = player.getUUID();
             boolean isOffline = AuthManager.isOfflineUuid(username, uuid);
-            boolean isPremium = !isOffline && AuthManager.isPremiumVerified(uuid);
+            boolean hasTextures = player.getGameProfile().getProperties() != null
+                    && player.getGameProfile().getProperties().containsKey("textures");
+            boolean isPremium = !isOffline && (hasTextures || AuthManager.isPremiumVerified(uuid));
 
             if (isPremium) {
                 // 正版驗證通過，自動放行並登入

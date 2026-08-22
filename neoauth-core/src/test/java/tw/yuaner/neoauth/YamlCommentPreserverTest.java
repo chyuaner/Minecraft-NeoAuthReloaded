@@ -107,4 +107,35 @@ public class YamlCommentPreserverTest {
         assertTrue(PasswordManager.checkPassword(password, hash), "Password check must succeed for correct password");
         assertFalse(PasswordManager.checkPassword("WrongPassword", hash), "Password check must fail for wrong password");
     }
+
+    @Test
+    public void testPasswordManagerSalted2Md5() {
+        String password = "MySecretPassword!";
+        String salt = "aB3dE6";
+
+        // 1. Discuz! / Blessing Skin 模式：獨立 salt 欄位 (MD5(MD5(password) + salt))
+        String discuzHash = PasswordManager.computeSalted2Md5(password, salt);
+        assertEquals(32, discuzHash.length());
+        assertTrue(PasswordManager.checkPassword(password, discuzHash, salt));
+        assertFalse(PasswordManager.checkPassword("WrongPassword", discuzHash, salt));
+
+        // 2. AuthMe $MD5$salt$hash 複合格式
+        String authmeMd5 = "$MD5$" + salt + "$" + discuzHash;
+        assertTrue(PasswordManager.checkPassword(password, authmeMd5));
+        assertFalse(PasswordManager.checkPassword("WrongPassword", authmeMd5));
+    }
+
+    @Test
+    public void testPasswordManagerSaltedSha512() {
+        String password = "MySecurePassword512";
+        String salt = "1234567890abcdef";
+
+        // AuthMe $SHA$salt$hash (SHA-512, 128 hex chars)
+        String hash512 = PasswordManager.sha512Hex(PasswordManager.sha512Hex(password) + salt);
+        assertEquals(128, hash512.length());
+        String fullHash = "$SHA$" + salt + "$" + hash512;
+
+        assertTrue(PasswordManager.checkPassword(password, fullHash));
+        assertFalse(PasswordManager.checkPassword("WrongPassword", fullHash));
+    }
 }

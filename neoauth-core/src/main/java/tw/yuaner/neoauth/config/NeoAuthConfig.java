@@ -50,6 +50,7 @@ public class NeoAuthConfig implements IAuthConfig {
     private String passwordHash = "SHA256";
     private int minPasswordLength = 0;
     private int maxPasswordLength = 0;
+    private int doubleMD5SaltLength = 6;
 
     private int timeout = 90;
     private boolean kickOnWrongPassword = false;
@@ -121,6 +122,7 @@ public class NeoAuthConfig implements IAuthConfig {
                 if (secMap.get("passwordHash") != null) config.passwordHash = String.valueOf(secMap.get("passwordHash"));
                 if (secMap.get("minPasswordLength") instanceof Number n) config.minPasswordLength = n.intValue();
                 if (secMap.get("maxPasswordLength") instanceof Number n) config.maxPasswordLength = n.intValue();
+                if (secMap.get("doubleMD5SaltLength") instanceof Number n) config.doubleMD5SaltLength = n.intValue();
             }
 
             // restrictions
@@ -139,6 +141,14 @@ public class NeoAuthConfig implements IAuthConfig {
             if (spawnObj instanceof Map<?, ?> spawnMap) {
                 if (spawnMap.get("teleportUnAuthedToSpawn") instanceof Boolean b) config.teleportUnAuthedToSpawn = b;
                 if (spawnMap.get("saveQuitLocation") instanceof Boolean b) config.saveQuitLocation = b;
+            }
+        }
+
+        // ExternalBoardOptions (支援 Discuz, Phpwind, Blessing Skin 等外部論壇與皮膚站設定)
+        Object extObj = map.get("ExternalBoardOptions");
+        if (extObj instanceof Map<?, ?> extMap) {
+            if (extMap.get("mySQLColumnSalt") != null && config.mySQLColumnSalt.isBlank()) {
+                config.mySQLColumnSalt = String.valueOf(extMap.get("mySQLColumnSalt"));
             }
         }
 
@@ -328,6 +338,11 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public int getMaxPasswordLength() {
         return maxPasswordLength;
+    }
+
+    @Override
+    public int getDoubleMD5SaltLength() {
+        return doubleMD5SaltLength;
     }
 
     @Override

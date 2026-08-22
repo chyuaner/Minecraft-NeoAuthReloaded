@@ -221,6 +221,13 @@ public interface IAuthConfig {
     int getMaxPasswordLength();
 
     /**
+     * 取得 SALTED2MD5 加鹽雙重 MD5 的鹽值長度 (預設: 6)
+     *
+     * @return 鹽值長度
+     */
+    int getDoubleMD5SaltLength();
+
+    /**
      * 取得登入超時時間 (秒，0 為不限制)
      *
      * @return 超時秒數

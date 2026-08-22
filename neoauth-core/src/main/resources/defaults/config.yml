@@ -34,7 +34,7 @@ DataSource:
   mySQLRealName: "realname"
   # 密碼欄位 (Column for storing players passwords)
   mySQLColumnPassword: "password"
-  # 密碼鹽值欄位 (Column for storing players passwords salts)
+  # 密碼鹽值欄位 (Column for storing players passwords salts, e.g. 'salt')
   mySQLColumnSalt: ""
   # 電子郵件欄位 (Column for storing players emails)
   mySQLColumnEmail: "email"
@@ -72,6 +72,11 @@ DataSource:
   # 連線最大存活時間 (秒)
   maxLifetime: 1800
 
+# 外部系統 / 論壇 / 皮膚站整合選項 (External Board Options)
+ExternalBoardOptions:
+  # 外部資料庫鹽值欄位名稱 (若使用 SALTED2MD5 或外部系統，可設為 'salt')
+  mySQLColumnSalt: ""
+
 settings:
   # 預設提示語言 (支援: zhtw, en，對應 messages/messages_<lang>.yml)
   messagesLanguage: "zhtw"
@@ -81,8 +86,16 @@ settings:
 
   # 密碼安全規則 (0 為不限制)
   security:
-    # 密碼雜湊方式 (支援: SHA256, BCRYPT)
+    # 密碼雜湊方式 (支援: SHA256, SALTED2MD5, SALTEDSHA512, BCRYPT)
+    # - SHA256: AuthMe 預設雙重加鹽 SHA-256 ($SHA$salt$hash)
+    # - SALTED2MD5: 相容 Discuz!、Phpwind、Blessing Skin 等系統 (MD5(MD5(password) + salt))
+    # - SALTEDSHA512: AuthMe 標準雙重加鹽 SHA-512 ($SHA$salt$hash)
+    # - BCRYPT: 相容 Blessing Skin 預設算法、Flarum 等系統
     passwordHash: "SHA256"
+
+    # SALTED2MD5 演算法之鹽值長度 (Discuz! / Phpwind 通常為 6)
+    doubleMD5SaltLength: 6
+
     # 密碼最短長度 (0 為不限制)
     minPasswordLength: 0
     # 密碼最長長度 (0 為不限制)

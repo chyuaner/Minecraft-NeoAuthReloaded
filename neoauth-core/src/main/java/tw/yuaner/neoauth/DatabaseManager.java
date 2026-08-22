@@ -16,7 +16,8 @@ import java.sql.SQLException;
  * MariaDB / MySQL 資料庫連線池與 SQL 查詢操作管理員。
  * <p>
  * 使用高效能的 {@link HikariDataSource} 連線池連線至資料庫，
- * 支援自訂欄位名稱並與 Bukkit 的 AuthMeReloaded 資料表結構保持 100% 相容。
+ * 支援自訂欄位名稱 (包含 salt 欄位)、多種雜湊演算法 (BCrypt, SHA256, SALTED2MD5, SALTEDSHA512)
+ * 並與 Bukkit 的 AuthMeReloaded / Discuz! / Phpwind / Blessing Skin 資料表結構保持 100% 相容。
  */
 public class DatabaseManager {
 
@@ -171,14 +172,20 @@ public class DatabaseManager {
     public static boolean checkPassword(String username, String password) {
         if (dataSource == null || username == null || password == null) return false;
         IAuthConfig config = Services.PLATFORM.getConfig();
-        String sql = "SELECT " + config.getMySqlColumnPassword() + " FROM " + config.getDbTable() + " WHERE " + config.getMySqlColumnName() + " = ?";
+        String colSalt = config.getMySqlColumnSalt();
+        boolean hasSaltCol = colSalt != null && !colSalt.isBlank();
+
+        String selectCols = config.getMySqlColumnPassword() + (hasSaltCol ? ", " + colSalt : "");
+        String sql = "SELECT " + selectCols + " FROM " + config.getDbTable() + " WHERE " + config.getMySqlColumnName() + " = ?";
+
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, username.toLowerCase());
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     String hash = rs.getString(config.getMySqlColumnPassword());
-                    return PasswordManager.checkPassword(password, hash);
+                    String salt = hasSaltCol ? rs.getString(colSalt) : null;
+                    return PasswordManager.checkPassword(password, hash, salt);
                 }
             }
         } catch (SQLException e) {
@@ -200,34 +207,75 @@ public class DatabaseManager {
         if (isRegistered(username)) return false;
 
         IAuthConfig config = Services.PLATFORM.getConfig();
-        String hash = PasswordManager.hashPassword(password);
+        String colSalt = config.getMySqlColumnSalt();
+        boolean hasSaltCol = colSalt != null && !colSalt.isBlank();
         long now = System.currentTimeMillis();
 
-        String sql = "INSERT INTO " + config.getDbTable() + " (" +
-                config.getMySqlColumnName() + ", " +
-                config.getMySqlRealName() + ", " +
-                config.getMySqlColumnPassword() + ", " +
-                config.getMySqlColumnIp() + ", " +
-                config.getMySqlColumnRegisterIp() + ", " +
-                config.getMySqlColumnRegisterDate() + ", " +
-                config.getMySqlColumnLastLogin() +
-                ") VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String hash;
+        String salt = null;
 
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, username.toLowerCase());
-            stmt.setString(2, username);
-            stmt.setString(3, hash);
-            stmt.setString(4, ip != null ? ip : "127.0.0.1");
-            stmt.setString(5, ip != null ? ip : "127.0.0.1");
-            stmt.setLong(6, now);
-            stmt.setLong(7, now);
+        if (hasSaltCol) {
+            int saltLen = config.getDoubleMD5SaltLength() > 0 ? config.getDoubleMD5SaltLength() : 6;
+            salt = PasswordManager.generateRandomSalt(saltLen);
+            hash = PasswordManager.hashPasswordWithSalt(password, salt, config.getPasswordHash());
 
-            stmt.executeUpdate();
-            return true;
-        } catch (SQLException e) {
-            LOGGER.error("NeoAuth: 註冊玩家時發生資料庫錯誤", e);
-            return false;
+            String sql = "INSERT INTO " + config.getDbTable() + " (" +
+                    config.getMySqlColumnName() + ", " +
+                    config.getMySqlRealName() + ", " +
+                    config.getMySqlColumnPassword() + ", " +
+                    colSalt + ", " +
+                    config.getMySqlColumnIp() + ", " +
+                    config.getMySqlColumnRegisterIp() + ", " +
+                    config.getMySqlColumnRegisterDate() + ", " +
+                    config.getMySqlColumnLastLogin() +
+                    ") VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, username.toLowerCase());
+                stmt.setString(2, username);
+                stmt.setString(3, hash);
+                stmt.setString(4, salt);
+                stmt.setString(5, ip != null ? ip : "127.0.0.1");
+                stmt.setString(6, ip != null ? ip : "127.0.0.1");
+                stmt.setLong(7, now);
+                stmt.setLong(8, now);
+
+                stmt.executeUpdate();
+                return true;
+            } catch (SQLException e) {
+                LOGGER.error("NeoAuth: 註冊玩家時發生資料庫錯誤", e);
+                return false;
+            }
+        } else {
+            hash = PasswordManager.hashPassword(password);
+
+            String sql = "INSERT INTO " + config.getDbTable() + " (" +
+                    config.getMySqlColumnName() + ", " +
+                    config.getMySqlRealName() + ", " +
+                    config.getMySqlColumnPassword() + ", " +
+                    config.getMySqlColumnIp() + ", " +
+                    config.getMySqlColumnRegisterIp() + ", " +
+                    config.getMySqlColumnRegisterDate() + ", " +
+                    config.getMySqlColumnLastLogin() +
+                    ") VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, username.toLowerCase());
+                stmt.setString(2, username);
+                stmt.setString(3, hash);
+                stmt.setString(4, ip != null ? ip : "127.0.0.1");
+                stmt.setString(5, ip != null ? ip : "127.0.0.1");
+                stmt.setLong(6, now);
+                stmt.setLong(7, now);
+
+                stmt.executeUpdate();
+                return true;
+            } catch (SQLException e) {
+                LOGGER.error("NeoAuth: 註冊玩家時發生資料庫錯誤", e);
+                return false;
+            }
         }
     }
 

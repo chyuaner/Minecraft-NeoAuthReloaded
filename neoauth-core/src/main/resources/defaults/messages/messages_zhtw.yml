@@ -19,6 +19,51 @@ register:
   password_too_long: "&c密碼長度過長！最多允許 %d 個字元。"
   register_prompt: "&c請先註冊！使用指令: &e/register <密碼> <確認密碼>"
 
+changepassword:
+  success: "&a密碼修改成功！請牢記您的新密碼。"
+  wrong_old_password: "&c舊密碼輸入錯誤！"
+  not_logged_in: "&c您必須先完成登入才能修改密碼！"
+  password_same: "&c新密碼不可與舊密碼相同！"
+
+logout:
+  success: "&a您已成功登出！請使用 &e/login <密碼> &a重新登入。"
+  not_logged_in: "&c您目前尚未登入！"
+
+email:
+  show: "&e您目前綁定的電子郵件為: &f%s"
+  none: "&c您目前尚未綁定任何電子郵件。"
+
+admin:
+  register_success: "&a已成功為玩家 &e%s &a註冊帳號！"
+  register_already_registered: "&c玩家 &e%s &c已經註冊過帳號！"
+  forcelogin_success: "&a已成功強制玩家 &e%s &a登入！"
+  forcelogin_self_success: "&a您已成功強制登入！"
+  player_not_online: "&c玩家 &e%s &c目前不在線上！"
+  player_not_specified: "&c請指定欲操作的玩家名稱！"
+  player_not_found: "&c在資料庫中找不到玩家 &e%s &c的資料！"
+  password_changed_success: "&a已成功將玩家 &e%s &a的密碼修改！"
+  lastlogin_info: "&6[%s] &e最後登入: &f%s &e| IP: &f%s &e| 註冊時間: &f%s"
+  lastlogin_never: "從未登入"
+  accounts_header: "&6===== 關聯帳號清單 (%s) 共 %d 個帳號 ====="
+  accounts_item: "&e- &f%s"
+  accounts_none: "&c找不到任何關聯帳號。"
+  email_info: "&6[%s] &e電子郵件: &f%s"
+  email_none: "&6[%s] &c未設定電子郵件。"
+  email_updated: "&a已成功將玩家 &e%s &a的電子郵件設定為: &f%s"
+  getip_info: "&6[%s] &eIP 位址: &f%s"
+  getip_unknown: "&c無法取得玩家 &e%s &c的 IP 位址！"
+  spawn_set_success: "&a已成功將一般登入點設定為您當前的位置！"
+  firstspawn_set_success: "&a已成功將首次進入登入點設定為您當前的位置！"
+  spawn_teleport_success: "&a已將您傳送至登入點。"
+  spawn_not_enabled: "&c登入點尚未設定或未啟用！請先使用 &e/neoauth setspawn &c設定。"
+  firstspawn_not_enabled: "&c首次登入點尚未設定或未啟用！請先使用 &e/neoauth setfirstspawn &c設定。"
+  resetpos_player_success: "&a已重設玩家 &e%s &a的離線座標！下次進入伺服器時將於重生點出現。"
+  resetpos_all_success: "&a已重設全體玩家 (%d 筆) 的離線座標！"
+  recent_header: "&6===== 最近登入玩家清單 ====="
+  recent_item: "&e- &f%s &7(%s) - &7IP: %s"
+  recent_none: "&c目前尚無任何登入紀錄。"
+  version_info: "&6===== &eNeoAuth 版本資訊 &6=====\n&e模組名稱: &fNeoAuth\n&e模組版本: &f%s\n&e執行平台: &f%s\n&e開發者: &fYuan Chiu\n&e相容系統: &fAuthMeReloaded / Blessing Skin / MariaDB / MySQL"
+
 general:
   only_players: "&c只有玩家可以使用此指令！"
   database_error: "&c資料庫連線異常，請聯繫管理員。"
@@ -32,5 +77,8 @@ general:
 help:
   header: "&6===== &eNeoAuth 指令清單 &6====="
   login: "&e/login <密碼> &7- 登入伺服器"
-  register: "&e/register <密碼> <確認密碼> &7- 註冊帳號"
+  register: "&e/register <密碼> [確認密碼] &7- 註冊帳號"
+  changepassword: "&e/changepassword <舊密碼> <新密碼> &7- 修改密碼 (別名: /cp)"
+  logout: "&e/logout &7- 登出伺服器"
+  email: "&e/email show &7- 顯示綁定的電子郵件"
   reload: "&e/neoauth reload &7- 重新載入 NeoAuth 設定檔"

@@ -32,12 +32,31 @@ public class SpawnConfig {
         }
 
         public String getWorld() { return world; }
+        public void setWorld(String world) { this.world = world; }
         public double getX() { return x; }
+        public void setX(double x) { this.x = x; }
         public double getY() { return y; }
+        public void setY(double y) { this.y = y; }
         public double getZ() { return z; }
+        public void setZ(double z) { this.z = z; }
         public float getYaw() { return yaw; }
+        public void setYaw(float yaw) { this.yaw = yaw; }
         public float getPitch() { return pitch; }
+        public void setPitch(float pitch) { this.pitch = pitch; }
         public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
+        public Map<String, Object> toMap() {
+            Map<String, Object> map = new java.util.LinkedHashMap<>();
+            map.put("world", world);
+            map.put("x", x);
+            map.put("y", y);
+            map.put("z", z);
+            map.put("yaw", yaw);
+            map.put("pitch", pitch);
+            map.put("enabled", enabled);
+            return map;
+        }
     }
 
     private Location spawn = new Location();
@@ -58,6 +77,13 @@ public class SpawnConfig {
         }
 
         return config;
+    }
+
+    public Map<String, Object> toMap() {
+        Map<String, Object> map = new java.util.LinkedHashMap<>();
+        map.put("spawn", spawn.toMap());
+        map.put("firstSpawn", firstSpawn.toMap());
+        return map;
     }
 
     public Location getSpawn() {

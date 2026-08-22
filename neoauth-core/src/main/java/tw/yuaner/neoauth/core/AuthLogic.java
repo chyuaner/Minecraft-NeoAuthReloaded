@@ -5,6 +5,7 @@ import tw.yuaner.neoauth.DatabaseManager;
 import tw.yuaner.neoauth.config.ConfigManager;
 import tw.yuaner.neoauth.config.IAuthConfig;
 import tw.yuaner.neoauth.config.MessagesManager;
+import tw.yuaner.neoauth.platform.Services;
 
 import java.util.UUID;
 
@@ -139,6 +140,141 @@ public class AuthLogic {
             return RegisterResult.SUCCESS;
         } else {
             return RegisterResult.DATABASE_ERROR;
+        }
+    }
+
+    /**
+     * 修改密碼結果列舉。
+     */
+    public enum ChangePasswordResult {
+        SUCCESS("changepassword.success"),
+        NOT_LOGGED_IN("changepassword.not_logged_in"),
+        WRONG_OLD_PASSWORD("changepassword.wrong_old_password"),
+        PASSWORD_SAME("changepassword.password_same"),
+        PASSWORD_TOO_SHORT("register.password_too_short"),
+        PASSWORD_TOO_LONG("register.password_too_long"),
+        DATABASE_ERROR("general.database_error");
+
+        private final String messageKey;
+
+        ChangePasswordResult(String messageKey) {
+            this.messageKey = messageKey;
+        }
+
+        public String getMessageKey() {
+            return messageKey;
+        }
+
+        public String getMessage() {
+            IAuthConfig config = ConfigManager.getInstance().getConfig();
+            MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+            if (this == PASSWORD_TOO_SHORT) {
+                return msgMgr.get(messageKey, config.getMinPasswordLength());
+            } else if (this == PASSWORD_TOO_LONG) {
+                return msgMgr.get(messageKey, config.getMaxPasswordLength());
+            }
+            return msgMgr.get(messageKey);
+        }
+    }
+
+    /**
+     * 嘗試執行玩家自訂修改密碼流程。
+     *
+     * @param uuid        玩家 UUID
+     * @param username    玩家名稱
+     * @param oldPassword 舊密碼
+     * @param newPassword 新密碼
+     * @return 修改結果 {@link ChangePasswordResult}
+     */
+    public static ChangePasswordResult attemptChangePassword(UUID uuid, String username, String oldPassword, String newPassword) {
+        if (!AuthManager.isLoggedIn(uuid)) {
+            return ChangePasswordResult.NOT_LOGGED_IN;
+        }
+
+        if (!DatabaseManager.checkPassword(username, oldPassword)) {
+            return ChangePasswordResult.WRONG_OLD_PASSWORD;
+        }
+
+        if (oldPassword.equals(newPassword)) {
+            return ChangePasswordResult.PASSWORD_SAME;
+        }
+
+        IAuthConfig config = ConfigManager.getInstance().getConfig();
+        if (config.getMinPasswordLength() > 0 && newPassword.length() < config.getMinPasswordLength()) {
+            return ChangePasswordResult.PASSWORD_TOO_SHORT;
+        }
+        if (config.getMaxPasswordLength() > 0 && newPassword.length() > config.getMaxPasswordLength()) {
+            return ChangePasswordResult.PASSWORD_TOO_LONG;
+        }
+
+        boolean success = DatabaseManager.changePassword(username, newPassword);
+        return success ? ChangePasswordResult.SUCCESS : ChangePasswordResult.DATABASE_ERROR;
+    }
+
+    /**
+     * 管理員強制修改指定玩家密碼。
+     *
+     * @param username    玩家名稱
+     * @param newPassword 新密碼
+     * @return 修改結果 {@link ChangePasswordResult}
+     */
+    public static ChangePasswordResult attemptAdminChangePassword(String username, String newPassword) {
+        if (!DatabaseManager.isRegistered(username)) {
+            return ChangePasswordResult.DATABASE_ERROR;
+        }
+
+        IAuthConfig config = ConfigManager.getInstance().getConfig();
+        if (config.getMinPasswordLength() > 0 && newPassword.length() < config.getMinPasswordLength()) {
+            return ChangePasswordResult.PASSWORD_TOO_SHORT;
+        }
+        if (config.getMaxPasswordLength() > 0 && newPassword.length() > config.getMaxPasswordLength()) {
+            return ChangePasswordResult.PASSWORD_TOO_LONG;
+        }
+
+        boolean success = DatabaseManager.changePassword(username, newPassword);
+        return success ? ChangePasswordResult.SUCCESS : ChangePasswordResult.DATABASE_ERROR;
+    }
+
+    /**
+     * 嘗試執行玩家登出流程。
+     *
+     * @param uuid 玩家 UUID
+     * @return true 若原本已登入並成功登出，否則為 false
+     */
+    public static boolean attemptLogout(UUID uuid) {
+        if (!AuthManager.isLoggedIn(uuid)) {
+            return false;
+        }
+        AuthManager.setLoggedOut(uuid);
+        return true;
+    }
+
+    /**
+     * 執行登入、註冊或登出所觸發的自訂指令掛鉤 (Hooks)。
+     *
+     * @param serverOrSource 伺服器物件或指令來源
+     * @param playerObj      玩家物件 (可為 null)
+     * @param username       玩家名稱
+     * @param consoleCmds    Console 執行的指令清單
+     * @param playerCmds     以玩家身分執行的指令清單
+     */
+    public static void executeHooks(Object serverOrSource, Object playerObj, String username, java.util.List<String> consoleCmds, java.util.List<String> playerCmds) {
+        if (username == null) return;
+        if (consoleCmds != null && !consoleCmds.isEmpty() && serverOrSource != null) {
+            for (String cmd : consoleCmds) {
+                if (cmd != null && !cmd.isBlank()) {
+                    String formatted = cmd.replace("{PLAYER}", username).replace("%player%", username);
+                    Services.PLATFORM.executeConsoleCommand(serverOrSource, formatted);
+                }
+            }
+        }
+        if (playerCmds != null && !playerCmds.isEmpty() && playerObj != null) {
+            for (String cmd : playerCmds) {
+                if (cmd != null && !cmd.isBlank()) {
+                    String formatted = cmd.replace("{PLAYER}", username).replace("%player%", username);
+                    Services.PLATFORM.executePlayerCommand(playerObj, formatted);
+                }
+            }
         }
     }
 

@@ -306,6 +306,310 @@ public class DatabaseManager {
     }
 
     /**
+     * 修改玩家密碼（管理員或玩家本人修改）。
+     *
+     * @param username    玩家名稱
+     * @param newPassword 新密碼
+     * @return true 若更新成功，否則為 false
+     */
+    public static boolean changePassword(String username, String newPassword) {
+        if (dataSource == null || username == null || newPassword == null) return false;
+        if (!isRegistered(username)) return false;
+
+        IAuthConfig config = Services.PLATFORM.getConfig();
+        String colSalt = config.getMySqlColumnSalt();
+        boolean hasSaltCol = colSalt != null && !colSalt.isBlank();
+
+        if (hasSaltCol) {
+            int saltLen = config.getDoubleMD5SaltLength() > 0 ? config.getDoubleMD5SaltLength() : 6;
+            String salt = PasswordManager.generateRandomSalt(saltLen);
+            String hash = PasswordManager.hashPasswordWithSalt(newPassword, salt, config.getPasswordHash());
+
+            String sql = "UPDATE " + config.getDbTable() + " SET " +
+                    config.getMySqlColumnPassword() + " = ?, " +
+                    colSalt + " = ? WHERE " +
+                    config.getMySqlColumnName() + " = ?";
+
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, hash);
+                stmt.setString(2, salt);
+                stmt.setString(3, username.toLowerCase());
+                stmt.executeUpdate();
+                return true;
+            } catch (SQLException e) {
+                LOGGER.error("NeoAuth: 修改密碼時發生資料庫錯誤", e);
+                return false;
+            }
+        } else {
+            String hash = PasswordManager.hashPassword(newPassword);
+            String sql = "UPDATE " + config.getDbTable() + " SET " +
+                    config.getMySqlColumnPassword() + " = ? WHERE " +
+                    config.getMySqlColumnName() + " = ?";
+
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, hash);
+                stmt.setString(2, username.toLowerCase());
+                stmt.executeUpdate();
+                return true;
+            } catch (SQLException e) {
+                LOGGER.error("NeoAuth: 修改密碼時發生資料庫錯誤", e);
+                return false;
+            }
+        }
+    }
+
+    /**
+     * 查詢指定玩家的詳細帳號資料。
+     *
+     * @param username 玩家名稱
+     * @return {@link PlayerAuthData} 物件，若不存在則回傳 null
+     */
+    public static PlayerAuthData getPlayerData(String username) {
+        if (dataSource == null || username == null) return null;
+        IAuthConfig config = Services.PLATFORM.getConfig();
+        String sql = "SELECT " +
+                config.getMySqlColumnName() + ", " +
+                config.getMySqlRealName() + ", " +
+                config.getMySqlColumnIp() + ", " +
+                config.getMySqlColumnRegisterIp() + ", " +
+                config.getMySqlColumnLastLogin() + ", " +
+                config.getMySqlColumnRegisterDate() + ", " +
+                config.getMySqlColumnEmail() +
+                " FROM " + config.getDbTable() +
+                " WHERE " + config.getMySqlColumnName() + " = ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username.toLowerCase());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new PlayerAuthData(
+                            rs.getString(config.getMySqlColumnName()),
+                            rs.getString(config.getMySqlRealName()),
+                            rs.getString(config.getMySqlColumnIp()),
+                            rs.getString(config.getMySqlColumnRegisterIp()),
+                            rs.getLong(config.getMySqlColumnLastLogin()),
+                            rs.getLong(config.getMySqlColumnRegisterDate()),
+                            rs.getString(config.getMySqlColumnEmail())
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.error("NeoAuth: 查詢玩家資料時發生資料庫錯誤", e);
+        }
+        return null;
+    }
+
+    /**
+     * 取得指定玩家的 Email 資訊。
+     */
+    public static String getEmail(String username) {
+        PlayerAuthData data = getPlayerData(username);
+        return data != null ? data.getEmail() : null;
+    }
+
+    /**
+     * 更新指定玩家的 Email 資訊。
+     */
+    public static boolean setEmail(String username, String email) {
+        if (dataSource == null || username == null) return false;
+        if (!isRegistered(username)) return false;
+        IAuthConfig config = Services.PLATFORM.getConfig();
+        String sql = "UPDATE " + config.getDbTable() + " SET " +
+                config.getMySqlColumnEmail() + " = ? WHERE " +
+                config.getMySqlColumnName() + " = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, email);
+            stmt.setString(2, username.toLowerCase());
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            LOGGER.error("NeoAuth: 更新 Email 時發生資料庫錯誤", e);
+            return false;
+        }
+    }
+
+    /**
+     * 取得指定玩家最後登入的 IP 位址。
+     */
+    public static String getIp(String username) {
+        PlayerAuthData data = getPlayerData(username);
+        return data != null ? data.getIp() : null;
+    }
+
+    /**
+     * 依據玩家名稱或 IP 位址，查詢所有關聯註冊/登入的帳號名稱。
+     *
+     * @param usernameOrIp 玩家名稱或 IP 字串
+     * @return 關聯帳號名稱清單
+     */
+    public static java.util.List<String> getAccounts(String usernameOrIp) {
+        java.util.List<String> accounts = new java.util.ArrayList<>();
+        if (dataSource == null || usernameOrIp == null || usernameOrIp.isBlank()) return accounts;
+        IAuthConfig config = Services.PLATFORM.getConfig();
+
+        String ip1 = null;
+        String ip2 = null;
+
+        if (usernameOrIp.contains(".") || usernameOrIp.contains(":")) {
+            ip1 = usernameOrIp.trim();
+        } else {
+            PlayerAuthData data = getPlayerData(usernameOrIp);
+            if (data != null) {
+                ip1 = data.getIp();
+                ip2 = data.getRegIp();
+            }
+        }
+
+        if (ip1 == null && ip2 == null) {
+            return accounts;
+        }
+
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT DISTINCT ").append(config.getMySqlRealName()).append(" FROM ").append(config.getDbTable()).append(" WHERE ");
+        java.util.List<String> params = new java.util.ArrayList<>();
+        if (ip1 != null && !ip1.isBlank()) {
+            sql.append("(").append(config.getMySqlColumnIp()).append(" = ? OR ").append(config.getMySqlColumnRegisterIp()).append(" = ?)");
+            params.add(ip1);
+            params.add(ip1);
+        }
+        if (ip2 != null && !ip2.isBlank() && !ip2.equals(ip1)) {
+            if (!params.isEmpty()) sql.append(" OR ");
+            sql.append("(").append(config.getMySqlColumnIp()).append(" = ? OR ").append(config.getMySqlColumnRegisterIp()).append(" = ?)");
+            params.add(ip2);
+            params.add(ip2);
+        }
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                stmt.setString(i + 1, params.get(i));
+            }
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String name = rs.getString(config.getMySqlRealName());
+                    if (name != null && !name.isBlank()) {
+                        accounts.add(name);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.error("NeoAuth: 查詢關聯帳號時發生資料庫錯誤", e);
+        }
+        return accounts;
+    }
+
+    /**
+     * 重設指定玩家（或全體玩家）在資料庫中的最後離線座標。
+     *
+     * @param playerOrWildcard 玩家名稱或 "*"
+     * @return 影響的資料筆數
+     */
+    public static int resetPosition(String playerOrWildcard) {
+        if (dataSource == null || playerOrWildcard == null) return 0;
+        IAuthConfig config = Services.PLATFORM.getConfig();
+        boolean isAll = "*".equals(playerOrWildcard.trim());
+
+        String sql = "UPDATE " + config.getDbTable() + " SET " +
+                config.getMySqlLastLocX() + " = 0.0, " +
+                config.getMySqlLastLocY() + " = 0.0, " +
+                config.getMySqlLastLocZ() + " = 0.0, " +
+                config.getMySqlLastLocWorld() + " = 'world', " +
+                config.getMySqlLastLocYaw() + " = 0.0, " +
+                config.getMySqlLastLocPitch() + " = 0.0" +
+                (isAll ? "" : " WHERE " + config.getMySqlColumnName() + " = ?");
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            if (!isAll) {
+                stmt.setString(1, playerOrWildcard.trim().toLowerCase());
+            }
+            return stmt.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.error("NeoAuth: 重設玩家座標時發生資料庫錯誤", e);
+            return 0;
+        }
+    }
+
+    /**
+     * 取得最近登入伺服器的玩家清單。
+     *
+     * @param limit 最大回傳數量
+     * @return 玩家帳號資料清單
+     */
+    public static java.util.List<PlayerAuthData> getRecentPlayers(int limit) {
+        java.util.List<PlayerAuthData> list = new java.util.ArrayList<>();
+        if (dataSource == null) return list;
+        IAuthConfig config = Services.PLATFORM.getConfig();
+        int max = limit > 0 ? limit : 10;
+        String sql = "SELECT " +
+                config.getMySqlColumnName() + ", " +
+                config.getMySqlRealName() + ", " +
+                config.getMySqlColumnIp() + ", " +
+                config.getMySqlColumnRegisterIp() + ", " +
+                config.getMySqlColumnLastLogin() + ", " +
+                config.getMySqlColumnRegisterDate() + ", " +
+                config.getMySqlColumnEmail() +
+                " FROM " + config.getDbTable() +
+                " ORDER BY " + config.getMySqlColumnLastLogin() + " DESC LIMIT ?";
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, max);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new PlayerAuthData(
+                            rs.getString(config.getMySqlColumnName()),
+                            rs.getString(config.getMySqlRealName()),
+                            rs.getString(config.getMySqlColumnIp()),
+                            rs.getString(config.getMySqlColumnRegisterIp()),
+                            rs.getLong(config.getMySqlColumnLastLogin()),
+                            rs.getLong(config.getMySqlColumnRegisterDate()),
+                            rs.getString(config.getMySqlColumnEmail())
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.error("NeoAuth: 查詢最近登入玩家時發生資料庫錯誤", e);
+        }
+        return list;
+    }
+
+    /**
+     * 玩家驗證與帳號資料模型。
+     */
+    public static class PlayerAuthData {
+        private final String username;
+        private final String realName;
+        private final String ip;
+        private final String regIp;
+        private final long lastLogin;
+        private final long regDate;
+        private final String email;
+
+        public PlayerAuthData(String username, String realName, String ip, String regIp, long lastLogin, long regDate, String email) {
+            this.username = username;
+            this.realName = realName;
+            this.ip = ip;
+            this.regIp = regIp;
+            this.lastLogin = lastLogin;
+            this.regDate = regDate;
+            this.email = email;
+        }
+
+        public String getUsername() { return username; }
+        public String getRealName() { return realName; }
+        public String getIp() { return ip; }
+        public String getRegIp() { return regIp; }
+        public long getLastLogin() { return lastLogin; }
+        public long getRegDate() { return regDate; }
+        public String getEmail() { return email; }
+    }
+
+    /**
      * 關閉資料庫連線池（伺服器關閉時呼叫）。
      */
     public static void close() {

@@ -56,4 +56,51 @@ public interface IPlatformHelper {
      * @param message 訊息內容
      */
     void sendActionBar(Object player, String message);
+
+    /**
+     * 將指定玩家傳送至特定世界維度與座標。
+     *
+     * @param player    伺服器玩家物件 (ServerPlayer)
+     * @param worldName 維度名稱 (例如 "minecraft:overworld")
+     * @param x         X 座標
+     * @param y         Y 座標
+     * @param z         Z 座標
+     * @param yaw       偏航角
+     * @param pitch     俯仰角
+     * @return true 若傳送成功，否則為 false
+     */
+    boolean teleportPlayer(Object player, String worldName, double x, double y, double z, float yaw, float pitch);
+
+    /**
+     * 由伺服器後台 (Console) 權限執行指令。
+     *
+     * @param serverOrSource 伺服器實例或指令來源
+     * @param command        欲執行的指令 (不含前導斜線)
+     */
+    void executeConsoleCommand(Object serverOrSource, String command);
+
+    /**
+     * 以指定玩家的身分權限執行指令。
+     *
+     * @param player  伺服器玩家物件 (ServerPlayer)
+     * @param command 欲執行的指令 (不含前導斜線)
+     */
+    void executePlayerCommand(Object player, String command);
+
+    /**
+     * 依玩家名稱查詢目前在線上的玩家物件。
+     *
+     * @param serverOrSource 伺服器實例或指令來源
+     * @param username       玩家名稱
+     * @return 伺服器玩家物件 (ServerPlayer)，若不在線則回傳 null
+     */
+    Object getOnlinePlayer(Object serverOrSource, String username);
+
+    /**
+     * 取得目前所有在線玩家的名稱清單。
+     *
+     * @param serverOrSource 伺服器實例或指令來源
+     * @return 玩家名稱清單
+     */
+    java.util.List<String> getOnlinePlayerNames(Object serverOrSource);
 }

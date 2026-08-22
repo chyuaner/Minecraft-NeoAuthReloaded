@@ -12,11 +12,68 @@ help:
       usage: "/l <password>"
       description: "Alias for /login."
     register:
-      usage: "/register <password> <confirmPassword>"
+      usage: "/register <password> [confirmPassword]"
       description: "Register a new password for your account."
     reg:
-      usage: "/reg <password> <confirmPassword>"
+      usage: "/reg <password> [confirmPassword]"
       description: "Alias for /register."
-    neoauth:
+    changepassword:
+      usage: "/changepassword <oldPassword> <newPassword>"
+      description: "Change password for currently logged-in account."
+    cp:
+      usage: "/cp <oldPassword> <newPassword>"
+      description: "Alias for /changepassword."
+    logout:
+      usage: "/logout"
+      description: "Log out from the server."
+    email:
+      usage: "/email show"
+      description: "View your registered email address."
+    neoauth_register:
+      usage: "/neoauth register <player> <password>"
+      description: "Register an account for specified player (Admin)."
+    neoauth_forcelogin:
+      usage: "/neoauth forcelogin [player]"
+      description: "Force log in a player or self (Admin)."
+    neoauth_password:
+      usage: "/neoauth password <player> <newPassword>"
+      description: "Change password of a player (Admin)."
+    neoauth_lastlogin:
+      usage: "/neoauth lastlogin [player]"
+      description: "View last login date and IP of a player (Admin)."
+    neoauth_accounts:
+      usage: "/neoauth accounts [player/IP]"
+      description: "Display all accounts sharing IP address (Admin)."
+    neoauth_email:
+      usage: "/neoauth email [player]"
+      description: "View registered email of a player (Admin)."
+    neoauth_setemail:
+      usage: "/neoauth setemail <player> <email>"
+      description: "Set email address for a player (Admin)."
+    neoauth_getip:
+      usage: "/neoauth getip <player>"
+      description: "Get IP address of a player (Admin)."
+    neoauth_spawn:
+      usage: "/neoauth spawn"
+      description: "Teleport to login spawn location (Admin)."
+    neoauth_setspawn:
+      usage: "/neoauth setspawn"
+      description: "Set general login spawn to current location (Admin)."
+    neoauth_firstspawn:
+      usage: "/neoauth firstspawn"
+      description: "Teleport to first spawn location (Admin)."
+    neoauth_setfirstspawn:
+      usage: "/neoauth setfirstspawn"
+      description: "Set first spawn location to current location (Admin)."
+    neoauth_resetpos:
+      usage: "/neoauth resetpos <player/*>"
+      description: "Reset last location for player or all players (Admin)."
+    neoauth_reload:
       usage: "/neoauth reload"
-      description: "Reload all NeoAuth configuration files and messages (requires OP)."
+      description: "Reload all configuration files and messages (Admin)."
+    neoauth_version:
+      usage: "/neoauth version"
+      description: "Display NeoAuth version and runtime info (Admin)."
+    neoauth_recent:
+      usage: "/neoauth recent"
+      description: "Show list of recent logged-in players (Admin)."

@@ -169,13 +169,46 @@ docker compose down
 
 ## 🎮 遊戲內指令 (In-Game Commands)
 
-| 指令 | 權限需求 | 說明 | 範例 |
+### 👤 玩家指令 (Player Commands)
+
+| 指令 | 別名 | 權限需求 | 說明 | 範例 |
+| :--- | :--- | :--- | :--- | :--- |
+| `/login <password>` | `/l` | 全體玩家 | 進行帳號登入驗證 | `/login myPassword123` |
+| `/login help` | `/l help` | 全體玩家 | 查詢登入指令使用說明 | `/login help` |
+| `/register <password> [confirm]` | `/reg` | 全體玩家 | 註冊新帳號 | `/register myPassword123 myPassword123` |
+| `/register help` | `/reg help` | 全體玩家 | 查詢註冊指令使用說明 | `/register help` |
+| `/changepassword <old> <new>` | `/cp` | 已登入玩家 | 修改當前帳號密碼 | `/changepassword old123 new456` |
+| `/changepassword help` | `/cp help` | 全體玩家 | 查詢修改密碼指令使用說明 | `/changepassword help` |
+| `/logout` | - | 已登入玩家 | 登出當前帳號並重新套用防護 | `/logout` |
+| `/logout help` | - | 全體玩家 | 查詢登出指令使用說明 | `/logout help` |
+| `/email show` | `/email` | 已登入玩家 | 查看當前帳號綁定的電子信箱 | `/email show` |
+| `/email help` | - | 全體玩家 | 查詢信箱相關指令說明 | `/email help` |
+
+---
+
+### 🛡️ 管理員指令 (Admin Commands - `/neoauth`)
+
+> 所有 `/neoauth` 管理指令皆需要管理員權限 (OP 等級 2 以上)。
+
+| 子指令 | 參數 | 說明 | 範例 |
 | :--- | :--- | :--- | :--- |
-| `/login <password>` | 全體玩家 | 進行帳號登入 | `/login myPassword123` |
-| `/l <password>` | 全體玩家 | 登入指令簡寫 | `/l myPassword123` |
-| `/register <password> <confirm>` | 全體玩家 | 進行新帳號註冊 | `/register myPassword123 myPassword123` |
-| `/reg <password> <confirm>` | 全體玩家 | 註冊指令簡寫 | `/reg myPassword123 myPassword123` |
-| `/neoauth reload` | OP (管理員) | 重新載入所有設定檔與語言檔 | `/neoauth reload` |
+| `/neoauth help` | `[query]` | 顯示管理員指令幫助清單 | `/neoauth help` |
+| `/neoauth register` | `<player> <password>` | 強制為指定玩家註冊帳號 | `/neoauth register Steve pass123` |
+| `/neoauth forcelogin` | `[player]` | 強制登入指定玩家（未填則為自己） | `/neoauth forcelogin Steve` |
+| `/neoauth password` | `<player> <newPassword>` | 強制變更指定玩家的密碼（別名 `changepassword`, `pass`） | `/neoauth password Steve newPass123` |
+| `/neoauth lastlogin` | `[player]` | 查詢指定玩家的最後登入時間、IP 與註冊日期 | `/neoauth lastlogin Steve` |
+| `/neoauth accounts` | `[player \| IP]` | 查詢與指定玩家名稱或 IP 關聯的所有同 IP 帳號 | `/neoauth accounts Steve` |
+| `/neoauth email` | `[player]` | 查詢指定玩家設定的電子信箱 | `/neoauth email Steve` |
+| `/neoauth setemail` | `<player> <email>` | 為指定玩家設定或更新電子信箱 | `/neoauth setemail Steve steve@example.com` |
+| `/neoauth getip` | `<player>` | 查詢指定玩家的 IP 位址（線上或最後紀錄） | `/neoauth getip Steve` |
+| `/neoauth spawn` | - | 傳送至登入重生點（`spawn.yml` 定義） | `/neoauth spawn` |
+| `/neoauth setspawn` | - | 將當前站立位置儲存為登入重生點並寫入 `spawn.yml` | `/neoauth setspawn` |
+| `/neoauth firstspawn` | - | 傳送至首次加入重生點（`spawn.yml` 定義） | `/neoauth firstspawn` |
+| `/neoauth setfirstspawn` | - | 將當前站立位置儲存為首次加入重生點並寫入 `spawn.yml` | `/neoauth setfirstspawn` |
+| `/neoauth resetpos` | `<player \| *>` | 重設指定玩家（或全部玩家 `*`）在資料庫中的登出座標 | `/neoauth resetpos Steve` 或 `/neoauth resetpos *` |
+| `/neoauth reload` | - | 熱重載所有設定檔 (`config.yml`, `commands.yml`, `spawn.yml`, `welcome.txt`) 與訊息檔 | `/neoauth reload` |
+| `/neoauth version` | - | 顯示 NeoAuth 模組版本與目前運行的平台 (Forge / NeoForge) | `/neoauth version` |
+| `/neoauth recent` | - | 顯示伺服器最近登入的玩家清單與登入時間 | `/neoauth recent` |
 
 ---
 

@@ -3,7 +3,7 @@
 # ==============================================================================
 
 help:
-  title: "&6--- NeoAuth 幫助指南 ---"
+  title: "&6--- NeoAuth 指令幫助指南 ---"
   commands:
     login:
       usage: "/login <密碼>"
@@ -12,11 +12,68 @@ help:
       usage: "/l <密碼>"
       description: "/login 的簡寫別名。"
     register:
-      usage: "/register <密碼> <確認密碼>"
+      usage: "/register <密碼> [確認密碼]"
       description: "為您的帳號註冊一組新密碼。"
     reg:
-      usage: "/reg <密碼> <確認密碼>"
+      usage: "/reg <密碼> [確認密碼]"
       description: "/register 的簡寫別名。"
-    neoauth:
+    changepassword:
+      usage: "/changepassword <舊密碼> <新密碼>"
+      description: "修改已登入帳號的密碼。"
+    cp:
+      usage: "/cp <舊密碼> <新密碼>"
+      description: "/changepassword 的簡寫別名。"
+    logout:
+      usage: "/logout"
+      description: "登出目前帳號。"
+    email:
+      usage: "/email show"
+      description: "查詢您目前綁定的電子郵件。"
+    neoauth_register:
+      usage: "/neoauth register <玩家> <密碼>"
+      description: "為指定玩家手動註冊帳號與密碼（管理員）。"
+    neoauth_forcelogin:
+      usage: "/neoauth forcelogin [玩家]"
+      description: "強制登入指定玩家或自己（管理員）。"
+    neoauth_password:
+      usage: "/neoauth password <玩家> <新密碼>"
+      description: "修改指定玩家的密碼（管理員）。"
+    neoauth_lastlogin:
+      usage: "/neoauth lastlogin [玩家]"
+      description: "查詢指定玩家最後登入時間與 IP（管理員）。"
+    neoauth_accounts:
+      usage: "/neoauth accounts [玩家/IP]"
+      description: "查詢同 IP 所關聯的所有帳號名稱（管理員）。"
+    neoauth_email:
+      usage: "/neoauth email [玩家]"
+      description: "查詢指定玩家登記的電子郵件（管理員）。"
+    neoauth_setemail:
+      usage: "/neoauth setemail <玩家> <電子郵件>"
+      description: "設定指定玩家的電子郵件（管理員）。"
+    neoauth_getip:
+      usage: "/neoauth getip <玩家>"
+      description: "取得指定玩家的連線 IP（管理員）。"
+    neoauth_spawn:
+      usage: "/neoauth spawn"
+      description: "傳送至登入重生點（管理員）。"
+    neoauth_setspawn:
+      usage: "/neoauth setspawn"
+      description: "將登入重生點設定為當前位置（管理員）。"
+    neoauth_firstspawn:
+      usage: "/neoauth firstspawn"
+      description: "傳送至新玩家首次登入點（管理員）。"
+    neoauth_setfirstspawn:
+      usage: "/neoauth setfirstspawn"
+      description: "將新玩家首次登入點設定為當前位置（管理員）。"
+    neoauth_resetpos:
+      usage: "/neoauth resetpos <玩家/*>"
+      description: "清除玩家（或全體 *）最後離線座標（管理員）。"
+    neoauth_reload:
       usage: "/neoauth reload"
-      description: "重新載入 NeoAuth 所有設定檔與語言訊息（需管理員權限）。"
+      description: "重新載入 NeoAuth 所有設定檔與語言訊息（管理員）。"
+    neoauth_version:
+      usage: "/neoauth version"
+      description: "顯示 NeoAuth 模組版本與運行資訊（管理員）。"
+    neoauth_recent:
+      usage: "/neoauth recent"
+      description: "顯示最近登入伺服器的玩家清單（管理員）。"

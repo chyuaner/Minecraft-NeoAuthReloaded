@@ -1,12 +1,23 @@
 package tw.yuaner.neoauth.neoforge;
 
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.level.Level;
 import tw.yuaner.neoauth.config.ConfigManager;
 import tw.yuaner.neoauth.config.IAuthConfig;
 import tw.yuaner.neoauth.platform.IPlatformHelper;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Minecraft 1.21.1 NeoForge 平台的服務實作。
@@ -61,5 +72,66 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
         if (playerObj instanceof ServerPlayer player) {
             player.displayClientMessage(Component.literal(message), true);
         }
+    }
+
+    @Override
+    public boolean teleportPlayer(Object playerObj, String worldName, double x, double y, double z, float yaw, float pitch) {
+        if (playerObj instanceof ServerPlayer player) {
+            ServerLevel targetLevel = null;
+            if (worldName != null && !worldName.isBlank() && player.getServer() != null) {
+                ResourceLocation dimLoc = ResourceLocation.parse(worldName);
+                ResourceKey<Level> dimKey = ResourceKey.create(Registries.DIMENSION, dimLoc);
+                targetLevel = player.getServer().getLevel(dimKey);
+            }
+            if (targetLevel == null) {
+                targetLevel = player.serverLevel();
+            }
+            player.teleportTo(targetLevel, x, y, z, yaw, pitch);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void executeConsoleCommand(Object serverOrSource, String command) {
+        MinecraftServer server = resolveServer(serverOrSource);
+        if (server != null && command != null && !command.isBlank()) {
+            server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+        }
+    }
+
+    @Override
+    public void executePlayerCommand(Object playerObj, String command) {
+        if (playerObj instanceof ServerPlayer player && command != null && !command.isBlank()) {
+            MinecraftServer server = player.getServer();
+            if (server != null) {
+                server.getCommands().performPrefixedCommand(player.createCommandSourceStack(), command);
+            }
+        }
+    }
+
+    @Override
+    public Object getOnlinePlayer(Object serverOrSource, String username) {
+        MinecraftServer server = resolveServer(serverOrSource);
+        if (server != null && username != null && !username.isBlank()) {
+            return server.getPlayerList().getPlayerByName(username);
+        }
+        return null;
+    }
+
+    @Override
+    public List<String> getOnlinePlayerNames(Object serverOrSource) {
+        MinecraftServer server = resolveServer(serverOrSource);
+        if (server != null) {
+            return Arrays.asList(server.getPlayerNames());
+        }
+        return Collections.emptyList();
+    }
+
+    private MinecraftServer resolveServer(Object obj) {
+        if (obj instanceof MinecraftServer ms) return ms;
+        if (obj instanceof CommandSourceStack css) return css.getServer();
+        if (obj instanceof ServerPlayer sp) return sp.getServer();
+        return null;
     }
 }

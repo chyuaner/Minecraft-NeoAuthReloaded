@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.CommandEvent;
@@ -19,10 +20,17 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import tw.yuaner.neoauth.AuthManager;
+import tw.yuaner.neoauth.DatabaseManager;
 import tw.yuaner.neoauth.config.ConfigManager;
+import tw.yuaner.neoauth.config.MessagesManager;
+import tw.yuaner.neoauth.config.SpawnConfig;
 import tw.yuaner.neoauth.core.AuthLogic;
 import tw.yuaner.neoauth.platform.Services;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -30,7 +38,7 @@ import java.util.UUID;
  * <p>
  * 監聽 Forge 匯流排事件，包含：
  * <ul>
- *   <li>Brigadier 指令註冊 (/login, /register, /l, /reg, /neoauth reload)</li>
+ *   <li>Brigadier 指令註冊 (/login, /register, /changepassword, /logout, /email, /neoauth 及所有管理子指令)</li>
  *   <li>玩家進出伺服器事件與歡迎公告發送</li>
  *   <li>未登入玩家的行為防護（阻擋對話、指令、方塊破壞/放置、互動、丟棄物品、傷害及移動）</li>
  * </ul>
@@ -47,29 +55,155 @@ public class ForgeEvents {
 
         // 註冊 /login 與 /l
         dispatcher.register(Commands.literal("login")
+                .then(Commands.literal("help")
+                        .executes(context -> executeHelp(context.getSource(), "login"))
+                        .then(Commands.argument("query", StringArgumentType.string())
+                                .executes(context -> executeHelp(context.getSource(), "login"))))
                 .then(Commands.argument("password", StringArgumentType.string())
                         .executes(context -> executeLogin(context.getSource(), StringArgumentType.getString(context, "password")))));
         dispatcher.register(Commands.literal("l")
+                .then(Commands.literal("help")
+                        .executes(context -> executeHelp(context.getSource(), "login"))
+                        .then(Commands.argument("query", StringArgumentType.string())
+                                .executes(context -> executeHelp(context.getSource(), "login"))))
                 .then(Commands.argument("password", StringArgumentType.string())
                         .executes(context -> executeLogin(context.getSource(), StringArgumentType.getString(context, "password")))));
 
         // 註冊 /register 與 /reg
         dispatcher.register(Commands.literal("register")
+                .then(Commands.literal("help")
+                        .executes(context -> executeHelp(context.getSource(), "register"))
+                        .then(Commands.argument("query", StringArgumentType.string())
+                                .executes(context -> executeHelp(context.getSource(), "register"))))
                 .then(Commands.argument("password", StringArgumentType.string())
                         .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "password")))
                         .then(Commands.argument("confirm", StringArgumentType.string())
                                 .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "confirm"))))));
         dispatcher.register(Commands.literal("reg")
+                .then(Commands.literal("help")
+                        .executes(context -> executeHelp(context.getSource(), "register"))
+                        .then(Commands.argument("query", StringArgumentType.string())
+                                .executes(context -> executeHelp(context.getSource(), "register"))))
                 .then(Commands.argument("password", StringArgumentType.string())
                         .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "password")))
                         .then(Commands.argument("confirm", StringArgumentType.string())
                                 .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "confirm"))))));
 
-        // 註冊 /neoauth reload 管理指令
+        // 註冊 /changepassword 與 /cp
+        dispatcher.register(Commands.literal("changepassword")
+                .then(Commands.literal("help")
+                        .executes(context -> executeHelp(context.getSource(), "changepassword"))
+                        .then(Commands.argument("query", StringArgumentType.string())
+                                .executes(context -> executeHelp(context.getSource(), "changepassword"))))
+                .then(Commands.argument("oldPassword", StringArgumentType.string())
+                        .then(Commands.argument("newPassword", StringArgumentType.string())
+                                .executes(context -> executeChangePassword(context.getSource(), StringArgumentType.getString(context, "oldPassword"), StringArgumentType.getString(context, "newPassword"))))));
+        dispatcher.register(Commands.literal("cp")
+                .then(Commands.literal("help")
+                        .executes(context -> executeHelp(context.getSource(), "changepassword"))
+                        .then(Commands.argument("query", StringArgumentType.string())
+                                .executes(context -> executeHelp(context.getSource(), "changepassword"))))
+                .then(Commands.argument("oldPassword", StringArgumentType.string())
+                        .then(Commands.argument("newPassword", StringArgumentType.string())
+                                .executes(context -> executeChangePassword(context.getSource(), StringArgumentType.getString(context, "oldPassword"), StringArgumentType.getString(context, "newPassword"))))));
+
+        // 註冊 /logout
+        dispatcher.register(Commands.literal("logout")
+                .executes(context -> executeLogout(context.getSource()))
+                .then(Commands.literal("help")
+                        .executes(context -> executeHelp(context.getSource(), "logout"))
+                        .then(Commands.argument("query", StringArgumentType.string())
+                                .executes(context -> executeHelp(context.getSource(), "logout")))));
+
+        // 註冊 /email
+        dispatcher.register(Commands.literal("email")
+                .executes(context -> executeHelp(context.getSource(), "email"))
+                .then(Commands.literal("show")
+                        .executes(context -> executeEmailShow(context.getSource())))
+                .then(Commands.literal("help")
+                        .executes(context -> executeHelp(context.getSource(), "email"))
+                        .then(Commands.argument("query", StringArgumentType.string())
+                                .executes(context -> executeHelp(context.getSource(), "email")))));
+
+        // 註冊 /neoauth 管理指令根節點
         dispatcher.register(Commands.literal("neoauth")
-                .requires(source -> source.hasPermission(4))
+                .requires(source -> source.hasPermission(2))
+                .executes(context -> executeAdminHelp(context.getSource(), null))
+                .then(Commands.literal("help")
+                        .executes(context -> executeAdminHelp(context.getSource(), null))
+                        .then(Commands.argument("query", StringArgumentType.string())
+                                .executes(context -> executeAdminHelp(context.getSource(), StringArgumentType.getString(context, "query")))))
+                .then(Commands.literal("register")
+                        .then(Commands.argument("player", StringArgumentType.word())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
+                                .then(Commands.argument("password", StringArgumentType.string())
+                                        .executes(context -> executeAdminRegister(context.getSource(), StringArgumentType.getString(context, "player"), StringArgumentType.getString(context, "password"))))))
+                .then(Commands.literal("forcelogin")
+                        .executes(context -> executeAdminForceLoginSelf(context.getSource()))
+                        .then(Commands.argument("player", StringArgumentType.word())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
+                                .executes(context -> executeAdminForceLogin(context.getSource(), StringArgumentType.getString(context, "player")))))
+                .then(Commands.literal("password")
+                        .then(Commands.argument("player", StringArgumentType.word())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
+                                .then(Commands.argument("newPassword", StringArgumentType.string())
+                                        .executes(context -> executeAdminPassword(context.getSource(), StringArgumentType.getString(context, "player"), StringArgumentType.getString(context, "newPassword"))))))
+                .then(Commands.literal("changepassword")
+                        .then(Commands.argument("player", StringArgumentType.word())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
+                                .then(Commands.argument("newPassword", StringArgumentType.string())
+                                        .executes(context -> executeAdminPassword(context.getSource(), StringArgumentType.getString(context, "player"), StringArgumentType.getString(context, "newPassword"))))))
+                .then(Commands.literal("pass")
+                        .then(Commands.argument("player", StringArgumentType.word())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
+                                .then(Commands.argument("newPassword", StringArgumentType.string())
+                                        .executes(context -> executeAdminPassword(context.getSource(), StringArgumentType.getString(context, "player"), StringArgumentType.getString(context, "newPassword"))))))
+                .then(Commands.literal("lastlogin")
+                        .executes(context -> executeAdminLastLoginSelf(context.getSource()))
+                        .then(Commands.argument("player", StringArgumentType.word())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
+                                .executes(context -> executeAdminLastLogin(context.getSource(), StringArgumentType.getString(context, "player")))))
+                .then(Commands.literal("accounts")
+                        .executes(context -> executeAdminAccountsSelf(context.getSource()))
+                        .then(Commands.argument("player", StringArgumentType.string())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
+                                .executes(context -> executeAdminAccounts(context.getSource(), StringArgumentType.getString(context, "player")))))
+                .then(Commands.literal("email")
+                        .executes(context -> executeAdminEmailSelf(context.getSource()))
+                        .then(Commands.argument("player", StringArgumentType.word())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
+                                .executes(context -> executeAdminEmail(context.getSource(), StringArgumentType.getString(context, "player")))))
+                .then(Commands.literal("setemail")
+                        .then(Commands.argument("player", StringArgumentType.word())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
+                                .then(Commands.argument("email", StringArgumentType.string())
+                                        .executes(context -> executeAdminSetEmail(context.getSource(), StringArgumentType.getString(context, "player"), StringArgumentType.getString(context, "email"))))))
+                .then(Commands.literal("getip")
+                        .then(Commands.argument("player", StringArgumentType.word())
+                                .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
+                                .executes(context -> executeAdminGetIp(context.getSource(), StringArgumentType.getString(context, "player")))))
+                .then(Commands.literal("spawn")
+                        .executes(context -> executeAdminSpawn(context.getSource())))
+                .then(Commands.literal("setspawn")
+                        .executes(context -> executeAdminSetSpawn(context.getSource())))
+                .then(Commands.literal("firstspawn")
+                        .executes(context -> executeAdminFirstSpawn(context.getSource())))
+                .then(Commands.literal("setfirstspawn")
+                        .executes(context -> executeAdminSetFirstSpawn(context.getSource())))
+                .then(Commands.literal("resetpos")
+                        .then(Commands.argument("player", StringArgumentType.word())
+                                .suggests((c, b) -> {
+                                    List<String> list = new ArrayList<>(Services.PLATFORM.getOnlinePlayerNames(c.getSource()));
+                                    list.add("*");
+                                    return SharedSuggestionProvider.suggest(list, b);
+                                })
+                                .executes(context -> executeAdminResetPos(context.getSource(), StringArgumentType.getString(context, "player")))))
                 .then(Commands.literal("reload")
-                        .executes(context -> executeReload(context.getSource()))));
+                        .executes(context -> executeReload(context.getSource())))
+                .then(Commands.literal("version")
+                        .executes(context -> executeAdminVersion(context.getSource())))
+                .then(Commands.literal("recent")
+                        .executes(context -> executeAdminRecent(context.getSource()))));
     }
 
     private static int executeLogin(CommandSourceStack source, String password) {
@@ -85,6 +219,9 @@ public class ForgeEvents {
         if (result == AuthLogic.LoginResult.SUCCESS) {
             Services.PLATFORM.removeFreezeEffects(player);
             source.sendSuccess(() -> Component.literal(result.getMessage()), false);
+            AuthLogic.executeHooks(source.getServer(), player, username,
+                    ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
+                    ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());
             return 1;
         } else {
             source.sendFailure(Component.literal(result.getMessage()));
@@ -105,11 +242,97 @@ public class ForgeEvents {
         if (result == AuthLogic.RegisterResult.SUCCESS) {
             Services.PLATFORM.removeFreezeEffects(player);
             source.sendSuccess(() -> Component.literal(result.getMessage()), false);
+            AuthLogic.executeHooks(source.getServer(), player, username,
+                    ConfigManager.getInstance().getCommandsConfig().getOnRegisterConsole(),
+                    ConfigManager.getInstance().getCommandsConfig().getOnRegisterPlayer());
             return 1;
         } else {
             source.sendFailure(Component.literal(result.getMessage()));
             return 0;
         }
+    }
+
+    private static int executeChangePassword(CommandSourceStack source, String oldPassword, String newPassword) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.only_players")));
+            return 0;
+        }
+
+        String username = player.getGameProfile().getName();
+        AuthLogic.ChangePasswordResult result = AuthLogic.attemptChangePassword(player.getUUID(), username, oldPassword, newPassword);
+
+        if (result == AuthLogic.ChangePasswordResult.SUCCESS) {
+            source.sendSuccess(() -> Component.literal(result.getMessage()), false);
+            return 1;
+        } else {
+            source.sendFailure(Component.literal(result.getMessage()));
+            return 0;
+        }
+    }
+
+    private static int executeLogout(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.only_players")));
+            return 0;
+        }
+
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        UUID uuid = player.getUUID();
+        if (!AuthManager.isLoggedIn(uuid)) {
+            source.sendFailure(Component.literal(msgMgr.get("logout.not_logged_in")));
+            return 0;
+        }
+
+        AuthLogic.attemptLogout(uuid);
+        Services.PLATFORM.applyFreezeEffects(player);
+        source.sendSuccess(() -> Component.literal(msgMgr.get("logout.success")), false);
+        promptAuth(player);
+
+        String username = player.getGameProfile().getName();
+        AuthLogic.executeHooks(source.getServer(), player, username,
+                ConfigManager.getInstance().getCommandsConfig().getOnLogoutConsole(),
+                ConfigManager.getInstance().getCommandsConfig().getOnLogoutPlayer());
+        return 1;
+    }
+
+    private static int executeEmailShow(CommandSourceStack source) {
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.only_players")));
+            return 0;
+        }
+
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        String username = player.getGameProfile().getName();
+        String email = DatabaseManager.getEmail(username);
+
+        if (email != null && !email.isBlank()) {
+            source.sendSuccess(() -> Component.literal(msgMgr.get("email.show", email)), false);
+            return 1;
+        } else {
+            source.sendFailure(Component.literal(msgMgr.get("email.none")));
+            return 0;
+        }
+    }
+
+    private static int executeHelp(CommandSourceStack source, String commandName) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        source.sendSuccess(() -> Component.literal(msgMgr.get("help.header")), false);
+        switch (commandName.toLowerCase()) {
+            case "login" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.login")), false);
+            case "register" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.register")), false);
+            case "changepassword" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.changepassword")), false);
+            case "logout" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.logout")), false);
+            case "email" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.email")), false);
+            default -> {
+                source.sendSuccess(() -> Component.literal(msgMgr.get("help.login")), false);
+                source.sendSuccess(() -> Component.literal(msgMgr.get("help.register")), false);
+                source.sendSuccess(() -> Component.literal(msgMgr.get("help.changepassword")), false);
+                source.sendSuccess(() -> Component.literal(msgMgr.get("help.logout")), false);
+                source.sendSuccess(() -> Component.literal(msgMgr.get("help.email")), false);
+                source.sendSuccess(() -> Component.literal(msgMgr.get("help.reload")), false);
+            }
+        }
+        return 1;
     }
 
     private static int executeReload(CommandSourceStack source) {
@@ -121,6 +344,329 @@ public class ForgeEvents {
             source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.reload_failed", "Unknown error")));
             return 0;
         }
+    }
+
+    private static int executeAdminRegister(CommandSourceStack source, String targetPlayer, String password) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        if (DatabaseManager.isRegistered(targetPlayer)) {
+            source.sendFailure(Component.literal(msgMgr.get("admin.register_already_registered", targetPlayer)));
+            return 0;
+        }
+
+        int min = ConfigManager.getInstance().getConfig().getMinPasswordLength();
+        int max = ConfigManager.getInstance().getConfig().getMaxPasswordLength();
+        if (min > 0 && password.length() < min) {
+            source.sendFailure(Component.literal(msgMgr.get("register.password_too_short", min)));
+            return 0;
+        }
+        if (max > 0 && password.length() > max) {
+            source.sendFailure(Component.literal(msgMgr.get("register.password_too_long", max)));
+            return 0;
+        }
+
+        boolean success = DatabaseManager.registerPlayer(targetPlayer, password, "127.0.0.1");
+        if (success) {
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.register_success", targetPlayer)), true);
+            return 1;
+        } else {
+            source.sendFailure(Component.literal(msgMgr.get("general.database_error")));
+            return 0;
+        }
+    }
+
+    private static int executeAdminForceLogin(CommandSourceStack source, String targetPlayerName) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        Object targetObj = Services.PLATFORM.getOnlinePlayer(source, targetPlayerName);
+        if (targetObj instanceof ServerPlayer target) {
+            AuthManager.setLoggedIn(target.getUUID());
+            Services.PLATFORM.removeFreezeEffects(target);
+            target.sendSystemMessage(Component.literal(msgMgr.get("login.success")));
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.forcelogin_success", target.getGameProfile().getName())), true);
+            AuthLogic.executeHooks(source.getServer(), target, target.getGameProfile().getName(),
+                    ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
+                    ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());
+            return 1;
+        } else {
+            source.sendFailure(Component.literal(msgMgr.get("admin.player_not_online", targetPlayerName)));
+            return 0;
+        }
+    }
+
+    private static int executeAdminForceLoginSelf(CommandSourceStack source) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        if (source.getEntity() instanceof ServerPlayer player) {
+            AuthManager.setLoggedIn(player.getUUID());
+            Services.PLATFORM.removeFreezeEffects(player);
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.forcelogin_self_success")), true);
+            AuthLogic.executeHooks(source.getServer(), player, player.getGameProfile().getName(),
+                    ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
+                    ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());
+            return 1;
+        } else {
+            source.sendFailure(Component.literal(msgMgr.get("admin.player_not_specified")));
+            return 0;
+        }
+    }
+
+    private static int executeAdminPassword(CommandSourceStack source, String targetPlayer, String newPassword) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        if (!DatabaseManager.isRegistered(targetPlayer)) {
+            source.sendFailure(Component.literal(msgMgr.get("admin.player_not_found", targetPlayer)));
+            return 0;
+        }
+
+        AuthLogic.ChangePasswordResult res = AuthLogic.attemptAdminChangePassword(targetPlayer, newPassword);
+        if (res == AuthLogic.ChangePasswordResult.SUCCESS) {
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.password_changed_success", targetPlayer)), true);
+            return 1;
+        } else {
+            source.sendFailure(Component.literal(res.getMessage()));
+            return 0;
+        }
+    }
+
+    private static int executeAdminLastLogin(CommandSourceStack source, String targetPlayer) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        DatabaseManager.PlayerAuthData data = DatabaseManager.getPlayerData(targetPlayer);
+        if (data == null) {
+            source.sendFailure(Component.literal(msgMgr.get("admin.player_not_found", targetPlayer)));
+            return 0;
+        }
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String lastLoginStr = data.getLastLogin() > 0 ? sdf.format(new Date(data.getLastLogin())) : msgMgr.get("admin.lastlogin_never");
+        String regDateStr = data.getRegDate() > 0 ? sdf.format(new Date(data.getRegDate())) : "Unknown";
+        String ipStr = data.getIp() != null && !data.getIp().isBlank() ? data.getIp() : "127.0.0.1";
+
+        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.lastlogin_info", data.getRealName(), lastLoginStr, ipStr, regDateStr)), false);
+        return 1;
+    }
+
+    private static int executeAdminLastLoginSelf(CommandSourceStack source) {
+        if (source.getEntity() instanceof ServerPlayer player) {
+            return executeAdminLastLogin(source, player.getGameProfile().getName());
+        } else {
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("admin.player_not_specified")));
+            return 0;
+        }
+    }
+
+    private static int executeAdminAccounts(CommandSourceStack source, String targetPlayerOrIp) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        List<String> accounts = DatabaseManager.getAccounts(targetPlayerOrIp);
+        if (accounts.isEmpty()) {
+            source.sendFailure(Component.literal(msgMgr.get("admin.accounts_none")));
+            return 0;
+        }
+
+        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.accounts_header", targetPlayerOrIp, accounts.size())), false);
+        for (String acc : accounts) {
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.accounts_item", acc)), false);
+        }
+        return 1;
+    }
+
+    private static int executeAdminAccountsSelf(CommandSourceStack source) {
+        if (source.getEntity() instanceof ServerPlayer player) {
+            return executeAdminAccounts(source, player.getGameProfile().getName());
+        } else {
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("admin.player_not_specified")));
+            return 0;
+        }
+    }
+
+    private static int executeAdminEmail(CommandSourceStack source, String targetPlayer) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        String email = DatabaseManager.getEmail(targetPlayer);
+        if (email != null && !email.isBlank()) {
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.email_info", targetPlayer, email)), false);
+        } else {
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.email_none", targetPlayer)), false);
+        }
+        return 1;
+    }
+
+    private static int executeAdminEmailSelf(CommandSourceStack source) {
+        if (source.getEntity() instanceof ServerPlayer player) {
+            return executeAdminEmail(source, player.getGameProfile().getName());
+        } else {
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("admin.player_not_specified")));
+            return 0;
+        }
+    }
+
+    private static int executeAdminSetEmail(CommandSourceStack source, String targetPlayer, String email) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        if (!DatabaseManager.isRegistered(targetPlayer)) {
+            source.sendFailure(Component.literal(msgMgr.get("admin.player_not_found", targetPlayer)));
+            return 0;
+        }
+
+        boolean success = DatabaseManager.setEmail(targetPlayer, email);
+        if (success) {
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.email_updated", targetPlayer, email)), true);
+            return 1;
+        } else {
+            source.sendFailure(Component.literal(msgMgr.get("general.database_error")));
+            return 0;
+        }
+    }
+
+    private static int executeAdminGetIp(CommandSourceStack source, String targetPlayer) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        Object targetObj = Services.PLATFORM.getOnlinePlayer(source, targetPlayer);
+        String ip = null;
+        if (targetObj instanceof ServerPlayer target) {
+            ip = target.getIpAddress();
+        } else {
+            ip = DatabaseManager.getIp(targetPlayer);
+        }
+
+        if (ip != null && !ip.isBlank()) {
+            String finalIp = ip;
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.getip_info", targetPlayer, finalIp)), false);
+            return 1;
+        } else {
+            source.sendFailure(Component.literal(msgMgr.get("admin.getip_unknown", targetPlayer)));
+            return 0;
+        }
+    }
+
+    private static int executeAdminSpawn(CommandSourceStack source) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal(msgMgr.get("general.only_players")));
+            return 0;
+        }
+
+        SpawnConfig.Location spawn = ConfigManager.getInstance().getSpawnConfig().getSpawn();
+        if (!spawn.isEnabled()) {
+            source.sendFailure(Component.literal(msgMgr.get("admin.spawn_not_enabled")));
+            return 0;
+        }
+
+        Services.PLATFORM.teleportPlayer(player, spawn.getWorld(), spawn.getX(), spawn.getY(), spawn.getZ(), spawn.getYaw(), spawn.getPitch());
+        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.spawn_teleport_success")), false);
+        return 1;
+    }
+
+    private static int executeAdminSetSpawn(CommandSourceStack source) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal(msgMgr.get("general.only_players")));
+            return 0;
+        }
+
+        SpawnConfig spawnConfig = ConfigManager.getInstance().getSpawnConfig();
+        SpawnConfig.Location spawn = spawnConfig.getSpawn();
+        spawn.setWorld(player.level().dimension().location().toString());
+        spawn.setX(player.getX());
+        spawn.setY(player.getY());
+        spawn.setZ(player.getZ());
+        spawn.setYaw(player.getYRot());
+        spawn.setPitch(player.getXRot());
+        spawn.setEnabled(true);
+
+        ConfigManager.getInstance().saveSpawnConfig(spawnConfig);
+        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.spawn_set_success")), true);
+        return 1;
+    }
+
+    private static int executeAdminFirstSpawn(CommandSourceStack source) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal(msgMgr.get("general.only_players")));
+            return 0;
+        }
+
+        SpawnConfig.Location firstSpawn = ConfigManager.getInstance().getSpawnConfig().getFirstSpawn();
+        if (!firstSpawn.isEnabled()) {
+            source.sendFailure(Component.literal(msgMgr.get("admin.firstspawn_not_enabled")));
+            return 0;
+        }
+
+        Services.PLATFORM.teleportPlayer(player, firstSpawn.getWorld(), firstSpawn.getX(), firstSpawn.getY(), firstSpawn.getZ(), firstSpawn.getYaw(), firstSpawn.getPitch());
+        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.spawn_teleport_success")), false);
+        return 1;
+    }
+
+    private static int executeAdminSetFirstSpawn(CommandSourceStack source) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        if (!(source.getEntity() instanceof ServerPlayer player)) {
+            source.sendFailure(Component.literal(msgMgr.get("general.only_players")));
+            return 0;
+        }
+
+        SpawnConfig spawnConfig = ConfigManager.getInstance().getSpawnConfig();
+        SpawnConfig.Location firstSpawn = spawnConfig.getFirstSpawn();
+        firstSpawn.setWorld(player.level().dimension().location().toString());
+        firstSpawn.setX(player.getX());
+        firstSpawn.setY(player.getY());
+        firstSpawn.setZ(player.getZ());
+        firstSpawn.setYaw(player.getYRot());
+        firstSpawn.setPitch(player.getXRot());
+        firstSpawn.setEnabled(true);
+
+        ConfigManager.getInstance().saveSpawnConfig(spawnConfig);
+        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.firstspawn_set_success")), true);
+        return 1;
+    }
+
+    private static int executeAdminResetPos(CommandSourceStack source, String targetPlayerOrWildcard) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        int affected = DatabaseManager.resetPosition(targetPlayerOrWildcard);
+        if ("*".equals(targetPlayerOrWildcard.trim())) {
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.resetpos_all_success", affected)), true);
+        } else {
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.resetpos_player_success", targetPlayerOrWildcard)), true);
+        }
+        return 1;
+    }
+
+    private static int executeAdminVersion(CommandSourceStack source) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        String platform = Services.PLATFORM.getPlatformName();
+        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.version_info", "1.0.0", platform)), false);
+        return 1;
+    }
+
+    private static int executeAdminRecent(CommandSourceStack source) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        List<DatabaseManager.PlayerAuthData> recent = DatabaseManager.getRecentPlayers(10);
+        if (recent.isEmpty()) {
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.recent_none")), false);
+            return 1;
+        }
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.recent_header")), false);
+        for (DatabaseManager.PlayerAuthData data : recent) {
+            String timeStr = data.getLastLogin() > 0 ? sdf.format(new Date(data.getLastLogin())) : msgMgr.get("admin.lastlogin_never");
+            String ipStr = data.getIp() != null && !data.getIp().isBlank() ? data.getIp() : "127.0.0.1";
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.recent_item", data.getRealName(), timeStr, ipStr)), false);
+        }
+        return 1;
+    }
+
+    private static int executeAdminHelp(CommandSourceStack source, String query) {
+        source.sendSuccess(() -> Component.literal("§6===== §eNeoAuth Admin Commands §6====="), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth register <player> <pwd> §7- Register account"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth forcelogin [player] §7- Force login player"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth password <player> <pwd> §7- Change player password"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth lastlogin [player] §7- View last login info"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth accounts [player/IP] §7- View associated accounts"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth email [player] §7- View player email"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth setemail <player> <email> §7- Set player email"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth getip <player> §7- Get player IP"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth spawn §7- Teleport to spawn"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth setspawn §7- Set spawn to current pos"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth firstspawn §7- Teleport to first spawn"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth setfirstspawn §7- Set first spawn"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth resetpos <player/*> §7- Reset logout coords"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth reload §7- Reload configs and messages"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth version §7- Show version info"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth recent §7- Show recent logged in players"), false);
+        return 1;
     }
 
     private static void promptAuth(ServerPlayer player) {
@@ -157,9 +703,27 @@ public class ForgeEvents {
                 Services.PLATFORM.removeFreezeEffects(player);
                 String msg = ConfigManager.getInstance().getMessagesManager().get("general.welcome_premium", username);
                 Services.PLATFORM.sendMessage(player, msg);
+                AuthLogic.executeHooks(player.getServer(), player, username,
+                        ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
+                        ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());
             } else {
                 // 離線玩家或未通過正版驗證玩家，進入待登入狀態
                 AuthManager.setLoggedOut(uuid);
+
+                // 首次進入或未驗證傳送至重生點處理
+                boolean registered = DatabaseManager.isRegistered(username);
+                if (!registered) {
+                    SpawnConfig.Location firstSpawn = ConfigManager.getInstance().getSpawnConfig().getFirstSpawn();
+                    if (firstSpawn.isEnabled()) {
+                        Services.PLATFORM.teleportPlayer(player, firstSpawn.getWorld(), firstSpawn.getX(), firstSpawn.getY(), firstSpawn.getZ(), firstSpawn.getYaw(), firstSpawn.getPitch());
+                    }
+                } else if (ConfigManager.getInstance().getConfig().isTeleportUnAuthedToSpawn()) {
+                    SpawnConfig.Location spawn = ConfigManager.getInstance().getSpawnConfig().getSpawn();
+                    if (spawn.isEnabled()) {
+                        Services.PLATFORM.teleportPlayer(player, spawn.getWorld(), spawn.getX(), spawn.getY(), spawn.getZ(), spawn.getYaw(), spawn.getPitch());
+                    }
+                }
+
                 String msg = AuthLogic.getPromptMessage(username);
                 Services.PLATFORM.sendMessage(player, msg);
             }

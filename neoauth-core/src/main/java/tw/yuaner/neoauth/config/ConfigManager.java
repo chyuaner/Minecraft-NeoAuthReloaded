@@ -253,6 +253,34 @@ public class ConfigManager {
         return spawnConfig;
     }
 
+    /**
+     * 儲存並更新 spawn.yml 設定檔（保留註解與格式）。
+     *
+     * @param newConfig 更新後的 SpawnConfig
+     * @return true 若儲存成功，否則為 false
+     */
+    public synchronized boolean saveSpawnConfig(SpawnConfig newConfig) {
+        if (newConfig == null) return false;
+        this.spawnConfig = newConfig;
+        Path spawnPath = configDir.resolve("spawn.yml");
+        try {
+            String templateText = "";
+            try (InputStream in = getClass().getResourceAsStream("/defaults/spawn.yml")) {
+                if (in != null) {
+                    templateText = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            }
+            Map<String, Object> map = newConfig.toMap();
+            String merged = YamlCommentPreserver.mergePreservingComments(templateText, map);
+            Files.writeString(spawnPath, merged, StandardCharsets.UTF_8);
+            LOGGER.info("NeoAuth: 已成功更新並儲存 spawn.yml！");
+            return true;
+        } catch (Exception e) {
+            LOGGER.error("NeoAuth: 儲存 spawn.yml 失敗: {}", e.getMessage());
+            return false;
+        }
+    }
+
     public MessagesManager getMessagesManager() {
         return messagesManager;
     }

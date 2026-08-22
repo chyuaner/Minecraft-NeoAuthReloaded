@@ -19,6 +19,51 @@ register:
   password_too_long: "&cPassword is too long! Maximum length is %d characters."
   register_prompt: "&cPlease register with: &e/register <password> <confirmPassword>"
 
+changepassword:
+  success: "&aPassword changed successfully! Please remember your new password."
+  wrong_old_password: "&cCurrent password does not match!"
+  not_logged_in: "&cYou must be logged in to change your password!"
+  password_same: "&cNew password cannot be the same as old password!"
+
+logout:
+  success: "&aYou have been logged out successfully! Use &e/login <password> &ato log in again."
+  not_logged_in: "&cYou are not logged in!"
+
+email:
+  show: "&eYour registered email address is: &f%s"
+  none: "&cYou do not have a registered email address."
+
+admin:
+  register_success: "&aSuccessfully registered account for player &e%s&a!"
+  register_already_registered: "&cPlayer &e%s &cis already registered!"
+  forcelogin_success: "&aSuccessfully forced player &e%s &ato log in!"
+  forcelogin_self_success: "&aYou have been force logged in!"
+  player_not_online: "&cPlayer &e%s &cis not online!"
+  player_not_specified: "&cPlease specify a player name!"
+  player_not_found: "&cPlayer &e%s &cnot found in database!"
+  password_changed_success: "&aSuccessfully changed password for player &e%s&a!"
+  lastlogin_info: "&6[%s] &eLast Login: &f%s &e| IP: &f%s &e| Registered: &f%s"
+  lastlogin_never: "Never"
+  accounts_header: "&6===== Associated Accounts for %s (%d total) ====="
+  accounts_item: "&e- &f%s"
+  accounts_none: "&cNo associated accounts found."
+  email_info: "&6[%s] &eEmail: &f%s"
+  email_none: "&6[%s] &cNo email address set."
+  email_updated: "&aSuccessfully updated email for player &e%s &ato: &f%s"
+  getip_info: "&6[%s] &eIP Address: &f%s"
+  getip_unknown: "&cCannot obtain IP address for &e%s&c!"
+  spawn_set_success: "&aSuccessfully set the general login spawn to your current location!"
+  firstspawn_set_success: "&aSuccessfully set the first spawn location to your current location!"
+  spawn_teleport_success: "&aTeleported to login spawn location."
+  spawn_not_enabled: "&cSpawn location is not enabled or not set! Use &e/neoauth setspawn &cfirst."
+  firstspawn_not_enabled: "&cFirst spawn location is not enabled or not set! Use &e/neoauth setfirstspawn &cfirst."
+  resetpos_player_success: "&aReset last known location for &e%s&a! They will appear at spawn upon next login."
+  resetpos_all_success: "&aReset last known location for all players (%d affected)!"
+  recent_header: "&6===== Recent Logged In Players ====="
+  recent_item: "&e- &f%s &7(%s) - &7IP: %s"
+  recent_none: "&cNo login history recorded yet."
+  version_info: "&6===== &eNeoAuth Version Information &6=====\n&eMod Name: &fNeoAuth\n&eMod Version: &f%s\n&ePlatform: &f%s\n&eAuthor: &fYuan Chiu\n&eCompatible: &fAuthMeReloaded / Blessing Skin / MariaDB / MySQL"
+
 general:
   only_players: "&cOnly players can use this command!"
   database_error: "&cDatabase connection error! Please contact an administrator."
@@ -32,5 +77,8 @@ general:
 help:
   header: "&6===== &eNeoAuth Commands &6====="
   login: "&e/login <password> &7- Log into the server"
-  register: "&e/register <password> <confirmPassword> &7- Register your account"
+  register: "&e/register <password> [confirmPassword] &7- Register your account"
+  changepassword: "&e/changepassword <oldPassword> <newPassword> &7- Change password (alias: /cp)"
+  logout: "&e/logout &7- Log out from the server"
+  email: "&e/email show &7- Display registered email"
   reload: "&e/neoauth reload &7- Reload NeoAuth configurations"

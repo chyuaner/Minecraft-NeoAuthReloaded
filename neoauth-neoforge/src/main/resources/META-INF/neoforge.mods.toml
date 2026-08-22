@@ -19,11 +19,11 @@ modId="neoforge"
 type="required"
 versionRange="[21.1,)"
 ordering="NONE"
-side="BOTH"
+side="SERVER"
 
 [[dependencies.neoauth]]
 modId="minecraft"
 type="required"
 versionRange="[1.21.1,1.22)"
 ordering="NONE"
-side="BOTH"
+side="SERVER"

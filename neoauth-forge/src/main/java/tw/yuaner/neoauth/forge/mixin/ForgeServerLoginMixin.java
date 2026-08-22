@@ -19,20 +19,31 @@ import java.util.UUID;
 /**
  * 伺服器登入封包監聽器 Mixin (Forge 1.20.1)。
  * <p>
- * 使用 @Pseudo 與反射存取內部欄位，完全相容 Forge 執行期的混淆欄位映射，
- * 避免因缺少 RefMap 或欄位混淆導致伺服器崩潰。
+ * 同時支援 Mojang 映射與 Forge 執行期 SRG 混淆映射，
+ * 在 online-mode=true 時安全攔截離線模式玩家並允許混合登入。
  */
 @Pseudo
 @Mixin(ServerLoginPacketListenerImpl.class)
+@SuppressWarnings({"mapping", "unresolvable-target", "MixinAnnotationTarget"})
 public abstract class ForgeServerLoginMixin {
 
     /**
-     * 攔截 Hello 登入握手封包 (Forge 1.20.1)。
+     * 攔截 Hello 登入握手封包 (Forge 1.20.1，m_5990_ 為 ServerLoginPacketListenerImpl.handleHello 的 SRG 名稱)。
      */
-    @Inject(method = "handleHello", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(
+            method = {
+                    "handleHello(Lnet/minecraft/network/protocol/login/ServerboundHelloPacket;)V",
+                    "handleHello",
+                    "m_5990_"
+            },
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0,
+            remap = false
+    )
     private void neoauth$handleHello(ServerboundHelloPacket packet, CallbackInfo ci) {
         String username = packet.name();
-        if (username == null) return;
+        if (username == null || username.isBlank()) return;
 
         UUID uuid = packet.profileId().orElse(null);
         UUID offlineUuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes(StandardCharsets.UTF_8));
@@ -52,9 +63,17 @@ public abstract class ForgeServerLoginMixin {
     }
 
     /**
-     * 攔截登入完成階段，標記通過 Mojang 線上驗證的正版玩家 (相容多種 Forge/Mojang 方法名稱)。
+     * 攔截登入完成階段，標記通過 Mojang 線上驗證的正版玩家 (m_10055_ 為 1.20.1 handleAcceptedLogin 的 SRG 名稱)。
      */
-    @Inject(method = {"handleAcceptedLogin", "verifyLoginAndFinishConnectionSetup"}, at = @At("HEAD"), require = 0)
+    @Inject(
+            method = {
+                    "handleAcceptedLogin",
+                    "m_10055_"
+            },
+            at = @At("HEAD"),
+            require = 0,
+            remap = false
+    )
     private void neoauth$onAcceptedLogin(CallbackInfo ci) {
         GameProfile profile = getGameProfile();
         if (profile == null) return;
@@ -66,11 +85,21 @@ public abstract class ForgeServerLoginMixin {
     }
 
     private MinecraftServer getServerInstance() {
+        for (String name : new String[]{"f_10018_", "server", "field_14165"}) {
+            try {
+                Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
+                f.setAccessible(true);
+                Object obj = f.get(this);
+                if (obj instanceof MinecraftServer ms) return ms;
+            } catch (Exception ignored) {
+            }
+        }
         for (Field field : ServerLoginPacketListenerImpl.class.getDeclaredFields()) {
             if (MinecraftServer.class.isAssignableFrom(field.getType())) {
                 try {
                     field.setAccessible(true);
-                    return (MinecraftServer) field.get(this);
+                    Object obj = field.get(this);
+                    if (obj instanceof MinecraftServer ms) return ms;
                 } catch (Exception ignored) {
                 }
             }
@@ -79,11 +108,21 @@ public abstract class ForgeServerLoginMixin {
     }
 
     private GameProfile getGameProfile() {
+        for (String name : new String[]{"f_10021_", "gameProfile", "profile", "authenticatedProfile", "field_14160"}) {
+            try {
+                Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
+                f.setAccessible(true);
+                Object obj = f.get(this);
+                if (obj instanceof GameProfile gp) return gp;
+            } catch (Exception ignored) {
+            }
+        }
         for (Field field : ServerLoginPacketListenerImpl.class.getDeclaredFields()) {
             if (GameProfile.class.isAssignableFrom(field.getType())) {
                 try {
                     field.setAccessible(true);
-                    return (GameProfile) field.get(this);
+                    Object obj = field.get(this);
+                    if (obj instanceof GameProfile gp) return gp;
                 } catch (Exception ignored) {
                 }
             }
@@ -94,13 +133,36 @@ public abstract class ForgeServerLoginMixin {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private boolean acceptOfflineLogin(GameProfile offlineProfile) {
         Field stateField = null;
-        Field profileField = null;
+        for (String name : new String[]{"f_10019_", "state", "field_14163"}) {
+            try {
+                stateField = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
+                break;
+            } catch (Exception ignored) {
+            }
+        }
+        if (stateField == null) {
+            for (Field field : ServerLoginPacketListenerImpl.class.getDeclaredFields()) {
+                if (field.getType().isEnum()) {
+                    stateField = field;
+                    break;
+                }
+            }
+        }
 
-        for (Field field : ServerLoginPacketListenerImpl.class.getDeclaredFields()) {
-            if (field.getType().isEnum() && field.getType().getName().contains("State")) {
-                stateField = field;
-            } else if (GameProfile.class.isAssignableFrom(field.getType())) {
-                profileField = field;
+        Field profileField = null;
+        for (String name : new String[]{"f_10021_", "gameProfile", "profile", "authenticatedProfile", "field_14160"}) {
+            try {
+                profileField = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
+                break;
+            } catch (Exception ignored) {
+            }
+        }
+        if (profileField == null) {
+            for (Field field : ServerLoginPacketListenerImpl.class.getDeclaredFields()) {
+                if (GameProfile.class.isAssignableFrom(field.getType())) {
+                    profileField = field;
+                    break;
+                }
             }
         }
 

@@ -25,6 +25,15 @@ public class ForgeAuthMod {
     public ForgeAuthMod() {
         LOGGER.info("NeoAuth (Forge 1.20.1) 模組初始化中...");
 
+        // 註冊為純伺服器端模組，客戶端連線時無需安裝此模組
+        ModLoadingContext.get().registerExtensionPoint(
+                net.minecraftforge.fml.IExtensionPoint.DisplayTest.class,
+                () -> new net.minecraftforge.fml.IExtensionPoint.DisplayTest(
+                        () -> net.minecraftforge.fml.IExtensionPoint.DisplayTest.IGNORESERVERONLY,
+                        (remoteVersion, isFromServer) -> true
+                )
+        );
+
         // 註冊設定檔至 config/neoauth-server.toml
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, ForgeConfig.SERVER_SPEC, "neoauth-server.toml");
 

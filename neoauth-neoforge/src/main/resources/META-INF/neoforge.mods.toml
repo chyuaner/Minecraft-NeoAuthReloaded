@@ -3,7 +3,7 @@ loaderVersion="[4,)"
 license="GPLv3"
 
 [[mods]]
-modId="neoauth"
+modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 authors="${mod_authors}"
@@ -14,16 +14,17 @@ ${mod_description}
 [[mixins]]
 config="neoauth-neoforge.mixins.json"
 
-[[dependencies.neoauth]]
+[[dependencies.${mod_id}]]
 modId="neoforge"
 type="required"
 versionRange="[21.1,)"
 ordering="NONE"
 side="SERVER"
 
-[[dependencies.neoauth]]
+[[dependencies.${mod_id}]]
 modId="minecraft"
 type="required"
 versionRange="[1.21.1,1.22)"
 ordering="NONE"
 side="SERVER"
+

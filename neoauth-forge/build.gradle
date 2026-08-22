@@ -19,12 +19,12 @@ legacyForge {
     runs {
         server {
             server()
-            systemProperty 'forge.enabledGameTestNamespaces', 'neoauth'
+            systemProperty 'forge.enabledGameTestNamespaces', "${mod_id}"
             programArgument '--nogui'
         }
         client {
             client()
-            systemProperty 'forge.enabledGameTestNamespaces', 'neoauth'
+            systemProperty 'forge.enabledGameTestNamespaces', "${mod_id}"
         }
     }
 

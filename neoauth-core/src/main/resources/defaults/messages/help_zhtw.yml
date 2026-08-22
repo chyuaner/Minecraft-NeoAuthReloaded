@@ -1,0 +1,22 @@
+# ==============================================================================
+# NeoAuth 指令詳細說明文件 (正體中文)
+# ==============================================================================
+
+help:
+  title: "&6--- NeoAuth 幫助指南 ---"
+  commands:
+    login:
+      usage: "/login <密碼>"
+      description: "使用已註冊的密碼登入伺服器。"
+    l:
+      usage: "/l <密碼>"
+      description: "/login 的簡寫別名。"
+    register:
+      usage: "/register <密碼> <確認密碼>"
+      description: "為您的帳號註冊一組新密碼。"
+    reg:
+      usage: "/reg <密碼> <確認密碼>"
+      description: "/register 的簡寫別名。"
+    neoauth:
+      usage: "/neoauth reload"
+      description: "重新載入 NeoAuth 所有設定檔與語言訊息（需管理員權限）。"

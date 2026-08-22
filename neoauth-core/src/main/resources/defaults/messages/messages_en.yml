@@ -1,0 +1,36 @@
+# ==============================================================================
+# NeoAuth English Messages File (AuthMeReloaded Style)
+# Supports color codes: &0-9, &a-f, &k-o, &r
+# ==============================================================================
+
+login:
+  success: "&aSuccessful login! Enjoy your game."
+  wrong_password: "&cWrong password! Please try again."
+  already_logged_in: "&cYou are already logged in!"
+  login_prompt: "&cPlease log in with: &e/login <password>"
+  timeout: "&cLogin timeout! You took too long to log in."
+  max_tries: "&cYou have exceeded the maximum number of login attempts!"
+
+register:
+  success: "&aSuccessfully registered and logged in! Enjoy your game."
+  already_registered: "&cThis account is already registered! Please use &e/login <password>&c."
+  password_mismatch: "&cPasswords do not match!"
+  password_too_short: "&cPassword is too short! Minimum length is %d characters."
+  password_too_long: "&cPassword is too long! Maximum length is %d characters."
+  register_prompt: "&cPlease register with: &e/register <password> <confirmPassword>"
+
+general:
+  only_players: "&cOnly players can use this command!"
+  database_error: "&cDatabase connection error! Please contact an administrator."
+  welcome_premium: "&aWelcome back, %s! &7(Verified with Mojang Official Account)"
+  command_not_allowed: "&cYou must authenticate before using other commands!"
+  action_blocked: "&cYou must authenticate before performing this action!"
+  reload_success: "&aNeoAuth configuration and messages reloaded successfully."
+  reload_failed: "&cFailed to reload NeoAuth configuration: %s"
+  no_permission: "&cYou do not have permission to execute this command!"
+
+help:
+  header: "&6===== &eNeoAuth Commands &6====="
+  login: "&e/login <password> &7- Log into the server"
+  register: "&e/register <password> <confirmPassword> &7- Register your account"
+  reload: "&e/neoauth reload &7- Reload NeoAuth configurations"

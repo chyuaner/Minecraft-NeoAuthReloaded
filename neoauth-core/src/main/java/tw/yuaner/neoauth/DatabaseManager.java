@@ -26,23 +26,30 @@ public class DatabaseManager {
     /**
      * 初始化資料庫連線池並建立必要資料表。
      * <p>
-     * 讀取當前平台設定檔（{@link IAuthConfig}）中的主機、埠號、帳密與資料庫名稱。
+     * 讀取當前設定檔中的主機、埠號、帳密與資料庫名稱。
      */
-    public static void init() {
+    public static synchronized void init() {
+        close();
+
         IAuthConfig config = Services.PLATFORM.getConfig();
         String host = config.getDbHost();
         String port = config.getDbPort();
         String dbName = config.getDbName();
         String username = config.getDbUsername();
         String password = config.getDbPassword();
+        int poolSize = config.getDbPoolSize();
+        int maxLifetime = config.getDbMaxLifetime();
+        String backend = config.getDbBackend();
 
         HikariConfig hikariConfig = new HikariConfig();
-        hikariConfig.setJdbcUrl("jdbc:mariadb://" + host + ":" + port + "/" + dbName);
+        String protocol = "MARIADB".equalsIgnoreCase(backend) ? "mariadb" : "mysql";
+        hikariConfig.setJdbcUrl("jdbc:" + protocol + "://" + host + ":" + port + "/" + dbName);
         hikariConfig.setUsername(username);
         hikariConfig.setPassword(password);
-        hikariConfig.setMaximumPoolSize(10);
+        hikariConfig.setMaximumPoolSize(poolSize > 0 ? poolSize : 10);
         hikariConfig.setMinimumIdle(2);
         hikariConfig.setIdleTimeout(30000);
+        hikariConfig.setMaxLifetime(maxLifetime > 0 ? maxLifetime * 1000L : 1800000L);
         hikariConfig.setConnectionTimeout(10000);
         hikariConfig.addDataSourceProperty("cachePrepStmts", "true");
         hikariConfig.addDataSourceProperty("prepStmtCacheSize", "250");
@@ -51,9 +58,9 @@ public class DatabaseManager {
         try {
             dataSource = new HikariDataSource(hikariConfig);
             createTableIfNotExists();
-            LOGGER.info("NeoAuth: 成功連線至 MariaDB 資料庫 [{}:{}/{}]！", host, port, dbName);
+            LOGGER.info("NeoAuth: 成功連線至 {} 資料庫 [{}:{}/{}]！", backend, host, port, dbName);
         } catch (Exception e) {
-            LOGGER.error("NeoAuth: 無法連線至 MariaDB 資料庫！請檢查 config/neoauth-server.toml 之資料庫設定。錯誤原因: {}", e.getMessage());
+            LOGGER.error("NeoAuth: 無法連線至資料庫！請檢查 config/neoauth/config.yml 之資料庫設定。錯誤原因: {}", e.getMessage());
             dataSource = null;
         }
     }

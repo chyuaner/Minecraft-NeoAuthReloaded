@@ -1,0 +1,23 @@
+# ==============================================================================
+# NeoAuth 重生點與登入點設定 (spawn.yml)
+# ==============================================================================
+
+# 一般未登入玩家的傳送點 (需在 config.yml 開啟 teleportUnAuthedToSpawn)
+spawn:
+  world: "minecraft:overworld"
+  x: 0.0
+  y: 64.0
+  z: 0.0
+  yaw: 0.0
+  pitch: 0.0
+  enabled: false
+
+# 第一次進入伺服器（未註冊）玩家的傳送點
+firstSpawn:
+  world: "minecraft:overworld"
+  x: 0.0
+  y: 64.0
+  z: 0.0
+  yaw: 0.0
+  pitch: 0.0
+  enabled: false

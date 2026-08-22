@@ -4,6 +4,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import tw.yuaner.neoauth.config.ConfigManager;
 import tw.yuaner.neoauth.config.IAuthConfig;
 import tw.yuaner.neoauth.platform.IPlatformHelper;
 
@@ -16,7 +17,7 @@ public class ForgePlatformHelper implements IPlatformHelper {
 
     @Override
     public IAuthConfig getConfig() {
-        return ForgeConfig.INSTANCE;
+        return ConfigManager.getInstance().getConfig();
     }
 
     @Override
@@ -27,10 +28,15 @@ public class ForgePlatformHelper implements IPlatformHelper {
     @Override
     public void applyFreezeEffects(Object playerObj) {
         if (playerObj instanceof ServerPlayer player) {
-            // 透過持續施加極高倍率的緩速、跳躍抑制與失明效果，達到原地定身效果
-            player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 2, 255, false, false, false));
-            player.addEffect(new MobEffectInstance(MobEffects.JUMP, 2, 250, false, false, false));
-            player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 2, 255, false, false, false));
+            IAuthConfig config = getConfig();
+            // 根據設定施加緩速、跳躍抑制與失明效果
+            if (config.isSlownessEnabled()) {
+                player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 2, 255, false, false, false));
+                player.addEffect(new MobEffectInstance(MobEffects.JUMP, 2, 250, false, false, false));
+            }
+            if (config.isBlindnessEnabled()) {
+                player.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 2, 255, false, false, false));
+            }
         }
     }
 

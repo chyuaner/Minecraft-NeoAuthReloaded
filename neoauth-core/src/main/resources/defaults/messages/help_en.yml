@@ -1,0 +1,22 @@
+# ==============================================================================
+# NeoAuth Command Help Documentation (English)
+# ==============================================================================
+
+help:
+  title: "&6--- NeoAuth Help Guide ---"
+  commands:
+    login:
+      usage: "/login <password>"
+      description: "Log into the server with your registered password."
+    l:
+      usage: "/l <password>"
+      description: "Alias for /login."
+    register:
+      usage: "/register <password> <confirmPassword>"
+      description: "Register a new password for your account."
+    reg:
+      usage: "/reg <password> <confirmPassword>"
+      description: "Alias for /register."
+    neoauth:
+      usage: "/neoauth reload"
+      description: "Reload all NeoAuth configuration files and messages (requires OP)."

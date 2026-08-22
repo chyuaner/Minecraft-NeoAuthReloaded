@@ -23,6 +23,18 @@ dependencies {
     // BCrypt 密碼雜湊函式庫
     api "at.favre.lib:bcrypt:${bcrypt_version}"
 
+    // SnakeYAML 解析函式庫
+    api "org.yaml:snakeyaml:${snakeyaml_version}"
+
     // SLF4J 日誌介面
     compileOnly "org.slf4j:slf4j-api:${slf4j_version}"
+
+    // 單元測試
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
+
+test {
+    useJUnitPlatform()
+}
+

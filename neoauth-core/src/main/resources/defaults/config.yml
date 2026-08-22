@@ -1,0 +1,61 @@
+# ==============================================================================
+# NeoAuth 主設定檔
+# ==============================================================================
+
+DataSource:
+  # 資料庫類型 (支援: MARIADB, MYSQL)
+  backend: "MARIADB"
+  # 資料庫伺服器主機 IP 或域名
+  mySQLHost: "127.0.0.1"
+  # 資料庫連接埠 (預設: 3306)
+  mySQLPort: "3306"
+  # 資料庫名稱
+  mySQLDatabase: "neoauth"
+  # 資料庫登入使用者名稱
+  mySQLUsername: "root"
+  # 資料庫登入密碼
+  mySQLPassword: ""
+  # 使用者資料表名稱
+  mySQLTablename: "neoauth"
+  # 連線池最大連線數
+  poolSize: 10
+  # 連線最大存活時間 (秒)
+  maxLifetime: 1800
+
+settings:
+  # 預設提示語言 (支援: zhtw, en，對應 messages/messages_<lang>.yml)
+  messagesLanguage: "zhtw"
+  
+  # 是否允許離線（非官方）玩家在線上模式伺服器進入
+  allowOfflinePlayers: true
+
+  # 密碼安全規則 (0 為不限制)
+  security:
+    # 密碼雜湊方式 (支援: SHA256, BCRYPT)
+    passwordHash: "SHA256"
+    # 密碼最短長度 (0 為不限制)
+    minPasswordLength: 0
+    # 密碼最長長度 (0 為不限制)
+    maxPasswordLength: 0
+
+  # 玩家未驗證時的行為限制
+  restrictions:
+    # 登入超時時間 (秒，0 為不限制)
+    timeout: 90
+    # 輸入錯誤密碼時是否直接踢出
+    kickOnWrongPassword: false
+    # 最大允許密碼錯誤嘗試次數
+    maxLoginTries: 3
+    # 是否對未登入玩家施加失明效果 (原地防禦)
+    blindness: true
+    # 是否對未登入玩家施加緩速與跳躍抑制
+    slowness: true
+    # 玩家進服時是否顯示 welcome.txt 歡迎文字公告
+    displayWelcomeMessage: true
+
+  # 重生點與登入傳送設定
+  spawn:
+    # 是否在未登入時傳送玩家至 spawn.yml 指定之登入點
+    teleportUnAuthedToSpawn: false
+    # 登入成功後是否傳送回玩家登出時的位置
+    saveQuitLocation: true

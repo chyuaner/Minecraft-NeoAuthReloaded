@@ -48,6 +48,10 @@ dependencies {
     // BCrypt 密碼函式庫
     implementation "at.favre.lib:bcrypt:${bcrypt_version}"
     jarJar(group: 'at.favre.lib', name: 'bcrypt', version: "[${bcrypt_version},)")
+
+    // SnakeYAML 解析函式庫
+    implementation "org.yaml:snakeyaml:${snakeyaml_version}"
+    jarJar(group: 'org.yaml', name: 'snakeyaml', version: "[${snakeyaml_version},)")
 }
 
 def replaceProperties = [

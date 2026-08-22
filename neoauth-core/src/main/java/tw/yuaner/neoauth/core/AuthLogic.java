@@ -2,6 +2,9 @@ package tw.yuaner.neoauth.core;
 
 import tw.yuaner.neoauth.AuthManager;
 import tw.yuaner.neoauth.DatabaseManager;
+import tw.yuaner.neoauth.config.ConfigManager;
+import tw.yuaner.neoauth.config.IAuthConfig;
+import tw.yuaner.neoauth.config.MessagesManager;
 
 import java.util.UUID;
 
@@ -16,20 +19,24 @@ public class AuthLogic {
      * 登入結果列舉。
      */
     public enum LoginResult {
-        SUCCESS("§a成功登入！祝您遊戲愉快。"),
-        ALREADY_LOGGED_IN("§c您已經處於登入狀態！"),
-        NOT_REGISTERED("§c此帳號尚未註冊！請使用 /register <密碼> <確認密碼> 進行註冊。"),
-        WRONG_PASSWORD("§c密碼錯誤！請重新嘗試。"),
-        DATABASE_ERROR("§c資料庫連線異常，請聯繫管理員。");
+        SUCCESS("login.success"),
+        ALREADY_LOGGED_IN("login.already_logged_in"),
+        NOT_REGISTERED("register.register_prompt"),
+        WRONG_PASSWORD("login.wrong_password"),
+        DATABASE_ERROR("general.database_error");
 
-        private final String message;
+        private final String messageKey;
 
-        LoginResult(String message) {
-            this.message = message;
+        LoginResult(String messageKey) {
+            this.messageKey = messageKey;
+        }
+
+        public String getMessageKey() {
+            return messageKey;
         }
 
         public String getMessage() {
-            return message;
+            return ConfigManager.getInstance().getMessagesManager().get(messageKey);
         }
     }
 
@@ -37,20 +44,33 @@ public class AuthLogic {
      * 註冊結果列舉。
      */
     public enum RegisterResult {
-        SUCCESS("§a註冊並登入成功！祝您遊戲愉快。"),
-        ALREADY_LOGGED_IN("§c您已經處於登入狀態！"),
-        ALREADY_REGISTERED("§c此帳號已被註冊！請使用 /login <密碼> 進行登入。"),
-        PASSWORD_MISMATCH("§c兩次輸入的密碼不相符！"),
-        DATABASE_ERROR("§c資料庫連線異常，請聯繫管理員。");
+        SUCCESS("register.success"),
+        ALREADY_LOGGED_IN("login.already_logged_in"),
+        ALREADY_REGISTERED("register.already_registered"),
+        PASSWORD_MISMATCH("register.password_mismatch"),
+        PASSWORD_TOO_SHORT("register.password_too_short"),
+        PASSWORD_TOO_LONG("register.password_too_long"),
+        DATABASE_ERROR("general.database_error");
 
-        private final String message;
+        private final String messageKey;
 
-        RegisterResult(String message) {
-            this.message = message;
+        RegisterResult(String messageKey) {
+            this.messageKey = messageKey;
+        }
+
+        public String getMessageKey() {
+            return messageKey;
         }
 
         public String getMessage() {
-            return message;
+            IAuthConfig config = ConfigManager.getInstance().getConfig();
+            MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+            if (this == PASSWORD_TOO_SHORT) {
+                return msgMgr.get(messageKey, config.getMinPasswordLength());
+            } else if (this == PASSWORD_TOO_LONG) {
+                return msgMgr.get(messageKey, config.getMaxPasswordLength());
+            }
+            return msgMgr.get(messageKey);
         }
     }
 
@@ -105,6 +125,14 @@ public class AuthLogic {
             return RegisterResult.PASSWORD_MISMATCH;
         }
 
+        IAuthConfig config = ConfigManager.getInstance().getConfig();
+        if (config.getMinPasswordLength() > 0 && password.length() < config.getMinPasswordLength()) {
+            return RegisterResult.PASSWORD_TOO_SHORT;
+        }
+        if (config.getMaxPasswordLength() > 0 && password.length() > config.getMaxPasswordLength()) {
+            return RegisterResult.PASSWORD_TOO_LONG;
+        }
+
         boolean success = DatabaseManager.registerPlayer(username, password, ip);
         if (success) {
             AuthManager.setLoggedIn(uuid);
@@ -115,20 +143,13 @@ public class AuthLogic {
     }
 
     /**
-     * 檢查未登入狀態下執行的指令是否為合法的驗證指令（例如 /login, /register, /l, /reg）。
+     * 檢查未登入狀態下執行的指令是否為合法的驗證指令。
      *
      * @param rawCommand 玩家輸入的指令字串
      * @return true 若允許未登入玩家執行
      */
     public static boolean isCommandAllowed(String rawCommand) {
-        if (rawCommand == null) return false;
-        String cmd = rawCommand.trim();
-        if (cmd.startsWith("/")) {
-            cmd = cmd.substring(1);
-        }
-        String lower = cmd.toLowerCase();
-        return lower.startsWith("login") || lower.startsWith("l ") || lower.equals("l")
-                || lower.startsWith("register") || lower.startsWith("reg ") || lower.equals("reg");
+        return ConfigManager.getInstance().getCommandsConfig().isCommandAllowed(rawCommand);
     }
 
     /**
@@ -138,10 +159,11 @@ public class AuthLogic {
      * @return 提示文字
      */
     public static String getPromptMessage(String username) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
         if (DatabaseManager.isRegistered(username)) {
-            return "§c請先登入！使用指令: /login <密碼>";
+            return msgMgr.get("login.login_prompt");
         } else {
-            return "§c請先註冊！使用指令: /register <密碼> <確認密碼>";
+            return msgMgr.get("register.register_prompt");
         }
     }
 }

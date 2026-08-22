@@ -1,0 +1,36 @@
+# ==============================================================================
+# NeoAuth 繁體中文訊息檔 (AuthMeReloaded 風格)
+# 支援顏色符號: &0-9, &a-f, &k-o, &r
+# ==============================================================================
+
+login:
+  success: "&a登入成功！祝您遊戲愉快。"
+  wrong_password: "&c密碼錯誤！請重新嘗試。"
+  already_logged_in: "&c您已經處於登入狀態！"
+  login_prompt: "&c請先登入！使用指令: &e/login <密碼>"
+  timeout: "&c登入超時！您已花費過多時間未登入。"
+  max_tries: "&c您已超過密碼嘗試次數上限！"
+
+register:
+  success: "&a註冊並登入成功！祝您遊戲愉快。"
+  already_registered: "&c此帳號已被註冊！請使用 &e/login <密碼> &c進行登入。"
+  password_mismatch: "&c兩次輸入的密碼不相符！"
+  password_too_short: "&c密碼長度過短！最少需要 %d 個字元。"
+  password_too_long: "&c密碼長度過長！最多允許 %d 個字元。"
+  register_prompt: "&c請先註冊！使用指令: &e/register <密碼> <確認密碼>"
+
+general:
+  only_players: "&c只有玩家可以使用此指令！"
+  database_error: "&c資料庫連線異常，請聯繫管理員。"
+  welcome_premium: "&a歡迎回來，%s！ &7(已通過 Mojang 官方正版驗證)"
+  command_not_allowed: "&c您必須先完成登入驗證才能使用其他指令！"
+  action_blocked: "&c您必須先完成登入驗證才能執行此動作！"
+  reload_success: "&aNeoAuth 設定檔與語言訊息已成功重新載入。"
+  reload_failed: "&c重新載入 NeoAuth 設定檔失敗：%s"
+  no_permission: "&c您沒有權限執行此指令！"
+
+help:
+  header: "&6===== &eNeoAuth 指令清單 &6====="
+  login: "&e/login <密碼> &7- 登入伺服器"
+  register: "&e/register <密碼> <確認密碼> &7- 註冊帳號"
+  reload: "&e/neoauth reload &7- 重新載入 NeoAuth 設定檔"

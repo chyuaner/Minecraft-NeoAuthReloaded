@@ -26,12 +26,25 @@ public class PasswordManager {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     /**
-     * 將純文字密碼加密為 AuthMe 預設的加鹽 SHA-256 格式。
+     * 將純文字密碼加密為 AuthMe 預設的加鹽 SHA-256 格式或 BCrypt 格式。
      *
      * @param password 玩家輸入的純文字密碼
-     * @return 格式為 {@code $SHA$salt$hash} 的加密字串
+     * @return 加密字串
      */
     public static String hashPassword(String password) {
+        String method = "SHA256";
+        try {
+            tw.yuaner.neoauth.config.IAuthConfig config = tw.yuaner.neoauth.config.ConfigManager.getInstance().getConfig();
+            if (config != null && config.getPasswordHash() != null && !config.getPasswordHash().isBlank()) {
+                method = config.getPasswordHash();
+            }
+        } catch (Throwable ignored) {}
+
+        if ("BCRYPT".equalsIgnoreCase(method)) {
+            return BCrypt.withDefaults().hashToString(10, password.toCharArray());
+        }
+
+        // 預設 SHA256 (AuthMe 標準加鹽雙重 SHA-256)
         String salt = generateSalt(16);
         return computeSha256(password, salt);
     }

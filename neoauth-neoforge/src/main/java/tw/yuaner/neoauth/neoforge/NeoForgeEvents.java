@@ -19,6 +19,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import tw.yuaner.neoauth.AuthManager;
+import tw.yuaner.neoauth.config.ConfigManager;
 import tw.yuaner.neoauth.core.AuthLogic;
 import tw.yuaner.neoauth.platform.Services;
 
@@ -29,8 +30,8 @@ import java.util.UUID;
  * <p>
  * 監聽 NeoForge 匯流排事件，包含：
  * <ul>
- *   <li>Brigadier 指令註冊 (/login, /register, /l, /reg)</li>
- *   <li>玩家進出伺服器事件</li>
+ *   <li>Brigadier 指令註冊 (/login, /register, /l, /reg, /neoauth reload)</li>
+ *   <li>玩家進出伺服器事件與歡迎公告發送</li>
  *   <li>未登入玩家的行為防護（阻擋對話、指令、方塊破壞/放置、互動、丟棄物品、傷害及移動）</li>
  * </ul>
  */
@@ -38,7 +39,7 @@ import java.util.UUID;
 public class NeoForgeEvents {
 
     /**
-     * 註冊登入與註冊指令。
+     * 註冊登入、註冊與管理指令。
      */
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
@@ -63,11 +64,17 @@ public class NeoForgeEvents {
                         .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "password")))
                         .then(Commands.argument("confirm", StringArgumentType.string())
                                 .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "confirm"))))));
+
+        // 註冊 /neoauth reload 管理指令
+        dispatcher.register(Commands.literal("neoauth")
+                .requires(source -> source.hasPermission(4))
+                .then(Commands.literal("reload")
+                        .executes(context -> executeReload(context.getSource()))));
     }
 
     private static int executeLogin(CommandSourceStack source, String password) {
         if (!(source.getEntity() instanceof ServerPlayer player)) {
-            source.sendFailure(Component.literal("只有玩家可以使用此指令！"));
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.only_players")));
             return 0;
         }
 
@@ -87,7 +94,7 @@ public class NeoForgeEvents {
 
     private static int executeRegister(CommandSourceStack source, String password, String confirm) {
         if (!(source.getEntity() instanceof ServerPlayer player)) {
-            source.sendFailure(Component.literal("只有玩家可以使用此指令！"));
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.only_players")));
             return 0;
         }
 
@@ -101,6 +108,17 @@ public class NeoForgeEvents {
             return 1;
         } else {
             source.sendFailure(Component.literal(result.getMessage()));
+            return 0;
+        }
+    }
+
+    private static int executeReload(CommandSourceStack source) {
+        boolean success = ConfigManager.getInstance().reload();
+        if (success) {
+            source.sendSuccess(() -> Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.reload_success")), true);
+            return 1;
+        } else {
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.reload_failed", "Unknown error")));
             return 0;
         }
     }
@@ -123,11 +141,22 @@ public class NeoForgeEvents {
                     && player.getGameProfile().getProperties().containsKey("textures");
             boolean isPremium = !isOffline && (hasTextures || AuthManager.isPremiumVerified(uuid));
 
+            // 發送 welcome.txt 歡迎公告 (若啟用)
+            if (ConfigManager.getInstance().getConfig().isDisplayWelcomeMessage()) {
+                String welcome = ConfigManager.getInstance().getFormattedWelcomeMessage(username);
+                if (!welcome.isEmpty()) {
+                    for (String line : welcome.split("\r?\n")) {
+                        Services.PLATFORM.sendMessage(player, line);
+                    }
+                }
+            }
+
             if (isPremium) {
                 // 正版驗證通過，自動放行並登入
                 AuthManager.setLoggedIn(uuid);
                 Services.PLATFORM.removeFreezeEffects(player);
-                Services.PLATFORM.sendMessage(player, "§a歡迎回來，" + username + "！ §7(已通過 Mojang 官方正版驗證)");
+                String msg = ConfigManager.getInstance().getMessagesManager().get("general.welcome_premium", username);
+                Services.PLATFORM.sendMessage(player, msg);
             } else {
                 // 離線玩家或未通過正版驗證玩家，進入待登入狀態
                 AuthManager.setLoggedOut(uuid);

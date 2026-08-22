@@ -19,10 +19,14 @@
   - 支援 `allowOfflinePlayers` 混合模式：即使伺服器開啟 `online-mode=true`，亦可放行離線玩家並要求密碼驗證。
 - **全方位登入前防護**：
   - 🚫 **對話隔離**：未登入玩家無法在聊天頻道發言。
-  - 🚫 **指令白名單**：未登入玩家僅可執行登入與註冊指令 (`/login`, `/register`, `/l`, `/reg`)。
+  - 🚫 **指令白名單**：未登入玩家僅可執行白名單指令 (`/login`, `/register`, `/l`, `/reg` 等)。
   - 🚫 **世界防護**：全面禁止方塊破壞、放置、點擊箱子/工作台、丟棄物品與實體互動。
   - 🛡️ **傷害保護**：未登入玩家無法受到任何傷害，亦無法攻擊其他玩家或生物。
   - 🧊 **原地凍結**：自動套用高強度定身效果（緩速、跳躍抑制、失明），防止未驗證玩家移動或窺探地圖。
+- **AuthMeReloaded 風格設定檔與多國語言 (i18n)**：
+  - 採用 `config/neoauth/` 資料夾架構，包含 `config.yml`、`commands.yml`、`spawn.yml`、`welcome.txt` 與 `messages/` 目錄。
+  - 內建繁體中文 (`zhtw`) 與英文 (`en`) 語言檔與幫助指南。
+  - 支援熱重載管理員指令 `/neoauth reload`。
 
 ---
 
@@ -32,22 +36,27 @@
 
 ```
 neoauth/
-├── neoauth-core/                         # 共用核心模組 (純 Java 業務邏輯與抽象層)
-│   └── src/main/java/tw/yuaner/neoauth/
-│       ├── AuthManager.java              # 登入狀態與 Mojang 正版狀態管理 (執行緒安全)
-│       ├── DatabaseManager.java          # MariaDB / HikariCP 連線池與 SQL 操作
-│       ├── PasswordManager.java          # 密碼加密與比對 (AuthMe 相容加鹽 SHA256 / BCrypt)
-│       ├── config/
-│       │   └── IAuthConfig.java          # 設定檔抽象介面
-│       ├── platform/
-│       │   ├── IPlatformHelper.java      # 平台服務介面 (藥水效果、訊息發送、設定實例等)
-│       │   └── Services.java             # Java SPI (ServiceLoader) 平台服務載入器
-│       └── core/
-│           └── AuthLogic.java            # 核心驗證流程 (登入/註冊判定、指令過濾、提示生成)
+├── neoauth-core/                         # 共用核心模組 (純 Java 業務邏輯、設定檔管理器與抽象層)
+│   ├── src/main/java/tw/yuaner/neoauth/
+│   │   ├── AuthManager.java              # 登入狀態與 Mojang 正版狀態管理 (執行緒安全)
+│   │   ├── DatabaseManager.java          # MariaDB / MySQL 連線池與 SQL 操作
+│   │   ├── PasswordManager.java          # 密碼加密與比對 (AuthMe 相容加鹽 SHA256 / BCrypt)
+│   │   ├── config/
+│   │   │   ├── ConfigManager.java        # 設定檔載入、熱重載與範本釋出管理器
+│   │   │   ├── IAuthConfig.java          # 設定檔抽象介面
+│   │   │   ├── NeoAuthConfig.java        # config.yml 主設定實作
+│   │   │   ├── CommandsConfig.java       # commands.yml 指令設定實作
+│   │   │   ├── SpawnConfig.java          # spawn.yml 重生點設定實作
+│   │   │   └── MessagesManager.java      # 多國語言訊息與顏色碼轉換管理器
+│   │   ├── platform/
+│   │   │   ├── IPlatformHelper.java      # 平台服務介面 (藥水效果、訊息發送、設定實例等)
+│   │   │   └── Services.java             # Java SPI (ServiceLoader) 平台服務載入器
+│   │   └── core/
+│   │       └── AuthLogic.java            # 核心驗證流程 (登入/註冊判定、指令過濾、提示生成)
+│   └── src/main/resources/defaults/      # 內建預設範本檔案 (首啟時自動釋放)
 ├── neoauth-forge/                        # Minecraft 1.20.1 Forge 專用模組
 │   ├── src/main/java/tw/yuaner/neoauth/forge/
 │   │   ├── ForgeAuthMod.java             # Forge 模組進入點 (@Mod)
-│   │   ├── ForgeConfig.java              # ForgeConfigSpec 伺服器設定實作
 │   │   ├── ForgePlatformHelper.java      # Forge 1.20.1 平台效果與訊息實作
 │   │   ├── ForgeEvents.java              # Forge 匯流排事件監聽器與防護轉發
 │   │   └── mixin/ForgeServerLoginMixin.java # 1.20.1 登入握手 Mixin
@@ -57,7 +66,6 @@ neoauth/
 ├── neoauth-neoforge/                     # Minecraft 1.21.1 NeoForge 專用模組
 │   ├── src/main/java/tw/yuaner/neoauth/neoforge/
 │   │   ├── NeoForgeAuthMod.java          # NeoForge 模組進入點 (@Mod)
-│   │   ├── NeoForgeConfig.java           # ModConfigSpec 伺服器設定實作
 │   │   ├── NeoForgePlatformHelper.java   # NeoForge 1.21.1 平台效果與訊息實作
 │   │   ├── NeoForgeEvents.java           # NeoForge 匯流排事件監聽器與防護轉發
 │   │   └── mixin/NeoForgeServerLoginMixin.java # 1.21.1 登入握手 Mixin
@@ -65,6 +73,7 @@ neoauth/
 │       ├── META-INF/neoforge.mods.toml
 │       └── neoauth-neoforge.mixins.json
 ├── samples/
+│   ├── config/neoauth/                   # 預設設定檔與語言檔範例
 │   └── databases/
 │       └── mariadb/                      # MariaDB 本機快速測試環境 (Docker Compose)
 ├── build.gradle                          # 根專案建置與聚合任務腳本
@@ -118,29 +127,27 @@ neoauth/
 
 ## ⚙️ 設定檔說明 (Configuration)
 
-伺服器首次啟動後，將會在伺服器根目錄的 `config/` 資料夾下產生 `neoauth-server.toml` 設定檔：
+伺服器首次啟動後，將會在伺服器根目錄的 `config/` 資料夾下自動建立 **AuthMeReloaded** 風格的目錄結構：
 
-```toml
-#NeoAuth 伺服器驗證設定檔
-[Database]
-    # MariaDB 資料庫主機位址 (預設: 127.0.0.1)
-    host = "127.0.0.1"
-    # MariaDB 資料庫連接埠 (預設: 3306)
-    port = "3306"
-    # MariaDB 資料庫名稱 (預設: neoauth)
-    database = "neoauth"
-    # MariaDB 資料庫使用者名稱 (預設: root)
-    username = "neoauth"
-    # MariaDB 資料庫密碼
-    password = "a12345"
-    # NeoAuth 資料表名稱 (預設: neoauth)
-    table = "neoauth"
-
-[Authentication]
-    # 當伺服器 server.properties 設定 online-mode=true 時，
-    # 是否仍允許離線（盜版/非官方）玩家進入並使用帳密登入 (true: 混合模式, false: 純正版)
-    allowOfflinePlayers = true
 ```
+config/neoauth/
+ ├── commands.yml          # 指令白名單與登入/註冊/登出時自動執行之指令掛鉤
+ ├── config.yml            # 主設定檔 (資料庫連線、密碼規則、防護限制、語言切換等)
+ ├── spawn.yml             # 登入點與首次登入點設定
+ ├── welcome.txt           # 玩家進服顯示之彩色歡迎公告 (支援 {PLAYER} 變數與顏色代碼)
+ └── messages/             # 多國語言訊息與幫助指南目錄
+     ├── help_en.yml       # 英文幫助說明
+     ├── help_zhtw.yml     # 正體中文幫助說明
+     ├── messages_en.yml   # 英文系統提示訊息
+     └── messages_zhtw.yml # 正體中文系統提示訊息
+```
+
+### `config.yml` 重點設定一覽：
+- `DataSource`：配置 MariaDB / MySQL 連線主機、埠號、資料庫帳密、資料表名稱與連線池參數。
+- `settings.messagesLanguage`：設定提示訊息語言，預設 `zhtw` (正體中文)，可設為 `en` (英文)。
+- `settings.allowOfflinePlayers`：是否允許離線（非官方）玩家在線上模式伺服器進入並進行帳密驗證。
+- `settings.security`：密碼最短與最長長度設定、密碼雜湊方式 (BCRYPT)。
+- `settings.restrictions`：登入超時、錯誤密碼次數限制、定身失明與緩速效果開關、歡迎公告顯示開關。
 
 ---
 
@@ -162,12 +169,13 @@ docker compose down
 
 ## 🎮 遊戲內指令 (In-Game Commands)
 
-| 指令 | 說明 | 範例 |
-| :--- | :--- | :--- |
-| `/login <password>` | 進行帳號登入 | `/login myPassword123` |
-| `/l <password>` | 登入指令簡寫 | `/l myPassword123` |
-| `/register <password> <confirm>` | 進行新帳號註冊 | `/register myPassword123 myPassword123` |
-| `/reg <password> <confirm>` | 註冊指令簡寫 | `/reg myPassword123 myPassword123` |
+| 指令 | 權限需求 | 說明 | 範例 |
+| :--- | :--- | :--- | :--- |
+| `/login <password>` | 全體玩家 | 進行帳號登入 | `/login myPassword123` |
+| `/l <password>` | 全體玩家 | 登入指令簡寫 | `/l myPassword123` |
+| `/register <password> <confirm>` | 全體玩家 | 進行新帳號註冊 | `/register myPassword123 myPassword123` |
+| `/reg <password> <confirm>` | 全體玩家 | 註冊指令簡寫 | `/reg myPassword123 myPassword123` |
+| `/neoauth reload` | OP (管理員) | 重新載入所有設定檔與語言檔 | `/neoauth reload` |
 
 ---
 

@@ -59,9 +59,6 @@ help:
     neoauth_getip:
       usage: "/neoauth getip <player>"
       description: "Get connection IP for specified player (Admin)."
-    neoauth_resetpos:
-      usage: "/neoauth resetpos <player/*>"
-      description: "Reset last location for player or all players (Admin)."
     neoauth_reload:
       usage: "/neoauth reload"
       description: "Reload all configuration files and messages (Admin)."

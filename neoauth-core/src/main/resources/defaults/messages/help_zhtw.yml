@@ -59,9 +59,6 @@ help:
     neoauth_getip:
       usage: "/neoauth getip <玩家>"
       description: "取得指定玩家的連線 IP（管理員）。"
-    neoauth_resetpos:
-      usage: "/neoauth resetpos <玩家/*>"
-      description: "清除玩家（或全體 *）最後離線座標（管理員）。"
     neoauth_reload:
       usage: "/neoauth reload"
       description: "重新載入 NeoAuth 所有設定檔與語言訊息（管理員）。"

@@ -59,8 +59,6 @@ admin:
   email_updated: "&aSuccessfully updated email for player &e%s &ato: &f%s"
   getip_info: "&6[%s] &eIP Address: &f%s"
   getip_unknown: "&cCannot obtain IP address for &e%s&c!"
-  resetpos_player_success: "&aReset last known location for &e%s&a! They will appear at spawn upon next login."
-  resetpos_all_success: "&aReset last known location for all players (%d affected)!"
   recent_header: "&6===== Recent Logged In Players ====="
   recent_item: "&e- &f%s &7(%s) - &7IP: %s"
   recent_none: "&cNo login history recorded yet."

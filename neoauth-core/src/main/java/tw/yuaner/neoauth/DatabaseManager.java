@@ -503,38 +503,6 @@ public class DatabaseManager {
     }
 
     /**
-     * 重設指定玩家（或全體玩家）在資料庫中的最後離線座標。
-     *
-     * @param playerOrWildcard 玩家名稱或 "*"
-     * @return 影響的資料筆數
-     */
-    public static int resetPosition(String playerOrWildcard) {
-        if (dataSource == null || playerOrWildcard == null) return 0;
-        IAuthConfig config = Services.PLATFORM.getConfig();
-        boolean isAll = "*".equals(playerOrWildcard.trim());
-
-        String sql = "UPDATE " + config.getDbTable() + " SET " +
-                config.getMySqlLastLocX() + " = 0.0, " +
-                config.getMySqlLastLocY() + " = 0.0, " +
-                config.getMySqlLastLocZ() + " = 0.0, " +
-                config.getMySqlLastLocWorld() + " = 'world', " +
-                config.getMySqlLastLocYaw() + " = 0.0, " +
-                config.getMySqlLastLocPitch() + " = 0.0" +
-                (isAll ? "" : " WHERE " + config.getMySqlColumnName() + " = ?");
-
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            if (!isAll) {
-                stmt.setString(1, playerOrWildcard.trim().toLowerCase());
-            }
-            return stmt.executeUpdate();
-        } catch (SQLException e) {
-            LOGGER.error("NeoAuth: 重設玩家座標時發生資料庫錯誤", e);
-            return 0;
-        }
-    }
-
-    /**
      * 取得最近登入伺服器的玩家清單。
      *
      * @param limit 最大回傳數量

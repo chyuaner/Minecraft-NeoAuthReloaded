@@ -172,20 +172,13 @@ docker compose down
 | 指令 | 別名 | 權限需求 | 說明 | 範例 |
 | :--- | :--- | :--- | :--- | :--- |
 | `/login <password>` | `/l` | 全體玩家 | 進行帳號登入驗證 | `/login myPassword123` |
-| `/login help` | `/l help` | 全體玩家 | 查詢登入指令使用說明 | `/login help` |
 | `/register <password> [confirm]` | `/reg` | 全體玩家 | 註冊新帳號 | `/register myPassword123 myPassword123` |
-| `/register help` | `/reg help` | 全體玩家 | 查詢註冊指令使用說明 | `/register help` |
 | `/changepassword <old> <new> <confirm>` | `/cp` | 已登入玩家 | 修改當前帳號密碼（含二次確認） | `/changepassword old123 new456 new456` |
-| `/changepassword help` | `/cp help` | 全體玩家 | 查詢修改密碼指令使用說明 | `/changepassword help` |
 | `/logout` | - | 已登入玩家 | 登出當前帳號並重新套用防護 | `/logout` |
-| `/logout help` | - | 全體玩家 | 查詢登出指令使用說明 | `/logout help` |
 | `/email` | `/email show` | 已登入玩家 | 查看當前帳號綁定的電子信箱 | `/email` |
 | `/email set <newEmail>` | - | 已登入玩家 | 綁定或更新當前帳號的電子信箱 | `/email set player@example.com` |
-| `/email help` | - | 全體玩家 | 查詢信箱相關指令說明 | `/email help` |
 | `/lastlogin` | - | 已登入玩家 | 查詢自己最後登入時間與註冊日期 | `/lastlogin` |
-| `/lastlogin help` | - | 全體玩家 | 查詢最後登入指令使用說明 | `/lastlogin help` |
 | `/getip` | - | 已登入玩家 | 查詢自己目前的連線 IP 位址 | `/getip` |
-| `/getip help` | - | 全體玩家 | 查詢 IP 查詢指令使用說明 | `/getip help` |
 
 ---
 
@@ -205,7 +198,6 @@ docker compose down
 | `/neoauth email set` | `<player> <email>` | 為指定玩家設定或更新電子信箱（別名 `/neoauth setemail`） | `/neoauth email set Steve steve@example.com` |
 | `/neoauth setemail` | `<player> <email>` | 為指定玩家設定或更新電子信箱 | `/neoauth setemail Steve steve@example.com` |
 | `/neoauth getip` | `<player>` | 查詢指定玩家的 IP 位址（線上或最後紀錄） | `/neoauth getip Steve` |
-| `/neoauth resetpos` | `<player \| *>` | 重設指定玩家（或全部玩家 `*`）在資料庫中的登出座標 | `/neoauth resetpos Steve` 或 `/neoauth resetpos *` |
 | `/neoauth reload` | - | 熱重載所有設定檔 (`config.yml`, `commands.yml`, `welcome.txt`) 與訊息檔 | `/neoauth reload` |
 | `/neoauth version` | - | 顯示 NeoAuth 模組版本與目前運行的平台 (Forge / NeoForge) | `/neoauth version` |
 | `/neoauth recent` | - | 顯示伺服器最近登入的玩家清單與登入時間 | `/neoauth recent` |

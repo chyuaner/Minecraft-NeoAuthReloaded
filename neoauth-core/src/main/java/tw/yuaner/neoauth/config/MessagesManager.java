@@ -112,8 +112,6 @@ public class MessagesManager {
             case "admin.email_updated" -> "§a已成功將玩家 §e%s §a的電子郵件設定為: §f%s";
             case "admin.getip_info" -> "§6[%s] §eIP 位址: §f%s";
             case "admin.getip_unknown" -> "§c無法取得玩家 §e%s §c的 IP 位址！";
-            case "admin.resetpos_player_success" -> "§a已重設玩家 §e%s §a的離線座標！下次進入伺服器時將於重生點出現。";
-            case "admin.resetpos_all_success" -> "§a已重設全體玩家 (%d 筆) 的離線座標！";
             case "admin.recent_header" -> "§6===== 最近登入玩家清單 =====";
             case "admin.recent_item" -> "§e- §f%s §7(%s) - §7IP: %s";
             case "admin.recent_none" -> "§c目前尚無任何登入紀錄。";

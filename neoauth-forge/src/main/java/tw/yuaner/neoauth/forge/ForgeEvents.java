@@ -54,35 +54,19 @@ public class ForgeEvents {
 
         // 註冊 /login 與 /l
         dispatcher.register(Commands.literal("login")
-                .then(Commands.literal("help")
-                        .executes(context -> executeHelp(context.getSource(), "login"))
-                        .then(Commands.argument("query", StringArgumentType.string())
-                                .executes(context -> executeHelp(context.getSource(), "login"))))
                 .then(Commands.argument("password", StringArgumentType.string())
                         .executes(context -> executeLogin(context.getSource(), StringArgumentType.getString(context, "password")))));
         dispatcher.register(Commands.literal("l")
-                .then(Commands.literal("help")
-                        .executes(context -> executeHelp(context.getSource(), "login"))
-                        .then(Commands.argument("query", StringArgumentType.string())
-                                .executes(context -> executeHelp(context.getSource(), "login"))))
                 .then(Commands.argument("password", StringArgumentType.string())
                         .executes(context -> executeLogin(context.getSource(), StringArgumentType.getString(context, "password")))));
 
         // 註冊 /register 與 /reg
         dispatcher.register(Commands.literal("register")
-                .then(Commands.literal("help")
-                        .executes(context -> executeHelp(context.getSource(), "register"))
-                        .then(Commands.argument("query", StringArgumentType.string())
-                                .executes(context -> executeHelp(context.getSource(), "register"))))
                 .then(Commands.argument("password", StringArgumentType.string())
                         .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "password")))
                         .then(Commands.argument("confirm", StringArgumentType.string())
                                 .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "confirm"))))));
         dispatcher.register(Commands.literal("reg")
-                .then(Commands.literal("help")
-                        .executes(context -> executeHelp(context.getSource(), "register"))
-                        .then(Commands.argument("query", StringArgumentType.string())
-                                .executes(context -> executeHelp(context.getSource(), "register"))))
                 .then(Commands.argument("password", StringArgumentType.string())
                         .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "password")))
                         .then(Commands.argument("confirm", StringArgumentType.string())
@@ -90,10 +74,6 @@ public class ForgeEvents {
 
         // 註冊 /changepassword 與 /cp (<舊密碼> <新密碼> <確認新密碼>)
         dispatcher.register(Commands.literal("changepassword")
-                .then(Commands.literal("help")
-                        .executes(context -> executeHelp(context.getSource(), "changepassword"))
-                        .then(Commands.argument("query", StringArgumentType.string())
-                                .executes(context -> executeHelp(context.getSource(), "changepassword"))))
                 .then(Commands.argument("oldPassword", StringArgumentType.string())
                         .then(Commands.argument("newPassword", StringArgumentType.string())
                                 .then(Commands.argument("confirmPassword", StringArgumentType.string())
@@ -102,10 +82,6 @@ public class ForgeEvents {
                                                 StringArgumentType.getString(context, "newPassword"),
                                                 StringArgumentType.getString(context, "confirmPassword")))))));
         dispatcher.register(Commands.literal("cp")
-                .then(Commands.literal("help")
-                        .executes(context -> executeHelp(context.getSource(), "changepassword"))
-                        .then(Commands.argument("query", StringArgumentType.string())
-                                .executes(context -> executeHelp(context.getSource(), "changepassword"))))
                 .then(Commands.argument("oldPassword", StringArgumentType.string())
                         .then(Commands.argument("newPassword", StringArgumentType.string())
                                 .then(Commands.argument("confirmPassword", StringArgumentType.string())
@@ -116,27 +92,15 @@ public class ForgeEvents {
 
         // 註冊 /logout
         dispatcher.register(Commands.literal("logout")
-                .executes(context -> executeLogout(context.getSource()))
-                .then(Commands.literal("help")
-                        .executes(context -> executeHelp(context.getSource(), "logout"))
-                        .then(Commands.argument("query", StringArgumentType.string())
-                                .executes(context -> executeHelp(context.getSource(), "logout")))));
+                .executes(context -> executeLogout(context.getSource())));
 
         // 註冊 /lastlogin (開放給一般玩家查看自己的最後登入)
         dispatcher.register(Commands.literal("lastlogin")
-                .executes(context -> executePlayerLastLogin(context.getSource()))
-                .then(Commands.literal("help")
-                        .executes(context -> executeHelp(context.getSource(), "lastlogin"))
-                        .then(Commands.argument("query", StringArgumentType.string())
-                                .executes(context -> executeHelp(context.getSource(), "lastlogin")))));
+                .executes(context -> executePlayerLastLogin(context.getSource())));
 
         // 註冊 /getip (開放給一般玩家查看自己的連線 IP)
         dispatcher.register(Commands.literal("getip")
-                .executes(context -> executePlayerGetIp(context.getSource()))
-                .then(Commands.literal("help")
-                        .executes(context -> executeHelp(context.getSource(), "getip"))
-                        .then(Commands.argument("query", StringArgumentType.string())
-                                .executes(context -> executeHelp(context.getSource(), "getip")))));
+                .executes(context -> executePlayerGetIp(context.getSource())));
 
         // 註冊 /email (支援 /email, /email show, /email set <新地址>)
         dispatcher.register(Commands.literal("email")
@@ -145,11 +109,7 @@ public class ForgeEvents {
                         .executes(context -> executeEmailShow(context.getSource())))
                 .then(Commands.literal("set")
                         .then(Commands.argument("email", StringArgumentType.string())
-                                .executes(context -> executeEmailSet(context.getSource(), StringArgumentType.getString(context, "email")))))
-                .then(Commands.literal("help")
-                        .executes(context -> executeHelp(context.getSource(), "email"))
-                        .then(Commands.argument("query", StringArgumentType.string())
-                                .executes(context -> executeHelp(context.getSource(), "email")))));
+                                .executes(context -> executeEmailSet(context.getSource(), StringArgumentType.getString(context, "email"))))));
 
         // 註冊 /neoauth 管理指令根節點
         dispatcher.register(Commands.literal("neoauth")
@@ -215,14 +175,6 @@ public class ForgeEvents {
                         .then(Commands.argument("player", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
                                 .executes(context -> executeAdminGetIp(context.getSource(), StringArgumentType.getString(context, "player")))))
-                .then(Commands.literal("resetpos")
-                        .then(Commands.argument("player", StringArgumentType.word())
-                                .suggests((c, b) -> {
-                                    List<String> list = new ArrayList<>(Services.PLATFORM.getOnlinePlayerNames(c.getSource()));
-                                    list.add("*");
-                                    return SharedSuggestionProvider.suggest(list, b);
-                                })
-                                .executes(context -> executeAdminResetPos(context.getSource(), StringArgumentType.getString(context, "player")))))
                 .then(Commands.literal("reload")
                         .executes(context -> executeReload(context.getSource())))
                 .then(Commands.literal("version")
@@ -417,31 +369,6 @@ public class ForgeEvents {
             source.sendFailure(Component.literal(msgMgr.get("general.database_error")));
             return 0;
         }
-    }
-
-    private static int executeHelp(CommandSourceStack source, String commandName) {
-        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
-        source.sendSuccess(() -> Component.literal(msgMgr.get("help.header")), false);
-        switch (commandName.toLowerCase()) {
-            case "login" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.login")), false);
-            case "register" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.register")), false);
-            case "changepassword" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.changepassword")), false);
-            case "logout" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.logout")), false);
-            case "email" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.email")), false);
-            case "lastlogin" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.lastlogin")), false);
-            case "getip" -> source.sendSuccess(() -> Component.literal(msgMgr.get("help.getip")), false);
-            default -> {
-                source.sendSuccess(() -> Component.literal(msgMgr.get("help.login")), false);
-                source.sendSuccess(() -> Component.literal(msgMgr.get("help.register")), false);
-                source.sendSuccess(() -> Component.literal(msgMgr.get("help.changepassword")), false);
-                source.sendSuccess(() -> Component.literal(msgMgr.get("help.logout")), false);
-                source.sendSuccess(() -> Component.literal(msgMgr.get("help.email")), false);
-                source.sendSuccess(() -> Component.literal(msgMgr.get("help.lastlogin")), false);
-                source.sendSuccess(() -> Component.literal(msgMgr.get("help.getip")), false);
-                source.sendSuccess(() -> Component.literal(msgMgr.get("help.reload")), false);
-            }
-        }
-        return 1;
     }
 
     private static int executeReload(CommandSourceStack source) {
@@ -641,17 +568,6 @@ public class ForgeEvents {
         }
     }
 
-    private static int executeAdminResetPos(CommandSourceStack source, String targetPlayerOrWildcard) {
-        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
-        int affected = DatabaseManager.resetPosition(targetPlayerOrWildcard);
-        if ("*".equals(targetPlayerOrWildcard.trim())) {
-            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.resetpos_all_success", affected)), true);
-        } else {
-            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.resetpos_player_success", targetPlayerOrWildcard)), true);
-        }
-        return 1;
-    }
-
     private static int executeAdminVersion(CommandSourceStack source) {
         MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
         String platform = Services.PLATFORM.getPlatformName();
@@ -685,13 +601,9 @@ public class ForgeEvents {
         source.sendSuccess(() -> Component.literal("§e/neoauth lastlogin [player] §7- View last login info"), false);
         source.sendSuccess(() -> Component.literal("§e/neoauth accounts [player/IP] §7- View associated accounts"), false);
         source.sendSuccess(() -> Component.literal("§e/neoauth email [player] §7- View player email"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth email set <player> <email> §7- Set player email"), false);
         source.sendSuccess(() -> Component.literal("§e/neoauth setemail <player> <email> §7- Set player email"), false);
         source.sendSuccess(() -> Component.literal("§e/neoauth getip <player> §7- Get player IP"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth spawn §7- Teleport to spawn"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth setspawn §7- Set spawn to current pos"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth firstspawn §7- Teleport to first spawn"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth setfirstspawn §7- Set first spawn"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth resetpos <player/*> §7- Reset logout coords"), false);
         source.sendSuccess(() -> Component.literal("§e/neoauth reload §7- Reload configs and messages"), false);
         source.sendSuccess(() -> Component.literal("§e/neoauth version §7- Show version info"), false);
         source.sendSuccess(() -> Component.literal("§e/neoauth recent §7- Show recent logged in players"), false);

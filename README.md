@@ -2,12 +2,15 @@
 
 <div align="center">
 
-**輕量級 Minecraft 伺服器身分驗證與登入防護模組**  
+**輕量級 Minecraft 伺服器登入驗證模組**  
 同時支援 **Minecraft 1.20.1 (Forge)** 與 **Minecraft 1.21.1 (NeoForge)**
 
 </div>
 
 ---
+
+本專案是大量借鑒AuthMeReloaded的風格與傳統設計，重新復刻出NeoAuthReloaded模組，並提供AuthMeReloaded沒有提供的Forge與NeoForge模組。採用的資料庫都相容於原AuthMe的資料庫結構，並支援使用原AuthMe的資料庫，讓原本使用AuthMe的服主可以直接無縫切換到NeoAuthReloaded。設定檔風格也比照AuthMeReloaded設計，讓原本使用AuthMe的服主能快速上手。
+
 
 ## 🌟 模組特色
 
@@ -16,7 +19,7 @@
 - **AuthMeReloaded 無縫相容**：無論是 SQLite 或 MySQL/MariaDB，資料表結構與欄位均 100% 與 AuthMeReloaded (`authme.db` 或 SQL 資料庫) 相容，加密格式預設加鹽 SHA-256 / BCrypt，可直接共用！
 - **可擴充之資料庫抽象層 (IDataSource)**：統一封裝 ANSI SQL 操作，並透過 HikariCP 提供執行緒安全且高效能的連線管理（SQLite 啟用 WAL 高效並行模式）。
 - **正版自動登入 / 混合模式支援**：
-  - 正版（Mojang Online-Mode）玩家進入伺服器時自動辨識並通過驗證，無需輸入密碼。
+  - 正版（Mojang Online-Mode）玩家進入伺服器時自動辨識並通過驗證，無需輸入密碼。（不過第一次登入仍需先註冊）
   - 支援 `allowOfflinePlayers` 混合模式：即使伺服器開啟 `online-mode=true`，亦可放行離線玩家並要求密碼驗證。
 - **全方位登入前防護**：
   - 🚫 **對話隔離**：未登入玩家無法在聊天頻道發言。

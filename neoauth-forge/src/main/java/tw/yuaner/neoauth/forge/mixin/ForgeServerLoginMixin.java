@@ -236,8 +236,8 @@ public abstract class ForgeServerLoginMixin {
                     boolean verified = false;
                     String authSource = "Mojang 官方";
 
-                    // 1. 優先向 Mojang 官方 Session 伺服器查詢
-                    GameProfile profile = server.getSessionService().hasJoinedServer(new GameProfile(null, username), digest, address);
+                    // 1. 優先向 Mojang 官方 Session 伺服器查詢 (傳入 null 避免 IPv4/IPv6 雙棧網路不匹配問題)
+                    GameProfile profile = server.getSessionService().hasJoinedServer(new GameProfile(null, username), digest, null);
                     if (profile != null) {
                         verified = true;
                     }

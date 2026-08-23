@@ -217,8 +217,8 @@ public abstract class NeoForgeServerLoginMixin {
                     boolean verified = false;
                     String authSource = "Mojang 官方";
 
-                    // 1. 優先向 Mojang 官方 Session 伺服器查詢
-                    ProfileResult profileResult = this.server.getSessionService().hasJoinedServer(username, digest, address);
+                    // 1. 優先向 Mojang 官方 Session 伺服器查詢 (傳入 null 避免 IPv4/IPv6 雙棧網路不匹配問題)
+                    ProfileResult profileResult = this.server.getSessionService().hasJoinedServer(username, digest, null);
                     if (profileResult != null && profileResult.profile() != null) {
                         verified = true;
                     }

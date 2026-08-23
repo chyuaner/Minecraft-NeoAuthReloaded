@@ -136,6 +136,10 @@ public abstract class NeoForgeServerLoginMixin {
 
         // 情況 2：伺服器為 online-mode=false（離線模式），啟用動態正版握手
         if (Services.PLATFORM.getConfig().isDynamicPremiumVerification()) {
+            if (offlineUuid.equals(uuid) || uuid == null) {
+                return; // 離線啟動器連線，跳過加密握手避免客戶端因缺乏 Mojang Token 觸發「無效的 session」
+            }
+
             if (neoauth$HANDLED.contains(this)) {
                 return; // 已經驗證過或回退，放行原版離線處理
             }

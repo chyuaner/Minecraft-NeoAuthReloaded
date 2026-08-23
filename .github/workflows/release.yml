@@ -34,10 +34,17 @@ jobs:
           java-version: |
             17
             21
-          cache: 'gradle'
 
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Ensure Gradle Wrapper exists
+        run: |
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "gradle-wrapper.jar not found, generating wrapper..."
+            gradle wrapper
+          fi
+          chmod +x ./gradlew
 
       - name: Build All Mod Variants (Forge 1.20.1 & NeoForge 1.21.1)
         run: |
@@ -54,12 +61,17 @@ jobs:
           echo "=== Generated Mod Artifacts in build/libs/ ==="
           ls -lh build/libs/
 
-      - name: Upload Artifacts
+      - name: Upload Forge Mod Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: neoauth-mods
-          path: build/libs/*.jar
-          retention-days: 7
+          name: neoauth-forge-1.20.1
+          path: build/libs/*forge-1.20.1*.jar
+
+      - name: Upload NeoForge Mod Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neoauth-neoforge-1.21.1
+          path: build/libs/*neoforge-1.21.1*.jar
 
   release:
     name: Publish GitHub Release
@@ -74,7 +86,8 @@ jobs:
       - name: Download built JAR files
         uses: actions/download-artifact@v4
         with:
-          name: neoauth-mods
+          pattern: 'neoauth-*'
+          merge-multiple: true
           path: release-jars
 
       - name: List Release Files

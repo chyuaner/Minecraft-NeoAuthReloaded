@@ -105,6 +105,13 @@ settings:
   # - 若隨後 Mojang 正版驗證在背景非同步完成通過，且玩家尚未手動登入，系統將即時自動將玩家晉升為「已登入」狀態並解除限制！
   dynamicVerificationTimeout: 15
 
+  # 自訂第三方 Yggdrasil 外置驗證伺服器 API 網址 (預設: 空字串 "")
+  # - 例如: "https://mc8.yuaner.tw/api/yggdrasil" (Blessing Skin, LittleSkin 等自建皮膚站/驗證站)
+  # - 若設定此項，NeoAuth 將原生支援「雙向雙驗證」：
+  #   優先向 Mojang 官方驗證正版，若非 Mojang 帳號則自動向此外置站查詢 Session 進行認證，
+  #   無論是官方正版還是外置正版玩家，皆享有免密碼自動登入體驗！伺服器無需掛載任何 JavaAgent。
+  customYggdrasilUrl: ""
+
   # 註冊相關設定 (AuthMeReloaded 相容結構)
   registration:
     # 是否開放伺服器遊戲內註冊 (Enable registration on the server?)

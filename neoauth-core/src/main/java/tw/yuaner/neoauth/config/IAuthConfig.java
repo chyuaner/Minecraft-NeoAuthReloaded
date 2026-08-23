@@ -211,6 +211,13 @@ public interface IAuthConfig {
     int getDynamicVerificationTimeout();
 
     /**
+     * 取得自訂第三方 Yggdrasil 外置驗證伺服器網址 (例如: "https://mc8.yuaner.tw/api/yggdrasil")
+     *
+     * @return Yggdrasil 根網址，若未設定則為空字串
+     */
+    String getCustomYggdrasilUrl();
+
+    /**
      * 取得訊息語言代碼 (例如: "zhtw", "en")
      *
      * @return 語言代碼

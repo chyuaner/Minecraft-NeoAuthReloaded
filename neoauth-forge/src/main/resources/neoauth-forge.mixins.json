@@ -5,7 +5,8 @@
   "compatibilityLevel": "JAVA_17",
   "refMap": "neoauth-forge.refmap.json",
   "mixins": [
-    "ForgeServerLoginMixin"
+    "ForgeServerLoginMixin",
+    "ForgeServerGamePacketListenerMixin"
   ],
   "client": [],
   "server": [],

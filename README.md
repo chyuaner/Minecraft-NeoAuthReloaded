@@ -101,7 +101,8 @@ config/neoauth/
 - `DataSource`：配置 MariaDB / MySQL 連線主機、埠號、資料庫帳密、資料表名稱與連線池參數。
 - `settings.messagesLanguage`：設定提示訊息語言，預設 `zhtw` (正體中文)，可設為 `en` (英文)。
 - `settings.allowOfflinePlayers`：是否允許離線（非官方）玩家在線上模式伺服器進入並進行帳密驗證（預設 `true`）。
-- `settings.dynamicPremiumVerification`：是否在離線模式 (`online-mode: false`) 下啟用動態正版驗證（預設 `true`）。開啟時，正版玩家將自動經由 Mojang 握手享有免密碼自動登入。
+- `settings.dynamicPremiumVerification`：是否在離線模式 (`online-mode: false`) 下啟用動態正版驗證（預設 `true`）。開啟時，正版玩家將自動經由握手享有免密碼自動登入。
+- `settings.customYggdrasilUrl`：自訂第三方 Yggdrasil 外置驗證伺服器 API 網址（例如 `"https://mc8.yuaner.tw/api/yggdrasil"`）。設定後 NeoAuth 原生支援「雙向雙驗證」：優先驗證 Mojang 官方正版，若非 Mojang 帳號則自動向此外置站驗證 Session，無論是官方正版或外置正版皆享有免密自動登入，伺服端無需掛載任何 JavaAgent！
 - `settings.registration`：AuthMeReloaded 相容註冊設定區塊：
   - `enabled`：是否開放遊戲內註冊 (`/register`)，預設 `true`。若關閉 (設為 `false`)，則玩家僅能於外部網站或論壇註冊帳號。
   - `messageInterval`：未驗證玩家定期提示間隔秒數（預設 `5` 秒）。

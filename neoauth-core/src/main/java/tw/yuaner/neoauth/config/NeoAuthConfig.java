@@ -49,6 +49,7 @@ public class NeoAuthConfig implements IAuthConfig {
     private boolean allowOfflinePlayers = true;
     private boolean dynamicPremiumVerification = true;
     private int dynamicVerificationTimeout = 15;
+    private String customYggdrasilUrl = "";
 
     private String passwordHash = "SHA256";
     private int minPasswordLength = 0;
@@ -62,7 +63,7 @@ public class NeoAuthConfig implements IAuthConfig {
     private boolean slowness = true;
     private boolean displayWelcomeMessage = true;
 
-    // settings.registration (AuthMeReloaded 相容)
+    // settings.registration (AuthMeReloaded 相容結構)
     private boolean registrationEnabled = true;
     private int registrationMessageInterval = 5;
     private boolean registrationForced = true;
@@ -126,6 +127,7 @@ public class NeoAuthConfig implements IAuthConfig {
             if (setMap.get("allowOfflinePlayers") instanceof Boolean b) config.allowOfflinePlayers = b;
             if (setMap.get("dynamicPremiumVerification") instanceof Boolean b) config.dynamicPremiumVerification = b;
             if (setMap.get("dynamicVerificationTimeout") instanceof Number n) config.dynamicVerificationTimeout = n.intValue();
+            if (setMap.get("customYggdrasilUrl") != null) config.customYggdrasilUrl = String.valueOf(setMap.get("customYggdrasilUrl"));
             // registration (AuthMeReloaded 相容結構)
             Object regObj = setMap.get("registration");
             if (regObj instanceof Map<?, ?> regMap) {
@@ -348,6 +350,11 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public int getDynamicVerificationTimeout() {
         return dynamicVerificationTimeout;
+    }
+
+    @Override
+    public String getCustomYggdrasilUrl() {
+        return customYggdrasilUrl;
     }
 
     @Override

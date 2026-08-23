@@ -136,8 +136,10 @@ public abstract class NeoForgeServerLoginMixin {
 
         // 情況 2：伺服器為 online-mode=false（離線模式），啟用動態正版握手
         if (Services.PLATFORM.getConfig().isDynamicPremiumVerification()) {
-            if (offlineUuid.equals(uuid) || uuid == null) {
-                return; // 離線啟動器連線，跳過加密握手避免客戶端因缺乏 Mojang Token 觸發「無效的 session」
+            String customUrl = Services.PLATFORM.getConfig().getCustomYggdrasilUrl();
+            // 若未設定自訂 Yggdrasil 且客戶端明確是離線 UUID，直接跳過發送握手避免純離線客戶端因缺乏 Token 觸發「無效的 session」
+            if ((customUrl == null || customUrl.isBlank()) && (offlineUuid.equals(uuid) || uuid == null)) {
+                return;
             }
 
             if (neoauth$HANDLED.contains(this)) {
@@ -212,10 +214,27 @@ public abstract class NeoForgeServerLoginMixin {
 
             CompletableFuture.runAsync(() -> {
                 try {
+                    boolean verified = false;
+                    String authSource = "Mojang 官方";
+
+                    // 1. 優先向 Mojang 官方 Session 伺服器查詢
                     ProfileResult profileResult = this.server.getSessionService().hasJoinedServer(username, digest, address);
                     if (profileResult != null && profileResult.profile() != null) {
+                        verified = true;
+                    }
+
+                    // 2. 若 Mojang 未確認，且有設定自訂 Yggdrasil 外置驗證伺服器，向自訂伺服器查詢
+                    String customYggdrasilUrl = Services.PLATFORM.getConfig().getCustomYggdrasilUrl();
+                    if (!verified && customYggdrasilUrl != null && !customYggdrasilUrl.isBlank()) {
+                        if (tw.yuaner.neoauth.util.YggdrasilService.hasJoined(customYggdrasilUrl, username, digest, null)) {
+                            verified = true;
+                            authSource = "自訂 Yggdrasil (" + customYggdrasilUrl + ")";
+                        }
+                    }
+
+                    if (verified) {
                         AuthManager.markPremiumVerified(offlineUuid);
-                        neoauth$LOGGER.info("NeoAuth: 正版驗證成功 ({})，已標記免密自動登入。", username);
+                        neoauth$LOGGER.info("NeoAuth: {} 驗證成功 ({})，已標記免密自動登入。", authSource, username);
 
                         // 延遲晉升機制：若玩家在握手超時放行後已進入遊戲且尚未手動登入，即時升級為已登入狀態並解除限制
                         this.server.execute(() -> {
@@ -235,10 +254,10 @@ public abstract class NeoForgeServerLoginMixin {
                             }
                         });
                     } else {
-                        neoauth$LOGGER.info("NeoAuth: Mojang 未確認玩家 ({}) 的正版 Session，以離線模式登入。", username);
+                        neoauth$LOGGER.info("NeoAuth: Mojang / 自訂 Yggdrasil 未確認玩家 ({}) 的正版 Session，以離線模式登入。", username);
                     }
                 } catch (Exception e) {
-                    neoauth$LOGGER.error("NeoAuth: 查詢 Mojang Session 伺服器時發生異常 (" + username + "): " + e.getMessage(), e);
+                    neoauth$LOGGER.error("NeoAuth: 查詢 Session 驗證伺服器時發生異常 (" + username + "): " + e.getMessage(), e);
                 } finally {
                     neoauth$HANDLED.add(this);
                     neoauth$replayHello(this, hello);

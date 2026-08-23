@@ -28,6 +28,7 @@ import tw.yuaner.neoauth.config.IAuthConfig;
 import tw.yuaner.neoauth.config.MessagesManager;
 import tw.yuaner.neoauth.core.AuthLogic;
 import tw.yuaner.neoauth.platform.Services;
+import tw.yuaner.neoauth.util.ArgumentTokenizer;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -55,43 +56,29 @@ public class NeoForgeEvents {
     public static void onRegisterCommands(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
 
-        // 註冊 /login 與 /l
+        // 註冊 /login 與 /l (使用 greedyString 支援含 @, !, # 等特殊符號之密碼)
         dispatcher.register(Commands.literal("login")
-                .then(Commands.argument("password", StringArgumentType.string())
-                        .executes(context -> executeLogin(context.getSource(), StringArgumentType.getString(context, "password")))));
+                .then(Commands.argument("password", StringArgumentType.greedyString())
+                        .executes(context -> executeLogin(context.getSource(), ArgumentTokenizer.cleanArgument(StringArgumentType.getString(context, "password"))))));
         dispatcher.register(Commands.literal("l")
-                .then(Commands.argument("password", StringArgumentType.string())
-                        .executes(context -> executeLogin(context.getSource(), StringArgumentType.getString(context, "password")))));
+                .then(Commands.argument("password", StringArgumentType.greedyString())
+                        .executes(context -> executeLogin(context.getSource(), ArgumentTokenizer.cleanArgument(StringArgumentType.getString(context, "password"))))));
 
-        // 註冊 /register 與 /reg
+        // 註冊 /register 與 /reg (使用 greedyString 支援單密碼或雙密碼確認，並相容特殊符號)
         dispatcher.register(Commands.literal("register")
-                .then(Commands.argument("password", StringArgumentType.string())
-                        .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "password")))
-                        .then(Commands.argument("confirm", StringArgumentType.string())
-                                .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "confirm"))))));
+                .then(Commands.argument("args", StringArgumentType.greedyString())
+                        .executes(context -> executeRegisterArgs(context.getSource(), StringArgumentType.getString(context, "args")))));
         dispatcher.register(Commands.literal("reg")
-                .then(Commands.argument("password", StringArgumentType.string())
-                        .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "password")))
-                        .then(Commands.argument("confirm", StringArgumentType.string())
-                                .executes(context -> executeRegister(context.getSource(), StringArgumentType.getString(context, "password"), StringArgumentType.getString(context, "confirm"))))));
+                .then(Commands.argument("args", StringArgumentType.greedyString())
+                        .executes(context -> executeRegisterArgs(context.getSource(), StringArgumentType.getString(context, "args")))));
 
         // 註冊 /changepassword 與 /cp (<舊密碼> <新密碼> <確認新密碼>)
         dispatcher.register(Commands.literal("changepassword")
-                .then(Commands.argument("oldPassword", StringArgumentType.string())
-                        .then(Commands.argument("newPassword", StringArgumentType.string())
-                                .then(Commands.argument("confirmPassword", StringArgumentType.string())
-                                        .executes(context -> executeChangePassword(context.getSource(),
-                                                StringArgumentType.getString(context, "oldPassword"),
-                                                StringArgumentType.getString(context, "newPassword"),
-                                                StringArgumentType.getString(context, "confirmPassword")))))));
+                .then(Commands.argument("args", StringArgumentType.greedyString())
+                        .executes(context -> executeChangePasswordArgs(context.getSource(), StringArgumentType.getString(context, "args")))));
         dispatcher.register(Commands.literal("cp")
-                .then(Commands.argument("oldPassword", StringArgumentType.string())
-                        .then(Commands.argument("newPassword", StringArgumentType.string())
-                                .then(Commands.argument("confirmPassword", StringArgumentType.string())
-                                        .executes(context -> executeChangePassword(context.getSource(),
-                                                StringArgumentType.getString(context, "oldPassword"),
-                                                StringArgumentType.getString(context, "newPassword"),
-                                                StringArgumentType.getString(context, "confirmPassword")))))));
+                .then(Commands.argument("args", StringArgumentType.greedyString())
+                        .executes(context -> executeChangePasswordArgs(context.getSource(), StringArgumentType.getString(context, "args")))));
 
         // 註冊 /logout
         dispatcher.register(Commands.literal("logout")
@@ -111,8 +98,8 @@ public class NeoForgeEvents {
                 .then(Commands.literal("show")
                         .executes(context -> executeEmailShow(context.getSource())))
                 .then(Commands.literal("set")
-                        .then(Commands.argument("email", StringArgumentType.string())
-                                .executes(context -> executeEmailSet(context.getSource(), StringArgumentType.getString(context, "email"))))));
+                        .then(Commands.argument("email", StringArgumentType.greedyString())
+                                .executes(context -> executeEmailSet(context.getSource(), ArgumentTokenizer.cleanArgument(StringArgumentType.getString(context, "email")))))));
 
         // 註冊 /neoauth 管理指令根節點
         dispatcher.register(Commands.literal("neoauth")
@@ -120,13 +107,13 @@ public class NeoForgeEvents {
                 .executes(context -> executeAdminHelp(context.getSource(), null))
                 .then(Commands.literal("help")
                         .executes(context -> executeAdminHelp(context.getSource(), null))
-                        .then(Commands.argument("query", StringArgumentType.string())
-                                .executes(context -> executeAdminHelp(context.getSource(), StringArgumentType.getString(context, "query")))))
+                        .then(Commands.argument("query", StringArgumentType.greedyString())
+                                .executes(context -> executeAdminHelp(context.getSource(), ArgumentTokenizer.cleanArgument(StringArgumentType.getString(context, "query"))))))
                 .then(Commands.literal("register")
                         .then(Commands.argument("player", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
-                                .then(Commands.argument("password", StringArgumentType.string())
-                                        .executes(context -> executeAdminRegister(context.getSource(), StringArgumentType.getString(context, "player"), StringArgumentType.getString(context, "password"))))))
+                                .then(Commands.argument("password", StringArgumentType.greedyString())
+                                        .executes(context -> executeAdminRegister(context.getSource(), StringArgumentType.getString(context, "player"), ArgumentTokenizer.cleanArgument(StringArgumentType.getString(context, "password")))))))
                 .then(Commands.literal("forcelogin")
                         .executes(context -> executeAdminForceLoginSelf(context.getSource()))
                         .then(Commands.argument("player", StringArgumentType.word())
@@ -135,18 +122,18 @@ public class NeoForgeEvents {
                 .then(Commands.literal("password")
                         .then(Commands.argument("player", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
-                                .then(Commands.argument("newPassword", StringArgumentType.string())
-                                        .executes(context -> executeAdminPassword(context.getSource(), StringArgumentType.getString(context, "player"), StringArgumentType.getString(context, "newPassword"))))))
+                                .then(Commands.argument("newPassword", StringArgumentType.greedyString())
+                                        .executes(context -> executeAdminPassword(context.getSource(), StringArgumentType.getString(context, "player"), ArgumentTokenizer.cleanArgument(StringArgumentType.getString(context, "newPassword")))))))
                 .then(Commands.literal("changepassword")
                         .then(Commands.argument("player", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
-                                .then(Commands.argument("newPassword", StringArgumentType.string())
-                                        .executes(context -> executeAdminPassword(context.getSource(), StringArgumentType.getString(context, "player"), StringArgumentType.getString(context, "newPassword"))))))
+                                .then(Commands.argument("newPassword", StringArgumentType.greedyString())
+                                        .executes(context -> executeAdminPassword(context.getSource(), StringArgumentType.getString(context, "player"), ArgumentTokenizer.cleanArgument(StringArgumentType.getString(context, "newPassword")))))))
                 .then(Commands.literal("pass")
                         .then(Commands.argument("player", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
-                                .then(Commands.argument("newPassword", StringArgumentType.string())
-                                        .executes(context -> executeAdminPassword(context.getSource(), StringArgumentType.getString(context, "player"), StringArgumentType.getString(context, "newPassword"))))))
+                                .then(Commands.argument("newPassword", StringArgumentType.greedyString())
+                                        .executes(context -> executeAdminPassword(context.getSource(), StringArgumentType.getString(context, "player"), ArgumentTokenizer.cleanArgument(StringArgumentType.getString(context, "newPassword")))))))
                 .then(Commands.literal("lastlogin")
                         .executes(context -> executeAdminLastLoginSelf(context.getSource()))
                         .then(Commands.argument("player", StringArgumentType.word())
@@ -154,7 +141,7 @@ public class NeoForgeEvents {
                                 .executes(context -> executeAdminLastLogin(context.getSource(), StringArgumentType.getString(context, "player")))))
                 .then(Commands.literal("accounts")
                         .executes(context -> executeAdminAccountsSelf(context.getSource()))
-                        .then(Commands.argument("player", StringArgumentType.string())
+                        .then(Commands.argument("player", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
                                 .executes(context -> executeAdminAccounts(context.getSource(), StringArgumentType.getString(context, "player")))))
                 .then(Commands.literal("email")
@@ -162,18 +149,20 @@ public class NeoForgeEvents {
                         .then(Commands.literal("set")
                                 .then(Commands.argument("player", StringArgumentType.word())
                                         .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
-                                        .then(Commands.argument("email", StringArgumentType.string())
+                                        .then(Commands.argument("email", StringArgumentType.greedyString())
                                                 .executes(context -> executeAdminSetEmail(context.getSource(),
                                                         StringArgumentType.getString(context, "player"),
-                                                        StringArgumentType.getString(context, "email"))))))
+                                                        ArgumentTokenizer.cleanArgument(StringArgumentType.getString(context, "email")))))))
                         .then(Commands.argument("player", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
                                 .executes(context -> executeAdminEmail(context.getSource(), StringArgumentType.getString(context, "player")))))
                 .then(Commands.literal("setemail")
                         .then(Commands.argument("player", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
-                                .then(Commands.argument("email", StringArgumentType.string())
-                                        .executes(context -> executeAdminSetEmail(context.getSource(), StringArgumentType.getString(context, "player"), StringArgumentType.getString(context, "email"))))))
+                                .then(Commands.argument("email", StringArgumentType.greedyString())
+                                        .executes(context -> executeAdminSetEmail(context.getSource(),
+                                                StringArgumentType.getString(context, "player"),
+                                                ArgumentTokenizer.cleanArgument(StringArgumentType.getString(context, "email")))))))
                 .then(Commands.literal("getip")
                         .then(Commands.argument("player", StringArgumentType.word())
                                 .suggests((c, b) -> SharedSuggestionProvider.suggest(Services.PLATFORM.getOnlinePlayerNames(c.getSource()), b))
@@ -187,6 +176,26 @@ public class NeoForgeEvents {
                 .then(Commands.literal("setenableregister")
                         .then(Commands.argument("enabled", BoolArgumentType.bool())
                                 .executes(context -> executeAdminSetEnableRegister(context.getSource(), BoolArgumentType.getBool(context, "enabled"))))));
+    }
+
+    private static int executeRegisterArgs(CommandSourceStack source, String rawArgs) {
+        List<String> tokens = ArgumentTokenizer.tokenize(rawArgs);
+        if (tokens.isEmpty()) {
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("register.register_prompt")));
+            return 0;
+        }
+        String password = tokens.get(0);
+        String confirm = tokens.size() > 1 ? tokens.get(1) : password;
+        return executeRegister(source, password, confirm);
+    }
+
+    private static int executeChangePasswordArgs(CommandSourceStack source, String rawArgs) {
+        List<String> tokens = ArgumentTokenizer.tokenize(rawArgs);
+        if (tokens.size() < 3) {
+            source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("help.changepassword")));
+            return 0;
+        }
+        return executeChangePassword(source, tokens.get(0), tokens.get(1), tokens.get(2));
     }
 
     private static int executeLogin(CommandSourceStack source, String password) {

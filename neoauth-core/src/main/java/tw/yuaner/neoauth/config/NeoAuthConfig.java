@@ -48,6 +48,7 @@ public class NeoAuthConfig implements IAuthConfig {
     private String messagesLanguage = "zhtw";
     private boolean allowOfflinePlayers = true;
     private boolean dynamicPremiumVerification = true;
+    private int dynamicVerificationTimeout = 15;
 
     private String passwordHash = "SHA256";
     private int minPasswordLength = 0;
@@ -124,6 +125,7 @@ public class NeoAuthConfig implements IAuthConfig {
             if (setMap.get("messagesLanguage") != null) config.messagesLanguage = String.valueOf(setMap.get("messagesLanguage"));
             if (setMap.get("allowOfflinePlayers") instanceof Boolean b) config.allowOfflinePlayers = b;
             if (setMap.get("dynamicPremiumVerification") instanceof Boolean b) config.dynamicPremiumVerification = b;
+            if (setMap.get("dynamicVerificationTimeout") instanceof Number n) config.dynamicVerificationTimeout = n.intValue();
             // registration (AuthMeReloaded 相容結構)
             Object regObj = setMap.get("registration");
             if (regObj instanceof Map<?, ?> regMap) {
@@ -341,6 +343,11 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public boolean isDynamicPremiumVerification() {
         return dynamicPremiumVerification;
+    }
+
+    @Override
+    public int getDynamicVerificationTimeout() {
+        return dynamicVerificationTimeout;
     }
 
     @Override

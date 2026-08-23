@@ -1,5 +1,6 @@
 package tw.yuaner.neoauth.forge.mixin;
 
+import com.google.common.primitives.Ints;
 import com.mojang.authlib.GameProfile;
 import io.netty.channel.Channel;
 import net.minecraft.network.Connection;
@@ -7,8 +8,12 @@ import net.minecraft.network.protocol.login.ClientboundHelloPacket;
 import net.minecraft.network.protocol.login.ServerboundHelloPacket;
 import net.minecraft.network.protocol.login.ServerboundKeyPacket;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerLoginPacketListenerImpl;
 import net.minecraft.util.Crypt;
+import net.minecraft.util.RandomSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Unique;
@@ -16,6 +21,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import tw.yuaner.neoauth.AuthManager;
+import tw.yuaner.neoauth.DatabaseManager;
+import tw.yuaner.neoauth.config.ConfigManager;
+import tw.yuaner.neoauth.core.AuthLogic;
 import tw.yuaner.neoauth.platform.Services;
 
 import javax.crypto.Cipher;
@@ -37,6 +45,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -51,7 +60,16 @@ import java.util.concurrent.TimeUnit;
 public abstract class ForgeServerLoginMixin {
 
     @Unique
+    private static final Logger neoauth$LOGGER = LoggerFactory.getLogger("NeoAuth-Login");
+
+    @Unique
+    private static KeyPair neoauth$KEY_PAIR;
+
+    @Unique
     private static final Map<Object, ServerboundHelloPacket> neoauth$PENDING = new ConcurrentHashMap<>();
+
+    @Unique
+    private static final Map<Object, ScheduledFuture<?>> neoauth$WATCHDOG_TASKS = new ConcurrentHashMap<>();
 
     @Unique
     private static final Set<Object> neoauth$HANDLED = ConcurrentHashMap.newKeySet();
@@ -62,6 +80,20 @@ public abstract class ForgeServerLoginMixin {
         t.setDaemon(true);
         return t;
     });
+
+    @Unique
+    private static synchronized KeyPair neoauth$getKeyPair(MinecraftServer server) {
+        KeyPair kp = server.getKeyPair();
+        if (kp != null) return kp;
+        if (neoauth$KEY_PAIR == null) {
+            try {
+                neoauth$KEY_PAIR = Crypt.generateKeyPair();
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return neoauth$KEY_PAIR;
+    }
 
     /**
      * 攔截 Hello 登入握手封包 (Forge 1.20.1，m_5990_ 為 ServerLoginPacketListenerImpl.handleHello 的 SRG 名稱)。
@@ -106,16 +138,15 @@ public abstract class ForgeServerLoginMixin {
             }
 
             try {
-                KeyPair keyPair = server.getKeyPair();
-            if (keyPair == null) {
-                try {
-                    keyPair = Crypt.generateKeyPair();
-                } catch (Exception ignored) {
-                }
-            }
+                KeyPair keyPair = neoauth$getKeyPair(server);
                 byte[] challenge = getChallenge();
+                if (challenge == null || challenge.length == 0) {
+                    challenge = Ints.toByteArray(RandomSource.create().nextInt());
+                    setChallenge(challenge);
+                }
+
                 Connection connection = getConnection();
-                if (keyPair != null && challenge != null && connection != null) {
+                if (keyPair != null && connection != null) {
                     PublicKey publicKey = keyPair.getPublic();
                     ClientboundHelloPacket helloPacket = new ClientboundHelloPacket("", publicKey.getEncoded(), challenge);
                     connection.send(helloPacket);
@@ -123,7 +154,11 @@ public abstract class ForgeServerLoginMixin {
                     setLoginState("KEY");
                     ci.cancel();
 
-                    neoauth$WATCHDOG.schedule(() -> neoauth$fallbackToOffline(this, packet), 10, TimeUnit.SECONDS);
+                    int timeout = Services.PLATFORM.getConfig().getDynamicVerificationTimeout();
+                    if (timeout <= 0) timeout = 15;
+
+                    ScheduledFuture<?> watchdogTask = neoauth$WATCHDOG.schedule(() -> neoauth$fallbackToOffline(this, packet), timeout, TimeUnit.SECONDS);
+                    neoauth$WATCHDOG_TASKS.put(this, watchdogTask);
                 }
             } catch (Exception ignored) {
             }
@@ -146,6 +181,11 @@ public abstract class ForgeServerLoginMixin {
     )
     private void neoauth$handleKey(ServerboundKeyPacket packet, CallbackInfo ci) {
         ServerboundHelloPacket hello = neoauth$PENDING.remove(this);
+        ScheduledFuture<?> watchdog = neoauth$WATCHDOG_TASKS.remove(this);
+        if (watchdog != null) {
+            watchdog.cancel(false);
+        }
+
         if (hello == null) {
             return;
         }
@@ -160,12 +200,13 @@ public abstract class ForgeServerLoginMixin {
                 return;
             }
 
-            KeyPair keyPair = server.getKeyPair();
+            KeyPair keyPair = neoauth$getKeyPair(server);
             PrivateKey privateKey = keyPair.getPrivate();
             PublicKey publicKey = keyPair.getPublic();
             byte[] challenge = getChallenge();
 
             if (!packet.isChallengeValid(challenge, privateKey)) {
+                neoauth$LOGGER.warn("NeoAuth: 連線 challenge 驗證不匹配，降級為離線玩家: {}", hello.name());
                 neoauth$fallbackToOffline(this, hello);
                 return;
             }
@@ -189,14 +230,36 @@ public abstract class ForgeServerLoginMixin {
                     GameProfile profile = server.getSessionService().hasJoinedServer(new GameProfile(null, username), digest, address);
                     if (profile != null) {
                         AuthManager.markPremiumVerified(offlineUuid);
+                        neoauth$LOGGER.info("NeoAuth: 正版驗證成功 ({})，已標記免密自動登入。", username);
+
+                        server.execute(() -> {
+                            ServerPlayer player = server.getPlayerList().getPlayer(offlineUuid);
+                            if (player != null && !AuthManager.isLoggedIn(offlineUuid)) {
+                                boolean autoLoggedIn = AuthLogic.handlePlayerJoin(offlineUuid, username, player.getIpAddress(), true);
+                                if (autoLoggedIn) {
+                                    Services.PLATFORM.removeFreezeEffects(player);
+                                    if (DatabaseManager.isRegistered(username)) {
+                                        String msg = ConfigManager.getInstance().getMessagesManager().get("general.welcome_premium", username);
+                                        Services.PLATFORM.sendMessage(player, msg);
+                                        AuthLogic.executeHooks(player.getServer(), player, username,
+                                                ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
+                                                ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        neoauth$LOGGER.info("NeoAuth: Mojang 未確認玩家 ({}) 的正版 Session，以離線模式登入。", username);
                     }
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    neoauth$LOGGER.error("NeoAuth: 查詢 Mojang Session 伺服器時發生異常 (" + username + "): " + e.getMessage(), e);
                 } finally {
                     neoauth$HANDLED.add(this);
                     neoauth$replayHello(this, hello);
                 }
             });
         } catch (Exception e) {
+            neoauth$LOGGER.error("NeoAuth: 密鑰握手解密發生錯誤: " + e.getMessage(), e);
             neoauth$fallbackToOffline(this, hello);
         }
     }
@@ -215,6 +278,10 @@ public abstract class ForgeServerLoginMixin {
             remap = false
     )
     private void neoauth$onDisconnect(CallbackInfo ci) {
+        ScheduledFuture<?> watchdog = neoauth$WATCHDOG_TASKS.remove(this);
+        if (watchdog != null) {
+            watchdog.cancel(false);
+        }
         neoauth$PENDING.remove(this);
         neoauth$HANDLED.remove(this);
     }
@@ -240,7 +307,11 @@ public abstract class ForgeServerLoginMixin {
 
     @Unique
     private void neoauth$fallbackToOffline(Object handler, ServerboundHelloPacket hello) {
-        if (neoauth$PENDING.remove(handler) != null || !neoauth$HANDLED.contains(handler)) {
+        ScheduledFuture<?> watchdog = neoauth$WATCHDOG_TASKS.remove(handler);
+        if (watchdog != null) {
+            watchdog.cancel(false);
+        }
+        if (neoauth$PENDING.remove(handler) != null) {
             neoauth$HANDLED.add(handler);
             neoauth$replayHello(handler, hello);
         }
@@ -278,7 +349,7 @@ public abstract class ForgeServerLoginMixin {
         task.run();
     }
 
-        private byte[] getChallenge() {
+    private byte[] getChallenge() {
         for (String name : new String[]{"f_10014_", "challenge", "nonce", "field_14168"}) {
             try {
                 Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
@@ -288,6 +359,18 @@ public abstract class ForgeServerLoginMixin {
             }
         }
         return null;
+    }
+
+    private void setChallenge(byte[] challenge) {
+        for (String name : new String[]{"f_10014_", "challenge", "nonce", "field_14168"}) {
+            try {
+                Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
+                f.setAccessible(true);
+                f.set(this, challenge);
+                return;
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     private Connection getConnection() {
@@ -311,29 +394,6 @@ public abstract class ForgeServerLoginMixin {
                 f.set(this, val);
                 return true;
             } catch (Exception ignored) {
-            }
-        }
-        return false;
-    }
-
-    private boolean setGameProfile(GameProfile profile) {
-        for (String name : new String[]{"f_10021_", "gameProfile", "profile", "authenticatedProfile", "field_14160"}) {
-            try {
-                Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
-                f.setAccessible(true);
-                f.set(this, profile);
-                return true;
-            } catch (Exception ignored) {
-            }
-        }
-        for (Field field : ServerLoginPacketListenerImpl.class.getDeclaredFields()) {
-            if (GameProfile.class.isAssignableFrom(field.getType())) {
-                try {
-                    field.setAccessible(true);
-                    field.set(this, profile);
-                    return true;
-                } catch (Exception ignored) {
-                }
             }
         }
         return false;

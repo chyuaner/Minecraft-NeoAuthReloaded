@@ -100,6 +100,11 @@ settings:
   # - false: 關閉動態正版驗證，所有玩家一律視為離線玩家要求密碼登入。
   dynamicPremiumVerification: true
 
+  # 動態正版握手超時時間（秒，預設: 15）
+  # - 若正版客戶端或 Mojang 伺服器在設定時間內未回應，將自動先放行進入遊戲並提示密碼登入（避免連線卡死）。
+  # - 若隨後 Mojang 正版驗證在背景非同步完成通過，且玩家尚未手動登入，系統將即時自動將玩家晉升為「已登入」狀態並解除限制！
+  dynamicVerificationTimeout: 15
+
   # 註冊相關設定 (AuthMeReloaded 相容結構)
   registration:
     # 是否開放伺服器遊戲內註冊 (Enable registration on the server?)

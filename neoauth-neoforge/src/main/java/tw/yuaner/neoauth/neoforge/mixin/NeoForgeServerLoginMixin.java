@@ -9,9 +9,12 @@ import net.minecraft.network.protocol.login.ClientboundHelloPacket;
 import net.minecraft.network.protocol.login.ServerboundHelloPacket;
 import net.minecraft.network.protocol.login.ServerboundKeyPacket;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerLoginPacketListenerImpl;
 import net.minecraft.util.Crypt;
 import net.minecraft.util.RandomSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -20,6 +23,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import tw.yuaner.neoauth.AuthManager;
+import tw.yuaner.neoauth.DatabaseManager;
+import tw.yuaner.neoauth.config.ConfigManager;
+import tw.yuaner.neoauth.core.AuthLogic;
 import tw.yuaner.neoauth.platform.Services;
 
 import javax.crypto.Cipher;
@@ -40,6 +46,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -50,6 +57,9 @@ import java.util.concurrent.TimeUnit;
  */
 @Mixin(ServerLoginPacketListenerImpl.class)
 public abstract class NeoForgeServerLoginMixin {
+
+    @Unique
+    private static final Logger neoauth$LOGGER = LoggerFactory.getLogger("NeoAuth-Login");
 
     @Shadow
     @Final
@@ -73,6 +83,9 @@ public abstract class NeoForgeServerLoginMixin {
 
     @Unique
     private static final Map<Object, ServerboundHelloPacket> neoauth$PENDING = new ConcurrentHashMap<>();
+
+    @Unique
+    private static final Map<Object, ScheduledFuture<?>> neoauth$WATCHDOG_TASKS = new ConcurrentHashMap<>();
 
     @Unique
     private static final Set<Object> neoauth$HANDLED = ConcurrentHashMap.newKeySet();
@@ -140,8 +153,12 @@ public abstract class NeoForgeServerLoginMixin {
                 neoauth$setLoginState("KEY");
                 ci.cancel();
 
-                // 看門狗定時器：若客戶端為離線版且未回應密鑰握手，6 秒後自動回退至離線模式
-                neoauth$WATCHDOG.schedule(() -> neoauth$fallbackToOffline(this, packet), 6, TimeUnit.SECONDS);
+                // 看門狗定時器：若客戶端為離線版或網路延遲超時，自動先回退放行進入遊戲要求密碼，避免玩家卡死
+                int timeout = Services.PLATFORM.getConfig().getDynamicVerificationTimeout();
+                if (timeout <= 0) timeout = 15;
+
+                ScheduledFuture<?> watchdogTask = neoauth$WATCHDOG.schedule(() -> neoauth$fallbackToOffline(this, packet), timeout, TimeUnit.SECONDS);
+                neoauth$WATCHDOG_TASKS.put(this, watchdogTask);
             } catch (Exception ignored) {
             }
         }
@@ -153,6 +170,11 @@ public abstract class NeoForgeServerLoginMixin {
     @Inject(method = "handleKey", at = @At("HEAD"), cancellable = true)
     private void neoauth$handleKey(ServerboundKeyPacket packet, CallbackInfo ci) {
         ServerboundHelloPacket hello = neoauth$PENDING.remove(this);
+        ScheduledFuture<?> watchdog = neoauth$WATCHDOG_TASKS.remove(this);
+        if (watchdog != null) {
+            watchdog.cancel(false);
+        }
+
         if (hello == null) {
             return; // 非動態握手，走原版流程
         }
@@ -165,6 +187,7 @@ public abstract class NeoForgeServerLoginMixin {
             PublicKey publicKey = keyPair.getPublic();
 
             if (!packet.isChallengeValid(this.challenge, privateKey)) {
+                neoauth$LOGGER.warn("NeoAuth: 連線 challenge 驗證不匹配，降級為離線玩家: {}", hello.name());
                 neoauth$fallbackToOffline(this, hello);
                 return;
             }
@@ -188,14 +211,37 @@ public abstract class NeoForgeServerLoginMixin {
                     ProfileResult profileResult = this.server.getSessionService().hasJoinedServer(username, digest, address);
                     if (profileResult != null && profileResult.profile() != null) {
                         AuthManager.markPremiumVerified(offlineUuid);
+                        neoauth$LOGGER.info("NeoAuth: 正版驗證成功 ({})，已標記免密自動登入。", username);
+
+                        // 延遲晉升機制：若玩家在握手超時放行後已進入遊戲且尚未手動登入，即時升級為已登入狀態並解除限制
+                        this.server.execute(() -> {
+                            ServerPlayer player = this.server.getPlayerList().getPlayer(offlineUuid);
+                            if (player != null && !AuthManager.isLoggedIn(offlineUuid)) {
+                                boolean autoLoggedIn = AuthLogic.handlePlayerJoin(offlineUuid, username, player.getIpAddress(), true);
+                                if (autoLoggedIn) {
+                                    Services.PLATFORM.removeFreezeEffects(player);
+                                    if (DatabaseManager.isRegistered(username)) {
+                                        String msg = ConfigManager.getInstance().getMessagesManager().get("general.welcome_premium", username);
+                                        Services.PLATFORM.sendMessage(player, msg);
+                                        AuthLogic.executeHooks(player.getServer(), player, username,
+                                                ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
+                                                ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        neoauth$LOGGER.info("NeoAuth: Mojang 未確認玩家 ({}) 的正版 Session，以離線模式登入。", username);
                     }
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    neoauth$LOGGER.error("NeoAuth: 查詢 Mojang Session 伺服器時發生異常 (" + username + "): " + e.getMessage(), e);
                 } finally {
                     neoauth$HANDLED.add(this);
                     neoauth$replayHello(this, hello);
                 }
             });
         } catch (Exception e) {
+            neoauth$LOGGER.error("NeoAuth: 密鑰握手解密發生錯誤: " + e.getMessage(), e);
             neoauth$fallbackToOffline(this, hello);
         }
     }
@@ -205,6 +251,10 @@ public abstract class NeoForgeServerLoginMixin {
      */
     @Inject(method = "onDisconnect", at = @At("HEAD"), require = 0)
     private void neoauth$onDisconnect(DisconnectionDetails details, CallbackInfo ci) {
+        ScheduledFuture<?> watchdog = neoauth$WATCHDOG_TASKS.remove(this);
+        if (watchdog != null) {
+            watchdog.cancel(false);
+        }
         neoauth$PENDING.remove(this);
         neoauth$HANDLED.remove(this);
     }
@@ -221,7 +271,11 @@ public abstract class NeoForgeServerLoginMixin {
 
     @Unique
     private void neoauth$fallbackToOffline(Object handler, ServerboundHelloPacket hello) {
-        if (neoauth$PENDING.remove(handler) != null || !neoauth$HANDLED.contains(handler)) {
+        ScheduledFuture<?> watchdog = neoauth$WATCHDOG_TASKS.remove(handler);
+        if (watchdog != null) {
+            watchdog.cancel(false);
+        }
+        if (neoauth$PENDING.remove(handler) != null) {
             neoauth$HANDLED.add(handler);
             neoauth$replayHello(handler, hello);
         }

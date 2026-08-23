@@ -208,6 +208,8 @@ public interface IAuthConfig {
      */
     boolean isDynamicPremiumVerification();
 
+    int getDynamicVerificationTimeout();
+
     /**
      * 取得訊息語言代碼 (例如: "zhtw", "en")
      *

@@ -52,6 +52,12 @@ settings:
   #         此設定可徹底避免玩家更換啟動器或 Mojang 伺服器異常時存檔被重設或分裂的問題。
   keepOfflineUuidCompatibility: false
 
+  # 是否在離線模式 (online-mode: false) 下啟用動態正版驗證 (預設: true)
+  # - true: 伺服器維持離線模式（所有人使用固定離線 UUID v3，存檔不重設、皮膚 100% 正常相容 SkinRestorer），
+  #         但進服時會動態向正版客戶端發起 Mojang 密鑰握手驗證，正版驗證成功後直接享有「免密碼自動登入」！
+  # - false: 關閉動態正版驗證，所有玩家一律視為離線玩家要求密碼登入。
+  dynamicPremiumVerification: true
+
   # 註冊相關設定 (AuthMeReloaded 相容結構)
   registration:
     # 是否開放伺服器遊戲內註冊 (Enable registration on the server?)

@@ -206,7 +206,7 @@ public interface IAuthConfig {
      *
      * @return true 若啟用離線 UUID 相容模式 (預設為 false)
      */
-    boolean isKeepOfflineUuidCompatibility();
+    boolean isDynamicPremiumVerification();
 
     /**
      * 取得訊息語言代碼 (例如: "zhtw", "en")

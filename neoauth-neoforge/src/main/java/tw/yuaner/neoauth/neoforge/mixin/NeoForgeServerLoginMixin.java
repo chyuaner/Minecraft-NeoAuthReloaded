@@ -57,11 +57,12 @@ public abstract class NeoForgeServerLoginMixin {
     }
 
     /**
-     * 攔截登入完成階段，標記通過 Mojang 線上驗證的正版玩家，
-     * 若啟用 keepOfflineUuidCompatibility 則動態替換為離線 UUID 相容 Profile。
+     * 攔截驗證開始階段，標記通過 Mojang 線上驗證的正版玩家，
+     * 若啟用 keepOfflineUuidCompatibility 則動態替換為離線 UUID 相容 Profile，
+     * 確保伺服器端內部存檔（playerdata）與客戶端握手均統一使用離線版 UUID (v3)。
      */
-    @ModifyVariable(method = "finishLoginAndWaitForClient", at = @At("HEAD"), argsOnly = true)
-    private GameProfile neoauth$onMojangVerifiedProfile(GameProfile profile) {
+    @ModifyVariable(method = "startClientVerification", at = @At("HEAD"), argsOnly = true)
+    private GameProfile neoauth$onStartClientVerification(GameProfile profile) {
         if (profile == null) return null;
 
         // 若帶有 Mojang Session 簽署之 textures 屬性，表示為正版驗證登入

@@ -1,5 +1,5 @@
 # ==============================================================================
-# NeoAuth 主設定檔
+# NeoAuthReloaded 主設定檔 (AuthMeReloaded 風格)
 # ==============================================================================
 
 DataSource:
@@ -12,7 +12,7 @@ DataSource:
   mySQLHost: "127.0.0.1"
   # 資料庫連接埠 (預設: 3306)
   mySQLPort: "3306"
-  # 資料庫名稱
+  # 資料庫名稱 (MySQL / MariaDB 使用)
   mySQLDatabase: "neoauth"
   # 資料庫登入使用者名稱
   mySQLUsername: "root"
@@ -20,10 +20,23 @@ DataSource:
   mySQLPassword: ""
   # 使用者資料表名稱
   mySQLTablename: "neoauth"
-  # 連線池最大連線數
+
+  # 是否啟用 SSL 連線 (Connect to MySQL database over SSL)
+  mySQLUseSSL: false
+  # 是否驗證伺服器憑證 (Verification of server's certificate)
+  mySQLCheckServerCertificate: true
+  # 是否允許客戶端檢索 RSA 伺服器公鑰 (Authorize client to retrieve RSA server public key)
+  mySQLAllowPublicKeyRetrieval: true
+
+  # 連線池最大連線數 (Overrides the size of the DB Connection Pool)
   poolSize: 10
   # 連線最大存活時間 (秒)
   maxLifetime: 1800
+
+# 外部系統 / 論壇 / 皮膚站整合選項 (External Board Options)
+ExternalBoardOptions:
+  # 外部資料庫鹽值欄位名稱 (若使用 SALTED2MD5 或外部系統，可設為 'salt')
+  mySQLColumnSalt: ""
 
 settings:
   # 預設提示語言 (支援: zhtw, en，對應 messages/messages_<lang>.yml)
@@ -33,24 +46,26 @@ settings:
   allowOfflinePlayers: true
 
   # 是否強制保持離線版 UUID (v3) 相容模式 (預設: false)
+  # - false: 通過 Mojang 驗證的正版玩家將使用 Mojang 原生 UUID (v4)
+  # - true: 所有玩家（包含正版玩家）在伺服器端一律使用固定的離線 UUID (v3) 儲存存檔與插件資料
+  #         正版玩家的官方 Skin 造型仍會完整保留，並享有免密碼自動登入功能。
+  #         此設定可徹底避免玩家更換啟動器或 Mojang 伺服器異常時存檔被重設或分裂的問題。
   keepOfflineUuidCompatibility: false
 
   # 註冊相關設定 (AuthMeReloaded 相容結構)
   registration:
     # 是否開放伺服器遊戲內註冊 (Enable registration on the server?)
     enabled: true
-    # 每隔 X 秒向未驗證玩家發送一次提示訊息 (0 為不定期提醒)
-    messageInterval: 5
-    # 是否強制所有玩家必須註冊與登入才能遊玩 (false 則允許未註冊訪客自由遊玩，並自動於資料庫建立空密碼紀錄)
-    force: true
-    # 玩家成功註冊後是否直接踢出伺服器 (不可與 forceLoginAfterRegister 同時使用)
-    forceKickAfterRegister: false
-    # 玩家成功註冊後是否強制要求重新執行 /login 進行登入
-    forceLoginAfterRegister: false
 
-  # 密碼安全規則
+  # 密碼安全規則 (0 為不限制)
   security:
-    # 密碼雜湊方式 (支援: BCRYPT)
+    # 密碼雜湊方式 (支援: SHA256, SALTED2MD5, SALTEDSHA512, BCRYPT)
+    # - SHA256: AuthMe 預設雙重加鹽 SHA-256 ($SHA$salt$hash)
+    # - SALTED2MD5: 相容 Discuz!、Phpwind、Blessing Skin 等系統 (MD5(MD5(password) + salt))
+    # - SALTEDSHA512: AuthMe 標準雙重加鹽 SHA-512 ($SHA$salt$hash)
+    # - BCRYPT: 相容 Blessing Skin 預設算法、Flarum 等系統
     passwordHash: "SHA256"
 
-  
+    # SALTED2MD5 演算法之鹽值長度 (Discuz! / Phpwind 通常為 6)
+    doubleMD5SaltLength: 6
+

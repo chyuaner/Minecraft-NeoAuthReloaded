@@ -9,18 +9,29 @@
 
 ---
 
-本專案是大量借鑒AuthMeReloaded的風格與傳統設計，重新復刻出NeoAuthReloaded模組，並提供AuthMeReloaded沒有提供的Forge與NeoForge模組。採用的資料庫都相容於原AuthMe的資料庫結構，並支援使用原AuthMe的資料庫，讓原本使用AuthMe的服主可以直接無縫切換到NeoAuthReloaded。設定檔風格也比照AuthMeReloaded設計，讓原本使用AuthMe的服主能快速上手。
+本專案是大量借鑒 **AuthMeReloaded** 的風格與傳統設計，重新復刻出 **NeoAuthReloaded** 模組，並提供 AuthMeReloaded 沒有提供的 Forge 與 NeoForge 模組支援。採用的資料庫都相容於原AuthMe的資料庫結構，並支援使用原AuthMe的資料庫，讓原本使用AuthMe的服主可以直接無縫切換到NeoAuthReloaded。設定檔風格也比照AuthMeReloaded設計，讓原本使用AuthMe的服主能快速上手。
 
+### 核心優勢亮點：
+- **`online-mode=true` 完美混合驗證**：支援在標準 `online-mode=true` 模式下運行，同時相容官方正版玩家與離線（非官方）玩家！
+- **正版玩家順暢自動登入**：正版玩家連線時將由 Mojang 官方伺服器進行驗證，通過後直接自動登入，**享有完全免輸入密碼的絲滑體驗**（多數其他同類模組皆未實現此功能）。
+- **完善的 Online / Offline UUID 處理機制**：深度處理線上版 UUID (v4) 與離線版 UUID (v3) 的對應與相容，徹底解決玩家更換啟動器或連線模式時的存檔分裂與衝突問題。
+- **無縫接軌 AuthMeReloaded**：資料庫結構與加密格式（加鹽 SHA-256、BCrypt 等）100% 相容 AuthMe，舊有伺服器資料庫與設定可無痛平滑遷移。
+
+---
 
 ## 🌟 模組特色
 
 - **雙平台架構抽象化**：基於模組化設計，一套核心邏輯 (`neoauth-core`) 同時驅動 **Forge 1.20.1** 與 **NeoForge 1.21.1**。
-- **預設開箱即用 SQLite**：為一般服主提供零配置的 SQLite 支援，預設檔案為 `config/neoauth/neoauth.db`，亦支援絕對路徑與相對路徑（支援 `../` 跨目錄）。
-- **AuthMeReloaded 無縫相容**：無論是 SQLite 或 MySQL/MariaDB，資料表結構與欄位均 100% 與 AuthMeReloaded (`authme.db` 或 SQL 資料庫) 相容，加密格式預設加鹽 SHA-256 / BCrypt，可直接共用！
+- **極致順暢的正版自動登入與混合模式**：
+  - 在伺服器開啟 `online-mode=true` 模式下，智慧攔截並鑑別玩家身分。
+  - **正版玩家免密碼自動登入**：正版（Mojang）玩家通過線上驗證後直接自動登入，無需頻繁輸入密碼，提供最順暢的原生遊玩體驗。
+  - **離線玩家安全放行**：支援 `allowOfflinePlayers` 混合模式，離線玩家連線後強制進行密碼註冊與登入驗證。
+- **線上版 (Online) 與離線版 (Offline) UUID 智慧相容機制**：
+  - 完整支援並妥善處理正版 Online UUID (v4) 與離線 Offline UUID (v3)。
+  - 提供 `keepOfflineUuidCompatibility` 設定：可強制統一使用離線 UUID 儲存背包存檔與模組資料，同時完整保留正版玩家官方 Skin 造型與自動登入特權，徹底解決換啟動器或斷網時存檔遺失與分裂問題。
+- **預設開箱即用 SQLite**：為一般服主提供零配置的 SQLite 支援，預設檔案為 `config/neoauth/neoauth.db`，亦支援絕對路徑與相對路徑（支援 `../` 跨目錄讀取舊 AuthMe 檔案）。
+- **AuthMeReloaded 無縫相容**：無論是 SQLite 或 MySQL/MariaDB，資料表結構與欄位均 100% 與 AuthMeReloaded (`authme.db` 或 SQL 資料庫) 相容，加密格式預設雙重加鹽 SHA-256 / BCrypt，可直接共用！
 - **可擴充之資料庫抽象層 (IDataSource)**：統一封裝 ANSI SQL 操作，並透過 HikariCP 提供執行緒安全且高效能的連線管理（SQLite 啟用 WAL 高效並行模式）。
-- **正版自動登入 / 混合模式支援**：
-  - 正版（Mojang Online-Mode）玩家進入伺服器時自動辨識並通過驗證，無需輸入密碼。（不過第一次登入仍需先註冊）
-  - 支援 `allowOfflinePlayers` 混合模式：即使伺服器開啟 `online-mode=true`，亦可放行離線玩家並要求密碼驗證。
 - **全方位登入前防護**：
   - 🚫 **對話隔離**：未登入玩家無法在聊天頻道發言。
   - 🚫 **指令白名單**：未登入玩家僅可執行白名單指令 (`/login`, `/register`, `/l`, `/reg` 等)。
@@ -29,8 +40,65 @@
   - 🧊 **原地凍結**：自動套用高強度定身效果（緩速、跳躍抑制、失明），防止未驗證玩家移動或窺探地圖。
 - **AuthMeReloaded 風格設定檔與多國語言 (i18n)**：
   - 採用 `config/neoauth/` 資料夾架構，包含 `config.yml`、`commands.yml`、`welcome.txt` 與 `messages/` 目錄。
-  - 內建繁體中文 (`zhtw`) 與英文 (`en`) 語言檔與幫助指南。
+  - 內建正體中文 (`zhtw`) 與英文 (`en`) 語言檔與幫助指南。
   - 支援熱重載管理員指令 `/neoauth reload`。
+
+---
+
+## 📥 安裝步驟 (Installation)
+
+### 步驟 1：下載並安裝模組
+1. 依據您的伺服器端核心與版本，下載對應的 JAR 檔案：
+   - **Minecraft 1.20.1 (Forge)**：`neoauth-forge-1.20.1-<version>.jar`
+   - **Minecraft 1.21.1 (NeoForge)**：`neoauth-neoforge-1.21.1-<version>.jar`
+2. 將下載的 JAR 檔案放入伺服器根目錄下的 `mods/` 資料夾中。
+
+---
+
+### 步驟 2：伺服器核心設定（⚠️ 極重要關鍵）
+請開啟伺服器根目錄下的 `server.properties` 檔案，確認並設置：
+```properties
+online-mode=true
+```
+
+> [!IMPORTANT]
+> **請務必保持 `online-mode=true`！**  
+> 許多服主在安裝傳統登入驗證插件/模組時，習慣將 `online-mode` 改為 `false`。然而 **NeoAuthReloaded 核心專為 `online-mode=true` 環境設計**：
+> - 伺服器在 `online-mode=true` 下才能向 Mojang 伺服器驗證正版玩家身分，實現**正版玩家免密碼自動登入**並正確載入官方 Skin 造型。
+> - 離線（非官方）玩家則會由 NeoAuthReloaded 自動在握手階段放行並強制執行密碼驗證。
+> - 若將 `online-mode` 設為 `false`，所有玩家都將被視為離線玩家，失去正版自動登入與官方驗證的優勢！
+
+---
+
+### 步驟 3：啟動伺服器以生成設定檔
+1. 啟動伺服器，NeoAuthReloaded 將自動在伺服器目錄生成 `config/neoauth/` 配置資料夾。
+2. 檢查控制台確認模組已成功載入並完成 SQLite 資料庫初始化。
+
+---
+
+### 步驟 4：調整模組設定檔 (`config/neoauth/config.yml`)
+開啟 `config/neoauth/config.yml`，主要可調整以下設定：
+
+#### 1. UUID 相容性設定 (`keepOfflineUuidCompatibility`)
+```yaml
+settings:
+  keepOfflineUuidCompatibility: false # (預設值)
+```
+- **關於 `keepOfflineUuidCompatibility` 的說明與建議**：
+  - **強烈建議服主開啟 (`true`)**：在實際開服營運中，建議將此項設為 `true`。啟用後，不論正版或離線玩家，伺服器一律使用固定的「離線 UUID (v3)」來儲存玩家存檔、背包物品與各模組資料（正版玩家仍享有自動登入與官方 Skin）。這能徹底避免玩家偶爾更換啟動器、Mojang 驗證伺服器暫時斷線或網路切換時，導致 UUID 改變而引發存檔重設或分裂。
+  - **為何本專案預設為 `false`**：為了讓原本使用 AuthMeReloaded 或官方純淨伺服器的服主能夠**最無痛、平滑地直接轉移既有資料庫與存檔**，因此預設維持 `false`。服主可依據自身伺服器架構評估開啟。
+
+#### 2. 資料庫後端配置 (`DataSource`)
+- **SQLite (預設)**：開箱即用，無需額外安裝資料庫，檔案位於 `config/neoauth/neoauth.db`（亦可指定 AuthMe 的 `authme.db` 路徑）。
+- **MySQL / MariaDB**：若有多伺服器同步需求，可將 `backend` 改為 `MARIADB` 或 `MYSQL` 並設定連線資訊。
+
+---
+
+### 步驟 5：套用設定
+完成設定檔修改後，您可以在遊戲內或控制台執行指令立即生效，無需重啟伺服器：
+```bash
+/neoauth reload
+```
 
 ---
 
@@ -156,6 +224,7 @@ config/neoauth/
 - `DataSource`：配置 MariaDB / MySQL 連線主機、埠號、資料庫帳密、資料表名稱與連線池參數。
 - `settings.messagesLanguage`：設定提示訊息語言，預設 `zhtw` (正體中文)，可設為 `en` (英文)。
 - `settings.allowOfflinePlayers`：是否允許離線（非官方）玩家在線上模式伺服器進入並進行帳密驗證。
+- `settings.keepOfflineUuidCompatibility`：是否強制保持離線版 UUID 相容模式（預設 `false`；開服營運強烈建議設為 `true` 以維持最高存檔穩定性與一致性）。
 - `settings.registration`：AuthMeReloaded 相容註冊設定區塊：
   - `enabled`：是否開放遊戲內註冊 (`/register`)，預設 `true`。若關閉 (設為 `false`)，則玩家僅能於外部網站或論壇註冊帳號。
   - `messageInterval`：未驗證玩家定期提示間隔秒數（預設 `5` 秒）。

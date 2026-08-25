@@ -28,6 +28,16 @@ public class AuthManager {
     private static final Set<UUID> PREMIUM_VERIFIED = ConcurrentHashMap.newKeySet();
 
     /**
+     * 儲存已通過正版或外置站驗證之玩家 Textures (皮膚與披風) 屬性 (以 UUID 索引)。
+     */
+    private static final java.util.Map<UUID, tw.yuaner.neoauth.util.TextureProperty> PREMIUM_TEXTURES = new ConcurrentHashMap<>();
+
+    /**
+     * 儲存已通過正版或外置站驗證之玩家 Textures (皮膚與披風) 屬性 (以玩家名稱小寫索引)。
+     */
+    private static final java.util.Map<String, tw.yuaner.neoauth.util.TextureProperty> NAME_TO_TEXTURES = new ConcurrentHashMap<>();
+
+    /**
      * 檢查指定 UUID 的玩家是否已經完成登入。
      *
      * @param uuid 玩家 UUID
@@ -72,6 +82,49 @@ public class AuthManager {
     }
 
     /**
+     * 將指定玩家標記為通過驗證並暫存其皮膚與披風 Textures 屬性。
+     *
+     * @param uuid      玩家 UUID
+     * @param name      玩家名稱
+     * @param value     Base64 Textures 值
+     * @param signature RSA 簽名 (可為空)
+     */
+    public static void markPremiumVerifiedWithTextures(UUID uuid, String name, String value, String signature) {
+        if (uuid != null) {
+            PREMIUM_VERIFIED.add(uuid);
+        }
+        if (value != null && !value.isBlank()) {
+            tw.yuaner.neoauth.util.TextureProperty prop = new tw.yuaner.neoauth.util.TextureProperty(value, signature);
+            if (uuid != null) {
+                PREMIUM_TEXTURES.put(uuid, prop);
+            }
+            if (name != null && !name.isBlank()) {
+                NAME_TO_TEXTURES.put(name.toLowerCase(), prop);
+            }
+        }
+    }
+
+    /**
+     * 取得已通過驗證玩家的 Textures 屬性 (依 UUID)。
+     *
+     * @param uuid 玩家 UUID
+     * @return {@link tw.yuaner.neoauth.util.TextureProperty}，若無則為 null
+     */
+    public static tw.yuaner.neoauth.util.TextureProperty getVerifiedTextures(UUID uuid) {
+        return uuid != null ? PREMIUM_TEXTURES.get(uuid) : null;
+    }
+
+    /**
+     * 取得已通過驗證玩家的 Textures 屬性 (依玩家名稱)。
+     *
+     * @param name 玩家名稱
+     * @return {@link tw.yuaner.neoauth.util.TextureProperty}，若無則為 null
+     */
+    public static tw.yuaner.neoauth.util.TextureProperty getVerifiedTextures(String name) {
+        return name != null ? NAME_TO_TEXTURES.get(name.toLowerCase()) : null;
+    }
+
+    /**
      * 檢查指定 UUID 的玩家是否為通過 Mojang 官方線上驗證的正版玩家。
      *
      * @param uuid 玩家 UUID
@@ -82,13 +135,14 @@ public class AuthManager {
     }
 
     /**
-     * 清除指定 UUID 的 Mojang 正版驗證狀態（玩家離線時呼叫）。
+     * 清除指定 UUID 的 Mojang 正版驗證狀態與皮膚暫存（玩家離線時呼叫）。
      *
      * @param uuid 玩家 UUID
      */
     public static void clearPremiumVerified(UUID uuid) {
         if (uuid != null) {
             PREMIUM_VERIFIED.remove(uuid);
+            PREMIUM_TEXTURES.remove(uuid);
         }
     }
 

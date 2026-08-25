@@ -661,10 +661,25 @@ public class ForgeEvents {
         if (event.getEntity() instanceof ServerPlayer player) {
             String username = player.getGameProfile().getName();
             UUID uuid = player.getUUID();
+
+            // 確保玩家實體 GameProfile 注入已驗證的 Textures (防護並免除 SkinRestorer 重複抓取)
+            tw.yuaner.neoauth.util.TextureProperty tex = AuthManager.getVerifiedTextures(uuid);
+            if (tex == null && username != null) {
+                tex = AuthManager.getVerifiedTextures(username);
+            }
+            if (tex != null && tex.value() != null && player.getGameProfile().getProperties() != null
+                    && !player.getGameProfile().getProperties().containsKey("textures")) {
+                com.mojang.authlib.properties.Property prop = tex.hasSignature()
+                        ? new com.mojang.authlib.properties.Property("textures", tex.value(), tex.signature())
+                        : new com.mojang.authlib.properties.Property("textures", tex.value());
+                player.getGameProfile().getProperties().put("textures", prop);
+                AuthManager.markPremiumVerified(uuid);
+            }
+
             boolean isOffline = AuthManager.isOfflineUuid(username, uuid);
             boolean hasTextures = player.getGameProfile().getProperties() != null
                     && player.getGameProfile().getProperties().containsKey("textures");
-            boolean isPremium = AuthManager.isPremiumVerified(uuid) || (!isOffline && hasTextures);
+            boolean isPremium = AuthManager.isPremiumVerified(uuid) || (tex != null) || (!isOffline && hasTextures);
 
             // 發送 welcome.txt 歡迎公告 (若啟用)
             if (ConfigManager.getInstance().getConfig().isDisplayWelcomeMessage()) {

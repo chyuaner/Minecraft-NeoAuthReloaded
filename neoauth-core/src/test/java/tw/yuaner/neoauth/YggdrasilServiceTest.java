@@ -33,4 +33,28 @@ public class YggdrasilServiceTest {
         NeoAuthConfig config = NeoAuthConfig.fromMap(map);
         assertEquals("https://mc8.yuaner.tw/api/yggdrasil", config.getCustomYggdrasilUrl());
     }
+
+    @Test
+    @DisplayName("驗證 AuthManager 儲存與檢索已驗證 Textures 屬性")
+    public void testAuthManagerTexturesCache() {
+        java.util.UUID uuid = java.util.UUID.randomUUID();
+        String username = "Barianyyy0517";
+        String dummyTextures = "ewogICJ0aW1lc3RhbXAiIDogMTYwMDAwMDAwMCwKICAicHJvZmlsZUlkIiA6ICJjODUwMjU5YiIsCiAgInByb2ZpbGVOYW1lIiA6ICJCYXJpYW55eXkwNTE3IgogIH0=";
+        String dummySig = "dummySignature123";
+
+        AuthManager.markPremiumVerifiedWithTextures(uuid, username, dummyTextures, dummySig);
+
+        assertTrue(AuthManager.isPremiumVerified(uuid));
+        assertNotNull(AuthManager.getVerifiedTextures(uuid));
+        assertEquals(dummyTextures, AuthManager.getVerifiedTextures(uuid).value());
+        assertEquals(dummySig, AuthManager.getVerifiedTextures(uuid).signature());
+        assertTrue(AuthManager.getVerifiedTextures(uuid).hasSignature());
+
+        assertNotNull(AuthManager.getVerifiedTextures("barianyyy0517"));
+        assertEquals(dummyTextures, AuthManager.getVerifiedTextures("barianyyy0517").value());
+
+        AuthManager.clearPremiumVerified(uuid);
+        assertFalse(AuthManager.isPremiumVerified(uuid));
+        assertNull(AuthManager.getVerifiedTextures(uuid));
+    }
 }

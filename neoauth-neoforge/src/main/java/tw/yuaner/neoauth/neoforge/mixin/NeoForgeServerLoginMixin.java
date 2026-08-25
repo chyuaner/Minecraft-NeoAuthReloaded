@@ -216,25 +216,39 @@ public abstract class NeoForgeServerLoginMixin {
                 try {
                     boolean verified = false;
                     String authSource = "Mojang 官方";
+                    String texturesValue = null;
+                    String texturesSignature = null;
 
                     // 1. 優先向 Mojang 官方 Session 伺服器查詢 (傳入 null 避免 IPv4/IPv6 雙棧網路不匹配問題)
                     ProfileResult profileResult = this.server.getSessionService().hasJoinedServer(username, digest, null);
                     if (profileResult != null && profileResult.profile() != null) {
                         verified = true;
+                        GameProfile mojangProfile = profileResult.profile();
+                        if (mojangProfile.getProperties() != null && mojangProfile.getProperties().containsKey("textures")) {
+                            for (com.mojang.authlib.properties.Property prop : mojangProfile.getProperties().get("textures")) {
+                                texturesValue = prop.value();
+                                texturesSignature = prop.signature();
+                                break;
+                            }
+                        }
                     }
 
                     // 2. 若 Mojang 未確認，且有設定自訂 Yggdrasil 外置驗證伺服器，向自訂伺服器查詢
                     String customYggdrasilUrl = Services.PLATFORM.getConfig().getCustomYggdrasilUrl();
                     if (!verified && customYggdrasilUrl != null && !customYggdrasilUrl.isBlank()) {
-                        if (tw.yuaner.neoauth.util.YggdrasilService.hasJoined(customYggdrasilUrl, username, digest, null)) {
+                        tw.yuaner.neoauth.util.YggdrasilService.YggdrasilAuthResult yggResult =
+                                tw.yuaner.neoauth.util.YggdrasilService.verifyJoined(customYggdrasilUrl, username, digest, null);
+                        if (yggResult.success()) {
                             verified = true;
                             authSource = "自訂 Yggdrasil (" + customYggdrasilUrl + ")";
+                            texturesValue = yggResult.texturesValue();
+                            texturesSignature = yggResult.texturesSignature();
                         }
                     }
 
                     if (verified) {
-                        AuthManager.markPremiumVerified(offlineUuid);
-                        neoauth$LOGGER.info("NeoAuth: {} 驗證成功 ({})，已標記免密自動登入。", authSource, username);
+                        AuthManager.markPremiumVerifiedWithTextures(offlineUuid, username, texturesValue, texturesSignature);
+                        neoauth$LOGGER.info("NeoAuth: {} 驗證成功 ({})，已標記免密自動登入與皮膚保留。", authSource, username);
 
                         // 延遲晉升機制：若玩家在握手超時放行後已進入遊戲且尚未手動登入，即時升級為已登入狀態並解除限制
                         this.server.execute(() -> {
@@ -283,12 +297,28 @@ public abstract class NeoForgeServerLoginMixin {
     }
 
     /**
-     * 線上模式 (online-mode=true) 下標記通過 Mojang 驗證的正版玩家以實現免密自動登入。
+     * 線上模式 (online-mode=true) 或離線模式下注入皮膚並標記通過驗證之正版玩家。
      */
     @Inject(method = "startClientVerification", at = @At("HEAD"))
     private void neoauth$onStartClientVerification(GameProfile profile, CallbackInfo ci) {
-        if (profile != null && profile.getProperties() != null && profile.getProperties().containsKey("textures")) {
-            AuthManager.markPremiumVerified(profile.getId());
+        if (profile != null) {
+            UUID id = profile.getId();
+            String name = profile.getName();
+            if (profile.getProperties() != null && profile.getProperties().containsKey("textures")) {
+                AuthManager.markPremiumVerified(id);
+            } else {
+                tw.yuaner.neoauth.util.TextureProperty tex = AuthManager.getVerifiedTextures(id);
+                if (tex == null && name != null) {
+                    tex = AuthManager.getVerifiedTextures(name);
+                }
+                if (tex != null && tex.value() != null && profile.getProperties() != null) {
+                    com.mojang.authlib.properties.Property prop = tex.hasSignature()
+                            ? new com.mojang.authlib.properties.Property("textures", tex.value(), tex.signature())
+                            : new com.mojang.authlib.properties.Property("textures", tex.value());
+                    profile.getProperties().put("textures", prop);
+                    AuthManager.markPremiumVerified(id);
+                }
+            }
         }
     }
 

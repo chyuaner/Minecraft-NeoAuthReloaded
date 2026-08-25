@@ -29,6 +29,9 @@ dependencies {
     // SnakeYAML 解析函式庫
     api "org.yaml:snakeyaml:${snakeyaml_version}"
 
+    // GSON JSON 解析函式庫
+    api 'com.google.code.gson:gson:2.10.1'
+
     // SLF4J 日誌介面
     compileOnly "org.slf4j:slf4j-api:${slf4j_version}"
 

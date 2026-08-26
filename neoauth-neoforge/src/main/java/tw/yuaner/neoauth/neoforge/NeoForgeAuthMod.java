@@ -43,6 +43,18 @@ public class NeoForgeAuthMod {
     }
 
     /**
+     * 玩家成功進入世界事件：確保此時 BlueMap 已完全載入，即時同步或補寫頭像至 BlueMap 儲存庫。
+     */
+    @SubscribeEvent
+    public void onPlayerLoggedIn(net.neoforged.neoforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() != null) {
+            String username = event.getEntity().getGameProfile().getName();
+            java.util.UUID offlineUuid = event.getEntity().getUUID();
+            tw.yuaner.neoauth.util.BlueMapIntegration.syncBlueMapPlayerHead(username, offlineUuid);
+        }
+    }
+
+    /**
      * 伺服器停止事件：關閉資料庫連線池。
      */
     @SubscribeEvent

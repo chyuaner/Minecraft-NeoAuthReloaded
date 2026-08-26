@@ -36,7 +36,10 @@ NeoAuthReloaded 支援原廠 `server.properties` 中的兩種連線模式，服�
 - **動態正版加密握手 (On-Demand Premium Handshake)**：
   - 在 `online-mode: false` 離線伺服器下，自主生成 RSA 加密金鑰並動態發起 Mojang 密鑰握手（`ClientboundHelloPacket`）。
   - **正版玩家免密碼自動登入**：通過 Mojang Session 驗證後直接自動登入，無需輸入密碼，提供最順暢的原生遊玩體驗。
-  - **離線玩家自動降級放行**：離線客戶端自動進入密碼登入流程，支援 `/login` 與 `/register`。
+- **BlueMap 網頁地圖正版/外置站頭像自動同步**：
+  - 完美彌平 `online-mode: false` 下分配離線 UUID 所造成的 BlueMap 頭像 404 斷層。
+  - 當玩家通過官方正版或外置皮膚站驗證時，背景非同步下載 64x64 頭像並自動寫入 BlueMap 各世界地圖資源庫 (`assets/playerheads/<offlineUuid>.png`)，網頁端即時呈現正版頭像。
+  - 支援自架皮膚站（如 Blessing Skin、authlib-injector）頭像網址設定與多來源智慧備援。
 - **開箱即用 SQLite & 高效能連線池**：
   - 預設提供零配置的 SQLite 支援（檔案位於 `config/neoauth/neoauth.db`），支援相對路徑跨目錄讀取舊 AuthMe 檔案。
   - 支援 MariaDB 與 MySQL，透過 HikariCP 高效連線池進行執行緒安全的資料操作（SQLite 啟用 WAL 高效並行模式）。
@@ -111,6 +114,12 @@ config/neoauth/
   - `forceLoginAfterRegister`：註冊成功後是否強制要求重新執行 `/login`（預設 `false`）。
 - `settings.security`：密碼最短與最長長度設定、密碼雜湊方式 (SHA256 / BCRYPT 等)。
 - `settings.restrictions`：登入超時、錯誤密碼次數限制、定身失明與緩速效果開關、歡迎公告顯示開關。
+- `bluemap`：BlueMap 網頁地圖頭像自動整合設定區塊：
+  - `enabled`：是否啟用 BlueMap 正版/外置站玩家頭像自動下載與同步（預設 `true`）。
+  - `useSkinRestorerConfig`：是否自動連動讀取 SkinRestorer 設定檔（`config/skinrestorer/config.json` 等），自動提取自架皮膚站並遵循其優先順序（預設 `true`，未安裝時自動回退獨立設定）。
+  - `priority`：獨立模式下的頭像來源優先順序（`OFFICIAL_FIRST` 官方優先 / `CUSTOM_FIRST` 自架站優先，預設 `OFFICIAL_FIRST`）。
+  - `avatarUrl`：官方正版頭像下載來源 API 網址範本（預設 `"https://mc-heads.net/avatar/{username}/64"`）。
+  - `customAvatarUrl`：自架第三方皮膚站 / Blessing Skin 外置頭像來源 API 範本（例如 `"https://mc8.yuaner.tw/avatar/player/{username}?size=64"`）。
 
 ---
 

@@ -70,6 +70,13 @@ public class NeoAuthConfig implements IAuthConfig {
     private boolean forceKickAfterRegister = false;
     private boolean forceLoginAfterRegister = false;
 
+    // bluemap (BlueMap 網頁地圖整合)
+    private boolean blueMapEnabled = true;
+    private boolean useSkinRestorerConfig = true;
+    private String blueMapPriority = "OFFICIAL_FIRST";
+    private String blueMapAvatarUrl = "https://mc-heads.net/avatar/{username}/64";
+    private String blueMapCustomAvatarUrl = "";
+
     public NeoAuthConfig() {}
 
     @SuppressWarnings("unchecked")
@@ -167,6 +174,35 @@ public class NeoAuthConfig implements IAuthConfig {
             if (extMap.get("mySQLColumnSalt") != null && config.mySQLColumnSalt.isBlank()) {
                 config.mySQLColumnSalt = String.valueOf(extMap.get("mySQLColumnSalt"));
             }
+        }
+
+        // bluemap (支援頂層 bluemap 與 settings.bluemap)
+        Object blueMapObj = map.get("bluemap");
+        if (blueMapObj == null && settingsObj instanceof Map<?, ?> sMap) {
+            blueMapObj = sMap.get("bluemap");
+        }
+        if (blueMapObj instanceof Map<?, ?> bmMap) {
+            if (bmMap.get("enabled") instanceof Boolean b) config.blueMapEnabled = b;
+            else if (bmMap.get("enable") instanceof Boolean b) config.blueMapEnabled = b;
+            else if (bmMap.get("enable-bluemap-integration") instanceof Boolean b) config.blueMapEnabled = b;
+            else if (bmMap.get("enableBluemapIntegration") instanceof Boolean b) config.blueMapEnabled = b;
+
+            if (bmMap.get("useSkinRestorerConfig") instanceof Boolean b) config.useSkinRestorerConfig = b;
+            else if (bmMap.get("use-skinrestorer-config") instanceof Boolean b) config.useSkinRestorerConfig = b;
+            else if (bmMap.get("useSkinRestorer") instanceof Boolean b) config.useSkinRestorerConfig = b;
+            else if (bmMap.get("use-skinrestorer") instanceof Boolean b) config.useSkinRestorerConfig = b;
+
+            if (bmMap.get("priority") != null) config.blueMapPriority = String.valueOf(bmMap.get("priority"));
+            else if (bmMap.get("sourcePriority") != null) config.blueMapPriority = String.valueOf(bmMap.get("sourcePriority"));
+            else if (bmMap.get("source-priority") != null) config.blueMapPriority = String.valueOf(bmMap.get("source-priority"));
+
+            if (bmMap.get("avatarUrl") != null) config.blueMapAvatarUrl = String.valueOf(bmMap.get("avatarUrl"));
+            else if (bmMap.get("avatar-url") != null) config.blueMapAvatarUrl = String.valueOf(bmMap.get("avatar-url"));
+            else if (bmMap.get("avatar_url") != null) config.blueMapAvatarUrl = String.valueOf(bmMap.get("avatar_url"));
+
+            if (bmMap.get("customAvatarUrl") != null) config.blueMapCustomAvatarUrl = String.valueOf(bmMap.get("customAvatarUrl"));
+            else if (bmMap.get("custom-avatar-url") != null) config.blueMapCustomAvatarUrl = String.valueOf(bmMap.get("custom-avatar-url"));
+            else if (bmMap.get("custom_avatar_url") != null) config.blueMapCustomAvatarUrl = String.valueOf(bmMap.get("custom_avatar_url"));
         }
 
         return config;
@@ -439,5 +475,30 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public boolean isForceLoginAfterRegister() {
         return forceLoginAfterRegister;
+    }
+
+    @Override
+    public boolean isBlueMapIntegrationEnabled() {
+        return blueMapEnabled;
+    }
+
+    @Override
+    public String getBlueMapAvatarUrl() {
+        return blueMapAvatarUrl;
+    }
+
+    @Override
+    public String getBlueMapCustomAvatarUrl() {
+        return blueMapCustomAvatarUrl;
+    }
+
+    @Override
+    public boolean isUseSkinRestorerConfig() {
+        return useSkinRestorerConfig;
+    }
+
+    @Override
+    public String getBlueMapPriority() {
+        return blueMapPriority != null && !blueMapPriority.isBlank() ? blueMapPriority.trim().toUpperCase() : "OFFICIAL_FIRST";
     }
 }

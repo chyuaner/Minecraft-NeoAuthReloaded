@@ -156,3 +156,34 @@ settings:
     slowness: true
     # 玩家進服時是否顯示 welcome.txt 歡迎文字公告
     displayWelcomeMessage: true
+
+# ==============================================================================
+# BlueMap 網頁地圖整合 (BlueMap Integration)
+# ==============================================================================
+bluemap:
+  # 是否自動為通過正版或外置站驗證的玩家生成並同步 BlueMap 頭像 (預設: true)
+  # 啟用後，當正版或外置皮膚站玩家連線進服時，NeoAuth 將非同步從頭像 API 下載頭像並寫入
+  # bluemap/web/maps/<mapId>/assets/playerheads/<offlineUuid>.png，
+  # 完美解決 online-mode: false 下因離線 UUID 斷層導致 BlueMap 網頁玩家頭像回退為史蒂夫的問題。
+  enabled: true
+
+  # 是否自動讀取並連動 SkinRestorer 模組設定 (預設: true)
+  # - true: 若伺服器安裝了 SkinRestorer (如 config/skinrestorer/config.json)，
+  #         NeoAuth 將自動讀取其自架皮膚站 (custom authlib-injector) 與服務優先順序，無需手動重複設定！
+  #         (若未檢測到 SkinRestorer 相關設定，將自動回退使用下列獨立設定)
+  # - false: 不連動 SkinRestorer，一律使用下列獨立設定。
+  useSkinRestorerConfig: true
+
+  # 獨立模式下的來源優先順序 (預設: OFFICIAL_FIRST)
+  # - OFFICIAL_FIRST: 優先向官方正版頭像 API 請求，失敗時回退至自架第三方頭像站 (推薦)
+  # - CUSTOM_FIRST: 優先向自架第三方皮膚站請求，失敗時回退至官方正版頭像 API
+  priority: "OFFICIAL_FIRST"
+
+  # 官方正版頭像下載來源 API 網址範本 (支援 {username}、{uuid} 與 {size} 佔位符)
+  # 預設: "https://mc-heads.net/avatar/{username}/64"
+  avatarUrl: "https://mc-heads.net/avatar/{username}/64"
+
+  # 自架第三方皮膚站 / Blessing Skin 外置頭像來源 API 範本 (可為空字串 "")
+  # - 例如 Blessing Skin 站點: "https://mc8.yuaner.tw/avatar/player/{username}?size=64" 或 "https://mc8.yuaner.tw/avatar/{username}/64"
+  # - 當連動 SkinRestorer 且成功讀取時，此項將由 SkinRestorer 設定自動覆蓋。
+  customAvatarUrl: ""

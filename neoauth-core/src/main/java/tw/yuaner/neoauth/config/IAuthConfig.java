@@ -318,5 +318,30 @@ public interface IAuthConfig {
      * 玩家成功註冊後是否強制要求重新執行 /login 進行登入 (對應 settings.registration.forceLoginAfterRegister，預設: false)
      */
     boolean isForceLoginAfterRegister();
+
+    /**
+     * 是否啟用 BlueMap 網頁地圖正版與外置站頭像自動同步功能 (對應 bluemap.enabled，預設: true)
+     */
+    boolean isBlueMapIntegrationEnabled();
+
+    /**
+     * 取得 Mojang 官方/預設頭像下載 API 網址範本 (對應 bluemap.avatarUrl，預設: "https://mc-heads.net/avatar/{username}/64")
+     */
+    String getBlueMapAvatarUrl();
+
+    /**
+     * 取得自架第三方皮膚站 / Blessing Skin 外置頭像下載 API 網址範本 (對應 bluemap.customAvatarUrl，預設: "")
+     */
+    String getBlueMapCustomAvatarUrl();
+
+    /**
+     * 是否自動連動讀取 SkinRestorer 模組設定 (對應 bluemap.useSkinRestorerConfig，預設: true)
+     */
+    boolean isUseSkinRestorerConfig();
+
+    /**
+     * 取得獨立模式下的頭像來源優先順序 (對應 bluemap.priority，預設: "OFFICIAL_FIRST")
+     */
+    String getBlueMapPriority();
 }
 

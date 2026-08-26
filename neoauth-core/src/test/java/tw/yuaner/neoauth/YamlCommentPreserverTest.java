@@ -75,6 +75,10 @@ public class YamlCommentPreserverTest {
         assertTrue(mergedYaml.contains("minPasswordLength: 0"));
         assertTrue(mergedYaml.contains("maxPasswordLength: 0"));
         assertTrue(mergedYaml.contains("keepOfflineUuidCompatibility: false"));
+        assertTrue(mergedYaml.contains("# BlueMap 網頁地圖整合 (BlueMap Integration)"));
+        assertTrue(mergedYaml.contains("useSkinRestorerConfig: true"));
+        assertTrue(mergedYaml.contains("priority: \"OFFICIAL_FIRST\""));
+        assertTrue(mergedYaml.contains("avatarUrl: \"https://mc-heads.net/avatar/{username}/64\""));
 
         // 4. 驗證合併後的 YAML 可被完整解析為 NeoAuthConfig 物件
         Map<String, Object> mergedMap = yaml.load(mergedYaml);
@@ -96,6 +100,11 @@ public class YamlCommentPreserverTest {
         assertEquals("realname", config.getMySqlRealName());
         assertEquals("password", config.getMySqlColumnPassword());
         assertEquals("totp", config.getMySqlTotpKey());
+        assertTrue(config.isBlueMapIntegrationEnabled());
+        assertTrue(config.isUseSkinRestorerConfig());
+        assertEquals("OFFICIAL_FIRST", config.getBlueMapPriority());
+        assertEquals("https://mc-heads.net/avatar/{username}/64", config.getBlueMapAvatarUrl());
+        assertEquals("", config.getBlueMapCustomAvatarUrl());
     }
 
     @Test

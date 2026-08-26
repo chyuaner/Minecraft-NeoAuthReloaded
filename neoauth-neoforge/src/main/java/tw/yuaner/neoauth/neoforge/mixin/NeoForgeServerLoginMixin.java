@@ -219,6 +219,8 @@ public abstract class NeoForgeServerLoginMixin {
                     String texturesValue = null;
                     String texturesSignature = null;
 
+                    boolean isCustomAuth = false;
+
                     // 1. 優先向 Mojang 官方 Session 伺服器查詢 (傳入 null 避免 IPv4/IPv6 雙棧網路不匹配問題)
                     ProfileResult profileResult = this.server.getSessionService().hasJoinedServer(username, digest, null);
                     if (profileResult != null && profileResult.profile() != null) {
@@ -240,6 +242,7 @@ public abstract class NeoForgeServerLoginMixin {
                                 tw.yuaner.neoauth.util.YggdrasilService.verifyJoined(customYggdrasilUrl, username, digest, null);
                         if (yggResult.success()) {
                             verified = true;
+                            isCustomAuth = true;
                             authSource = "自訂 Yggdrasil (" + customYggdrasilUrl + ")";
                             texturesValue = yggResult.texturesValue();
                             texturesSignature = yggResult.texturesSignature();
@@ -249,6 +252,9 @@ public abstract class NeoForgeServerLoginMixin {
                     if (verified) {
                         AuthManager.markPremiumVerifiedWithTextures(offlineUuid, username, texturesValue, texturesSignature);
                         neoauth$LOGGER.info("NeoAuth: {} 驗證成功 ({})，已標記免密自動登入與皮膚保留。", authSource, username);
+
+                        // BlueMap 網頁地圖正版/外置站頭像自動同步
+                        tw.yuaner.neoauth.util.BlueMapIntegration.syncBlueMapPlayerHead(username, offlineUuid, isCustomAuth);
 
                         // 延遲晉升機制：若玩家在握手超時放行後已進入遊戲且尚未手動登入，即時升級為已登入狀態並解除限制
                         this.server.execute(() -> {

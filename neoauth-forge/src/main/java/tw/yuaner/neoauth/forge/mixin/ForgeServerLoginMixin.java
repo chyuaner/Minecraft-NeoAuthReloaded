@@ -238,6 +238,8 @@ public abstract class ForgeServerLoginMixin {
                     String texturesValue = null;
                     String texturesSignature = null;
 
+                    boolean isCustomAuth = false;
+
                     // 1. 優先向 Mojang 官方 Session 伺服器查詢 (傳入 null 避免 IPv4/IPv6 雙棧網路不匹配問題)
                     GameProfile profile = server.getSessionService().hasJoinedServer(new GameProfile(null, username), digest, null);
                     if (profile != null) {
@@ -258,6 +260,7 @@ public abstract class ForgeServerLoginMixin {
                                 tw.yuaner.neoauth.util.YggdrasilService.verifyJoined(customYggdrasilUrl, username, digest, null);
                         if (yggResult.success()) {
                             verified = true;
+                            isCustomAuth = true;
                             authSource = "自訂 Yggdrasil (" + customYggdrasilUrl + ")";
                             texturesValue = yggResult.texturesValue();
                             texturesSignature = yggResult.texturesSignature();
@@ -267,6 +270,9 @@ public abstract class ForgeServerLoginMixin {
                     if (verified) {
                         AuthManager.markPremiumVerifiedWithTextures(offlineUuid, username, texturesValue, texturesSignature);
                         neoauth$LOGGER.info("NeoAuth: {} 驗證成功 ({})，已標記免密自動登入與皮膚保留。", authSource, username);
+
+                        // BlueMap 網頁地圖正版/外置站頭像自動同步
+                        tw.yuaner.neoauth.util.BlueMapIntegration.syncBlueMapPlayerHead(username, offlineUuid, isCustomAuth);
 
                         server.execute(() -> {
                             ServerPlayer player = server.getPlayerList().getPlayer(offlineUuid);

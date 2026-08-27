@@ -275,7 +275,21 @@ public class BlueMapIntegration {
             }
         }
 
-        // 3. 逐一嘗試下載頭像圖檔，取得第一個成功的結果
+        // 3. 若此玩家明確是通過自訂外置驗證站登入，自訂皮膚站來源優先
+        if (isCustomAuth && candidates != null && !candidates.isEmpty()) {
+            List<String> reordered = new ArrayList<>();
+            for (String c : candidates) {
+                if (!c.equals(officialUrlTemplate)) {
+                    reordered.add(c);
+                }
+            }
+            if (!officialUrlTemplate.isBlank() && !reordered.contains(officialUrlTemplate)) {
+                reordered.add(officialUrlTemplate);
+            }
+            candidates = reordered;
+        }
+
+        // 4. 逐一嘗試下載頭像圖檔，取得第一個成功的結果
         for (String template : candidates) {
             String url = formatAvatarUrl(template, username, offlineUuid);
             byte[] bytes = downloadImage(url);
@@ -458,12 +472,21 @@ public class BlueMapIntegration {
                     .uri(URI.create(urlString))
                     .timeout(Duration.ofSeconds(8))
                     .header("User-Agent", "NeoAuth-BlueMap/1.0.0")
-                    .header("Accept", "image/png,image/*;q=0.9,*/*;q=0.8")
+                    .header("Accept", "image/png,image/webp,image/*;q=0.9,*/*;q=0.8")
                     .GET()
                     .build();
 
             HttpResponse<byte[]> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofByteArray());
             if (response.statusCode() == 200) {
+                // 檢查 mc-heads.net 等官方 API 的 X-Account-Valid 標頭
+                // 若玩家不存在於 Mojang 官方 (x-account-valid: false)，mc-heads.net 會回傳預設史蒂夫並標記 false，
+                // 此時必須視為該來源無此頭像 (回傳 null)，以便無縫回退至自架第三方皮膚站 (Blessing Skin)！
+                Optional<String> accountValidHeader = response.headers().firstValue("X-Account-Valid");
+                if (accountValidHeader.isPresent() && "false".equalsIgnoreCase(accountValidHeader.get().trim())) {
+                    LOGGER.debug("NeoAuth: 頭像來源回傳 X-Account-Valid: false，玩家不存在於該官方來源，繼續回退下一來源: {}", urlString);
+                    return null;
+                }
+
                 byte[] body = response.body();
                 if (isValidPngOrImage(body)) {
                     return body;

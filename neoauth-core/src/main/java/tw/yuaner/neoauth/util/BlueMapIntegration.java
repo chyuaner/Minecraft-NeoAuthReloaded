@@ -523,7 +523,7 @@ public class BlueMapIntegration {
             onEnableMethod.invoke(null, (Consumer<Object>) api -> {
                 LOGGER.info("NeoAuth: 偵測到 BlueMap API 已就緒，正在自動同步已快取的玩家頭像至 BlueMap 儲存庫...");
                 activeBlueMapApi = api;
-                flushPendingHeadsToApi(api);
+                CompletableFuture.runAsync(() -> flushPendingHeadsToApi(api));
             });
             Method onDisableMethod = apiClass.getMethod("onDisable", Consumer.class);
             onDisableMethod.invoke(null, (Consumer<Object>) api -> {

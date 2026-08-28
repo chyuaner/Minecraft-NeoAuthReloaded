@@ -42,6 +42,17 @@ public class MySqlDataSource extends AbstractSqlDataSource {
         hikariConfig.addDataSourceProperty("verifyServerCertificate", String.valueOf(config.isMySqlCheckServerCertificate()));
         hikariConfig.addDataSourceProperty("allowPublicKeyRetrieval", String.valueOf(config.isMySqlAllowPublicKeyRetrieval()));
 
+        // 自訂 SSL 憑證與 mTLS 設定 (MariaDB Connector/J 原生支援)
+        if (config.getMySqlServerSslCert() != null && !config.getMySqlServerSslCert().isBlank()) {
+            hikariConfig.addDataSourceProperty("serverSslCert", config.getMySqlServerSslCert().trim());
+        }
+        if (config.getMySqlClientSslCert() != null && !config.getMySqlClientSslCert().isBlank()) {
+            hikariConfig.addDataSourceProperty("clientSslCert", config.getMySqlClientSslCert().trim());
+        }
+        if (config.getMySqlClientSslKey() != null && !config.getMySqlClientSslKey().isBlank()) {
+            hikariConfig.addDataSourceProperty("clientSslKey", config.getMySqlClientSslKey().trim());
+        }
+
         HikariDataSource ds = new HikariDataSource(hikariConfig);
         LOGGER.info("NeoAuth: 成功建立 {} 資料庫連線池 [{}:{}/{}]！", backend, host, port, dbName);
         return ds;

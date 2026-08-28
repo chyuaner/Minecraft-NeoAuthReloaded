@@ -64,6 +64,9 @@ public class YamlCommentPreserverTest {
         assertTrue(mergedYaml.contains("mySQLUseSSL: false"));
         assertTrue(mergedYaml.contains("mySQLCheckServerCertificate: true"));
         assertTrue(mergedYaml.contains("mySQLAllowPublicKeyRetrieval: true"));
+        assertTrue(mergedYaml.contains("mySQLServerSslCert: \"\""));
+        assertTrue(mergedYaml.contains("mySQLClientSslCert: \"\""));
+        assertTrue(mergedYaml.contains("mySQLClientSslKey: \"\""));
         assertTrue(mergedYaml.contains("mySQLColumnId: \"id\""));
         assertTrue(mergedYaml.contains("mySQLColumnName: \"username\""));
         assertTrue(mergedYaml.contains("mySQLRealName: \"realname\""));
@@ -95,6 +98,9 @@ public class YamlCommentPreserverTest {
         assertFalse(config.isMySqlUseSSL());
         assertTrue(config.isMySqlCheckServerCertificate());
         assertTrue(config.isMySqlAllowPublicKeyRetrieval());
+        assertEquals("", config.getMySqlServerSslCert());
+        assertEquals("", config.getMySqlClientSslCert());
+        assertEquals("", config.getMySqlClientSslKey());
         assertEquals("id", config.getMySqlColumnId());
         assertEquals("username", config.getMySqlColumnName());
         assertEquals("realname", config.getMySqlRealName());
@@ -105,6 +111,26 @@ public class YamlCommentPreserverTest {
         assertEquals("OFFICIAL_FIRST", config.getBlueMapPriority());
         assertEquals("https://mc-heads.net/avatar/{username}/64", config.getBlueMapAvatarUrl());
         assertEquals("", config.getBlueMapCustomAvatarUrl());
+    }
+
+    @Test
+    public void testSslCertCustomConfiguration() {
+        String customYaml = """
+                DataSource:
+                  backend: "MARIADB"
+                  mySQLUseSSL: true
+                  mySQLCheckServerCertificate: true
+                  mySQLServerSslCert: "config/neoauth/ca-cert.pem"
+                  mySQLClientSslCert: "config/neoauth/client-cert.pem"
+                  mySQLClientSslKey: "config/neoauth/client-key.pem"
+                """;
+        Yaml yaml = new Yaml();
+        NeoAuthConfig config = NeoAuthConfig.fromMap(yaml.load(customYaml));
+        assertTrue(config.isMySqlUseSSL());
+        assertTrue(config.isMySqlCheckServerCertificate());
+        assertEquals("config/neoauth/ca-cert.pem", config.getMySqlServerSslCert());
+        assertEquals("config/neoauth/client-cert.pem", config.getMySqlClientSslCert());
+        assertEquals("config/neoauth/client-key.pem", config.getMySqlClientSslKey());
     }
 
     @Test

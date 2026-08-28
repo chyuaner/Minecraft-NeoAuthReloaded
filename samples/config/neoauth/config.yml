@@ -27,6 +27,12 @@ DataSource:
   mySQLCheckServerCertificate: true
   # 是否允許客戶端檢索 RSA 伺服器公鑰 (Authorize client to retrieve RSA server public key)
   mySQLAllowPublicKeyRetrieval: true
+  # 自訂 CA 伺服器憑證路徑 (支援相對路徑如 "config/neoauth/ca-cert.pem" 或絕對路徑，留空代表使用 Java 預設信任庫)
+  mySQLServerSslCert: ""
+  # 自訂客戶端憑證路徑 (雙向 mTLS 認證時使用，留空表示不使用)
+  mySQLClientSslCert: ""
+  # 自訂客戶端私鑰路徑 (雙向 mTLS 認證時使用，留空表示不使用)
+  mySQLClientSslKey: ""
 
   # 連線池最大連線數 (Overrides the size of the DB Connection Pool)
   poolSize: 10

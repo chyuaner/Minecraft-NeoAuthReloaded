@@ -79,6 +79,21 @@ public interface IAuthConfig {
     boolean isMySqlAllowPublicKeyRetrieval();
 
     /**
+     * 取得自訂 CA 伺服器憑證路徑或 PEM 字串 (留空代表使用 Java 預設信任庫)
+     */
+    String getMySqlServerSslCert();
+
+    /**
+     * 取得自訂客戶端憑證路徑 (雙向 mTLS 認證時使用，留空表示不使用)
+     */
+    String getMySqlClientSslCert();
+
+    /**
+     * 取得自訂客戶端私鑰路徑 (雙向 mTLS 認證時使用，留空表示不使用)
+     */
+    String getMySqlClientSslKey();
+
+    /**
      * 取得主鍵 ID 欄位名稱
      */
     String getMySqlColumnId();

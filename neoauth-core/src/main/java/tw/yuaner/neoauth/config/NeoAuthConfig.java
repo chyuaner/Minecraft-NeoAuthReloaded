@@ -22,6 +22,9 @@ public class NeoAuthConfig implements IAuthConfig {
     private boolean mySQLUseSSL = false;
     private boolean mySQLCheckServerCertificate = true;
     private boolean mySQLAllowPublicKeyRetrieval = true;
+    private String mySQLServerSslCert = "";
+    private String mySQLClientSslCert = "";
+    private String mySQLClientSslKey = "";
 
     // 自訂資料庫欄位名稱 (AuthMeReloaded 相容)
     private String mySQLColumnId = "id";
@@ -103,6 +106,12 @@ public class NeoAuthConfig implements IAuthConfig {
             if (dsMap.get("mySQLUseSSL") instanceof Boolean b) config.mySQLUseSSL = b;
             if (dsMap.get("mySQLCheckServerCertificate") instanceof Boolean b) config.mySQLCheckServerCertificate = b;
             if (dsMap.get("mySQLAllowPublicKeyRetrieval") instanceof Boolean b) config.mySQLAllowPublicKeyRetrieval = b;
+            if (dsMap.get("mySQLServerSslCert") != null) config.mySQLServerSslCert = String.valueOf(dsMap.get("mySQLServerSslCert"));
+            else if (dsMap.get("serverSslCert") != null) config.mySQLServerSslCert = String.valueOf(dsMap.get("serverSslCert"));
+            if (dsMap.get("mySQLClientSslCert") != null) config.mySQLClientSslCert = String.valueOf(dsMap.get("mySQLClientSslCert"));
+            else if (dsMap.get("clientSslCert") != null) config.mySQLClientSslCert = String.valueOf(dsMap.get("clientSslCert"));
+            if (dsMap.get("mySQLClientSslKey") != null) config.mySQLClientSslKey = String.valueOf(dsMap.get("mySQLClientSslKey"));
+            else if (dsMap.get("clientSslKey") != null) config.mySQLClientSslKey = String.valueOf(dsMap.get("clientSslKey"));
 
             // 欄位名稱
             if (dsMap.get("mySQLColumnId") != null) config.mySQLColumnId = String.valueOf(dsMap.get("mySQLColumnId"));
@@ -261,6 +270,21 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public boolean isMySqlAllowPublicKeyRetrieval() {
         return mySQLAllowPublicKeyRetrieval;
+    }
+
+    @Override
+    public String getMySqlServerSslCert() {
+        return mySQLServerSslCert;
+    }
+
+    @Override
+    public String getMySqlClientSslCert() {
+        return mySQLClientSslCert;
+    }
+
+    @Override
+    public String getMySqlClientSslKey() {
+        return mySQLClientSslKey;
     }
 
     @Override

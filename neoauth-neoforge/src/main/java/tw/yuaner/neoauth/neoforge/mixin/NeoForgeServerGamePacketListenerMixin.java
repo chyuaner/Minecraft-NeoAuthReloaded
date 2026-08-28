@@ -1,7 +1,7 @@
 package tw.yuaner.neoauth.neoforge.mixin;
 
 import net.minecraft.network.chat.RemoteChatSession;
-import net.minecraft.network.protocol.game.ServerboundChatSessionUpdatePacket;
+import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -13,12 +13,14 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import tw.yuaner.neoauth.AuthManager;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
 
 /**
  * 攔截聊天 Session 更新，防止外置站 (Blessing Skin / authlib-injector) 與離線玩家因公鑰非 Mojang 簽發而遭伺服器誤踢。
+ * 同時攔截未登入玩家的容器與物品操作封包。
  */
 @Mixin(ServerGamePacketListenerImpl.class)
 public abstract class NeoForgeServerGamePacketListenerMixin {
@@ -51,6 +53,76 @@ public abstract class NeoForgeServerGamePacketListenerMixin {
                 }
             } catch (Exception ignored) {
             }
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "handleContainerClick", at = @At("HEAD"), cancellable = true)
+    private void neoauth$handleContainerClick(ServerboundContainerClickPacket packet, CallbackInfo ci) {
+        if (this.player != null && !AuthManager.isLoggedIn(this.player.getUUID())) {
+            if (this.player.containerMenu != this.player.inventoryMenu) {
+                this.player.closeContainer();
+            }
+            this.player.containerMenu.sendAllDataToRemote();
+            this.player.inventoryMenu.sendAllDataToRemote();
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "handleContainerButtonClick", at = @At("HEAD"), cancellable = true)
+    private void neoauth$handleContainerButtonClick(ServerboundContainerButtonClickPacket packet, CallbackInfo ci) {
+        if (this.player != null && !AuthManager.isLoggedIn(this.player.getUUID())) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "handleContainerSlotStateChanged", at = @At("HEAD"), cancellable = true)
+    private void neoauth$handleContainerSlotStateChanged(ServerboundContainerSlotStateChangedPacket packet, CallbackInfo ci) {
+        if (this.player != null && !AuthManager.isLoggedIn(this.player.getUUID())) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "handleSetCreativeModeSlot", at = @At("HEAD"), cancellable = true)
+    private void neoauth$handleSetCreativeModeSlot(ServerboundSetCreativeModeSlotPacket packet, CallbackInfo ci) {
+        if (this.player != null && !AuthManager.isLoggedIn(this.player.getUUID())) {
+            this.player.inventoryMenu.sendAllDataToRemote();
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "handlePlayerAction", at = @At("HEAD"), cancellable = true)
+    private void neoauth$handlePlayerAction(ServerboundPlayerActionPacket packet, CallbackInfo ci) {
+        if (this.player != null && !AuthManager.isLoggedIn(this.player.getUUID())) {
+            this.player.inventoryMenu.sendAllDataToRemote();
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "handlePlaceRecipe", at = @At("HEAD"), cancellable = true)
+    private void neoauth$handlePlaceRecipe(ServerboundPlaceRecipePacket packet, CallbackInfo ci) {
+        if (this.player != null && !AuthManager.isLoggedIn(this.player.getUUID())) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "handleSelectTrade", at = @At("HEAD"), cancellable = true)
+    private void neoauth$handleSelectTrade(ServerboundSelectTradePacket packet, CallbackInfo ci) {
+        if (this.player != null && !AuthManager.isLoggedIn(this.player.getUUID())) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "handleRenameItem", at = @At("HEAD"), cancellable = true)
+    private void neoauth$handleRenameItem(ServerboundRenameItemPacket packet, CallbackInfo ci) {
+        if (this.player != null && !AuthManager.isLoggedIn(this.player.getUUID())) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "handlePickItem", at = @At("HEAD"), cancellable = true)
+    private void neoauth$handlePickItem(ServerboundPickItemPacket packet, CallbackInfo ci) {
+        if (this.player != null && !AuthManager.isLoggedIn(this.player.getUUID())) {
             ci.cancel();
         }
     }

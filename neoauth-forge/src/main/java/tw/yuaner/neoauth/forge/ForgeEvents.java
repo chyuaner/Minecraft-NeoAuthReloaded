@@ -15,6 +15,8 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.item.ItemTossEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.entity.player.PlayerContainerEvent;
+import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
@@ -790,6 +792,26 @@ public class ForgeEvents {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onInteractEntity(PlayerInteractEvent.EntityInteract event) {
+        if (event.getEntity() instanceof ServerPlayer player && !AuthManager.isLoggedIn(player.getUUID())) {
+            event.setCanceled(true);
+        }
+    }
+
+    // --- 容器與背包開啟防護 ---
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onContainerOpen(PlayerContainerEvent.Open event) {
+        if (event.getEntity() instanceof ServerPlayer player && !AuthManager.isLoggedIn(player.getUUID())) {
+            if (event.getContainer() != player.inventoryMenu) {
+                player.closeContainer();
+            }
+        }
+    }
+
+    // --- 地面物品拾取防護 ---
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onItemPickup(EntityItemPickupEvent event) {
         if (event.getEntity() instanceof ServerPlayer player && !AuthManager.isLoggedIn(player.getUUID())) {
             event.setCanceled(true);
         }

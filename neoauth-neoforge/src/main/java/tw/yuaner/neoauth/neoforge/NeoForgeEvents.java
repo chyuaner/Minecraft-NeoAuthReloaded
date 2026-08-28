@@ -17,6 +17,8 @@ import net.neoforged.neoforge.event.ServerChatEvent;
 import net.neoforged.neoforge.event.entity.item.ItemTossEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
+import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
@@ -792,6 +794,26 @@ public class NeoForgeEvents {
     public static void onInteractEntity(PlayerInteractEvent.EntityInteract event) {
         if (event.getEntity() instanceof ServerPlayer player && !AuthManager.isLoggedIn(player.getUUID())) {
             event.setCanceled(true);
+        }
+    }
+
+    // --- 容器與背包開啟防護 ---
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onContainerOpen(PlayerContainerEvent.Open event) {
+        if (event.getEntity() instanceof ServerPlayer player && !AuthManager.isLoggedIn(player.getUUID())) {
+            if (event.getContainer() != player.inventoryMenu) {
+                player.closeContainer();
+            }
+        }
+    }
+
+    // --- 地面物品拾取防護 ---
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onItemPickup(ItemEntityPickupEvent.Pre event) {
+        if (event.getPlayer() instanceof ServerPlayer player && !AuthManager.isLoggedIn(player.getUUID())) {
+            event.setCanPickup(net.neoforged.neoforge.common.util.TriState.FALSE);
         }
     }
 

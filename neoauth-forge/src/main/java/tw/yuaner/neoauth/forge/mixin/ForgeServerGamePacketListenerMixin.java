@@ -1,7 +1,7 @@
 package tw.yuaner.neoauth.forge.mixin;
 
 import net.minecraft.network.chat.RemoteChatSession;
-import net.minecraft.network.protocol.game.ServerboundChatSessionUpdatePacket;
+import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -13,12 +13,14 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import tw.yuaner.neoauth.AuthManager;
 
 import java.lang.reflect.Field;
 import java.util.Objects;
 
 /**
  * 攔截聊天 Session 更新，防止外置站 (Blessing Skin / authlib-injector) 與離線玩家因公鑰非 Mojang 簽發而遭伺服器誤踢 (Forge 1.20.1)。
+ * 同時攔截未登入玩家的容器與物品操作封包。
  * <p>
  * 同時相容 Mojang 映射與 Forge 執行期 SRG 混淆映射，避免因缺少 refMap 導致 Shadow 欄位無法定位。
  */
@@ -61,6 +63,157 @@ public abstract class ForgeServerGamePacketListenerMixin {
                 }
             } catch (Exception ignored) {
             }
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = {
+                    "handleContainerClick(Lnet/minecraft/network/protocol/game/ServerboundContainerClickPacket;)V",
+                    "handleContainerClick",
+                    "m_5914_"
+            },
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0,
+            remap = false
+    )
+    private void neoauth$handleContainerClick(ServerboundContainerClickPacket packet, CallbackInfo ci) {
+        ServerPlayer player = neoauth$getPlayer();
+        if (player != null && !AuthManager.isLoggedIn(player.getUUID())) {
+            if (player.containerMenu != player.inventoryMenu) {
+                player.closeContainer();
+            }
+            player.containerMenu.sendAllDataToRemote();
+            player.inventoryMenu.sendAllDataToRemote();
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = {
+                    "handleContainerButtonClick(Lnet/minecraft/network/protocol/game/ServerboundContainerButtonClickPacket;)V",
+                    "handleContainerButtonClick",
+                    "m_6557_"
+            },
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0,
+            remap = false
+    )
+    private void neoauth$handleContainerButtonClick(ServerboundContainerButtonClickPacket packet, CallbackInfo ci) {
+        ServerPlayer player = neoauth$getPlayer();
+        if (player != null && !AuthManager.isLoggedIn(player.getUUID())) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = {
+                    "handleSetCreativeModeSlot(Lnet/minecraft/network/protocol/game/ServerboundSetCreativeModeSlotPacket;)V",
+                    "handleSetCreativeModeSlot",
+                    "m_5964_"
+            },
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0,
+            remap = false
+    )
+    private void neoauth$handleSetCreativeModeSlot(ServerboundSetCreativeModeSlotPacket packet, CallbackInfo ci) {
+        ServerPlayer player = neoauth$getPlayer();
+        if (player != null && !AuthManager.isLoggedIn(player.getUUID())) {
+            player.inventoryMenu.sendAllDataToRemote();
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = {
+                    "handlePlayerAction(Lnet/minecraft/network/protocol/game/ServerboundPlayerActionPacket;)V",
+                    "handlePlayerAction",
+                    "m_7502_"
+            },
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0,
+            remap = false
+    )
+    private void neoauth$handlePlayerAction(ServerboundPlayerActionPacket packet, CallbackInfo ci) {
+        ServerPlayer player = neoauth$getPlayer();
+        if (player != null && !AuthManager.isLoggedIn(player.getUUID())) {
+            player.inventoryMenu.sendAllDataToRemote();
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = {
+                    "handlePlaceRecipe(Lnet/minecraft/network/protocol/game/ServerboundPlaceRecipePacket;)V",
+                    "handlePlaceRecipe",
+                    "m_7191_"
+            },
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0,
+            remap = false
+    )
+    private void neoauth$handlePlaceRecipe(ServerboundPlaceRecipePacket packet, CallbackInfo ci) {
+        ServerPlayer player = neoauth$getPlayer();
+        if (player != null && !AuthManager.isLoggedIn(player.getUUID())) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = {
+                    "handleSelectTrade(Lnet/minecraft/network/protocol/game/ServerboundSelectTradePacket;)V",
+                    "handleSelectTrade",
+                    "m_6321_"
+            },
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0,
+            remap = false
+    )
+    private void neoauth$handleSelectTrade(ServerboundSelectTradePacket packet, CallbackInfo ci) {
+        ServerPlayer player = neoauth$getPlayer();
+        if (player != null && !AuthManager.isLoggedIn(player.getUUID())) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = {
+                    "handleRenameItem(Lnet/minecraft/network/protocol/game/ServerboundRenameItemPacket;)V",
+                    "handleRenameItem",
+                    "m_5591_"
+            },
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0,
+            remap = false
+    )
+    private void neoauth$handleRenameItem(ServerboundRenameItemPacket packet, CallbackInfo ci) {
+        ServerPlayer player = neoauth$getPlayer();
+        if (player != null && !AuthManager.isLoggedIn(player.getUUID())) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(
+            method = {
+                    "handlePickItem(Lnet/minecraft/network/protocol/game/ServerboundPickItemPacket;)V",
+                    "handlePickItem",
+                    "m_7965_"
+            },
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0,
+            remap = false
+    )
+    private void neoauth$handlePickItem(ServerboundPickItemPacket packet, CallbackInfo ci) {
+        ServerPlayer player = neoauth$getPlayer();
+        if (player != null && !AuthManager.isLoggedIn(player.getUUID())) {
             ci.cancel();
         }
     }

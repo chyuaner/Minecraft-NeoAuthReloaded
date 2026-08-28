@@ -48,7 +48,7 @@ public class NeoAuthConfig implements IAuthConfig {
     private String messagesLanguage = "zhtw";
     private boolean allowOfflinePlayers = true;
     private boolean dynamicPremiumVerification = true;
-    private int dynamicVerificationTimeout = 15;
+    private int dynamicVerificationTimeout = 7;
     private String customYggdrasilUrl = "";
 
     private String passwordHash = "SHA256";

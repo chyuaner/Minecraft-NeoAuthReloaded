@@ -172,12 +172,13 @@ public abstract class ForgeServerLoginMixin {
     }
 
     /**
-     * 攔截 Key 密鑰回應封包 (Forge 1.20.1，m_7223_ 為 handleKey 的 SRG 名稱)。
+     * 攔截 Key 密鑰回應封包 (Forge 1.20.1，m_8072_ 為 handleKey 的 SRG 名稱)。
      */
     @Inject(
             method = {
                     "handleKey(Lnet/minecraft/network/protocol/login/ServerboundKeyPacket;)V",
                     "handleKey",
+                    "m_8072_",
                     "m_7223_"
             },
             at = @At("HEAD"),
@@ -237,7 +238,6 @@ public abstract class ForgeServerLoginMixin {
                     String authSource = "Mojang 官方";
                     String texturesValue = null;
                     String texturesSignature = null;
-
                     boolean isCustomAuth = false;
 
                     // 1. 優先向 Mojang 官方 Session 伺服器查詢 (傳入 null 避免 IPv4/IPv6 雙棧網路不匹配問題)
@@ -406,36 +406,70 @@ public abstract class ForgeServerLoginMixin {
     }
 
     private byte[] getChallenge() {
-        for (String name : new String[]{"f_10014_", "challenge", "nonce", "field_14168"}) {
+        for (String name : new String[]{"f_252396_", "challenge", "nonce", "field_14168", "f_10014_"}) {
             try {
                 Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
                 f.setAccessible(true);
-                return (byte[]) f.get(this);
+                Object obj = f.get(this);
+                if (obj instanceof byte[] b) return b;
             } catch (Exception ignored) {
+            }
+        }
+        for (Field field : ServerLoginPacketListenerImpl.class.getDeclaredFields()) {
+            if (byte[].class.isAssignableFrom(field.getType())) {
+                try {
+                    field.setAccessible(true);
+                    Object obj = field.get(this);
+                    if (obj instanceof byte[] b) return b;
+                } catch (Exception ignored) {
+                }
             }
         }
         return null;
     }
 
     private void setChallenge(byte[] challenge) {
-        for (String name : new String[]{"f_10014_", "challenge", "nonce", "field_14168"}) {
+        for (String name : new String[]{"f_252396_", "challenge", "nonce", "field_14168", "f_10014_"}) {
             try {
                 Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
-                f.setAccessible(true);
-                f.set(this, challenge);
-                return;
+                if (byte[].class.isAssignableFrom(f.getType())) {
+                    f.setAccessible(true);
+                    f.set(this, challenge);
+                    return;
+                }
             } catch (Exception ignored) {
+            }
+        }
+        for (Field field : ServerLoginPacketListenerImpl.class.getDeclaredFields()) {
+            if (byte[].class.isAssignableFrom(field.getType())) {
+                try {
+                    field.setAccessible(true);
+                    field.set(this, challenge);
+                    return;
+                } catch (Exception ignored) {
+                }
             }
         }
     }
 
     private Connection getConnection() {
-        for (String name : new String[]{"f_10017_", "connection", "field_14162"}) {
+        for (String name : new String[]{"f_10013_", "connection", "f_10017_", "field_14162"}) {
             try {
                 Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
                 f.setAccessible(true);
-                return (Connection) f.get(this);
+                Object obj = f.get(this);
+                if (obj instanceof Connection conn) return conn;
             } catch (Exception ignored) {
+            }
+        }
+        for (Field field : ServerLoginPacketListenerImpl.class.getDeclaredFields()) {
+            if (Connection.class.isAssignableFrom(field.getType())) {
+                try {
+                    field.setAccessible(true);
+                    Object obj = field.get(this);
+                    if (obj instanceof Connection conn) return conn;
+                } catch (Exception ignored) {
+                }
             }
         }
         return null;

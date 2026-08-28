@@ -115,7 +115,7 @@ public abstract class ForgeServerLoginMixin {
 
         UUID uuid = packet.profileId().orElse(null);
         UUID offlineUuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes(StandardCharsets.UTF_8));
-        MinecraftServer server = getServerInstance();
+        MinecraftServer server = neoauth$getServerInstance();
         if (server == null) return;
 
         // 情況 1：伺服器為 online-mode=true，離線客戶端連線
@@ -123,7 +123,7 @@ public abstract class ForgeServerLoginMixin {
             if (offlineUuid.equals(uuid) || uuid == null) {
                 if (Services.PLATFORM.getConfig().isAllowOfflinePlayers()) {
                     GameProfile offlineProfile = new GameProfile(offlineUuid, username);
-                    if (acceptOfflineLogin(offlineProfile)) {
+                    if (neoauth$acceptOfflineLogin(offlineProfile)) {
                         ci.cancel();
                     }
                 }
@@ -145,19 +145,19 @@ public abstract class ForgeServerLoginMixin {
 
             try {
                 KeyPair keyPair = neoauth$getKeyPair(server);
-                byte[] challenge = getChallenge();
+                byte[] challenge = neoauth$getChallenge();
                 if (challenge == null || challenge.length == 0) {
                     challenge = Ints.toByteArray(RandomSource.create().nextInt());
-                    setChallenge(challenge);
+                    neoauth$setChallenge(challenge);
                 }
 
-                Connection connection = getConnection();
+                Connection connection = neoauth$getConnection();
                 if (keyPair != null && connection != null) {
                     PublicKey publicKey = keyPair.getPublic();
                     ClientboundHelloPacket helloPacket = new ClientboundHelloPacket("", publicKey.getEncoded(), challenge);
                     connection.send(helloPacket);
                     neoauth$PENDING.put(this, packet);
-                    setLoginState("KEY");
+                    neoauth$setLoginState("KEY");
                     ci.cancel();
 
                     int timeout = Services.PLATFORM.getConfig().getDynamicVerificationTimeout();
@@ -178,8 +178,7 @@ public abstract class ForgeServerLoginMixin {
             method = {
                     "handleKey(Lnet/minecraft/network/protocol/login/ServerboundKeyPacket;)V",
                     "handleKey",
-                    "m_8072_",
-                    "m_7223_"
+                    "m_8072_"
             },
             at = @At("HEAD"),
             cancellable = true,
@@ -200,8 +199,8 @@ public abstract class ForgeServerLoginMixin {
         ci.cancel();
 
         try {
-            MinecraftServer server = getServerInstance();
-            Connection connection = getConnection();
+            MinecraftServer server = neoauth$getServerInstance();
+            Connection connection = neoauth$getConnection();
             if (server == null || connection == null) {
                 neoauth$fallbackToOffline(this, hello);
                 return;
@@ -210,7 +209,7 @@ public abstract class ForgeServerLoginMixin {
             KeyPair keyPair = neoauth$getKeyPair(server);
             PrivateKey privateKey = keyPair.getPrivate();
             PublicKey publicKey = keyPair.getPublic();
-            byte[] challenge = getChallenge();
+            byte[] challenge = neoauth$getChallenge();
 
             if (!packet.isChallengeValid(challenge, privateKey)) {
                 neoauth$LOGGER.warn("NeoAuth: 連線 challenge 驗證不匹配，降級為離線玩家: {}", hello.name());
@@ -341,7 +340,7 @@ public abstract class ForgeServerLoginMixin {
             remap = false
     )
     private void neoauth$onAcceptedLogin(CallbackInfo ci) {
-        GameProfile profile = getGameProfile();
+        GameProfile profile = neoauth$getGameProfile();
         if (profile != null) {
             if (profile.getProperties() != null && profile.getProperties().containsKey("textures")) {
                 AuthManager.markPremiumVerified(profile.getId());
@@ -377,7 +376,7 @@ public abstract class ForgeServerLoginMixin {
     private void neoauth$replayHello(Object handler, ServerboundHelloPacket hello) {
         Runnable task = () -> {
             try {
-                setLoginState("HELLO");
+                neoauth$setLoginState("HELLO");
                 Method handleHelloMethod = null;
                 for (String name : new String[]{"handleHello", "m_5990_"}) {
                     try {
@@ -394,7 +393,7 @@ public abstract class ForgeServerLoginMixin {
             }
         };
 
-        Connection connection = getConnection();
+        Connection connection = neoauth$getConnection();
         if (connection != null) {
             Channel ch = connection.channel();
             if (ch != null && ch.eventLoop() != null) {
@@ -405,7 +404,8 @@ public abstract class ForgeServerLoginMixin {
         task.run();
     }
 
-    private byte[] getChallenge() {
+    @Unique
+    private byte[] neoauth$getChallenge() {
         for (String name : new String[]{"f_252396_", "challenge", "nonce", "field_14168", "f_10014_"}) {
             try {
                 Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
@@ -428,7 +428,8 @@ public abstract class ForgeServerLoginMixin {
         return null;
     }
 
-    private void setChallenge(byte[] challenge) {
+    @Unique
+    private void neoauth$setChallenge(byte[] challenge) {
         for (String name : new String[]{"f_252396_", "challenge", "nonce", "field_14168", "f_10014_"}) {
             try {
                 Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
@@ -452,7 +453,8 @@ public abstract class ForgeServerLoginMixin {
         }
     }
 
-    private Connection getConnection() {
+    @Unique
+    private Connection neoauth$getConnection() {
         for (String name : new String[]{"f_10013_", "connection", "f_10017_", "field_14162"}) {
             try {
                 Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
@@ -475,7 +477,8 @@ public abstract class ForgeServerLoginMixin {
         return null;
     }
 
-    private boolean setLoginState(String stateName) {
+    @Unique
+    private boolean neoauth$setLoginState(String stateName) {
         for (String name : new String[]{"f_10019_", "state", "field_14163"}) {
             try {
                 Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
@@ -489,7 +492,8 @@ public abstract class ForgeServerLoginMixin {
         return false;
     }
 
-    private MinecraftServer getServerInstance() {
+    @Unique
+    private MinecraftServer neoauth$getServerInstance() {
         for (String name : new String[]{"f_10018_", "server", "field_14165"}) {
             try {
                 Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
@@ -512,7 +516,8 @@ public abstract class ForgeServerLoginMixin {
         return null;
     }
 
-    private GameProfile getGameProfile() {
+    @Unique
+    private GameProfile neoauth$getGameProfile() {
         for (String name : new String[]{"f_10021_", "gameProfile", "profile", "authenticatedProfile", "field_14160"}) {
             try {
                 Field f = ServerLoginPacketListenerImpl.class.getDeclaredField(name);
@@ -536,7 +541,8 @@ public abstract class ForgeServerLoginMixin {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private boolean acceptOfflineLogin(GameProfile offlineProfile) {
+    @Unique
+    private boolean neoauth$acceptOfflineLogin(GameProfile offlineProfile) {
         Field stateField = null;
         for (String name : new String[]{"f_10019_", "state", "field_14163"}) {
             try {
@@ -575,8 +581,13 @@ public abstract class ForgeServerLoginMixin {
             try {
                 stateField.setAccessible(true);
                 profileField.setAccessible(true);
-                Object readyState = Enum.valueOf((Class<? extends Enum>) stateField.getType(), "READY_TO_ACCEPT");
-                stateField.set(this, readyState);
+                Object nextState = null;
+                try {
+                    nextState = Enum.valueOf((Class<? extends Enum>) stateField.getType(), "NEGOTIATING");
+                } catch (Exception e) {
+                    nextState = Enum.valueOf((Class<? extends Enum>) stateField.getType(), "READY_TO_ACCEPT");
+                }
+                stateField.set(this, nextState);
                 profileField.set(this, offlineProfile);
                 return true;
             } catch (Exception ignored) {

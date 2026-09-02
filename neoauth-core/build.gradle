@@ -44,3 +44,13 @@ test {
     useJUnitPlatform()
 }
 
+def replaceProperties = [
+    mod_version: mod_version
+]
+
+tasks.named('processResources', ProcessResources).configure {
+    inputs.properties replaceProperties
+    filesMatching(['neoauth-version.properties']) {
+        expand replaceProperties
+    }
+}

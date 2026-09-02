@@ -25,6 +25,26 @@ public interface IPlatformHelper {
     String getPlatformName();
 
     /**
+     * 取得目前模組版本字串 (連動自 gradle.properties / mod_version)。
+     *
+     * @return 模組版本字串 (例如: "2.0.0")
+     */
+    default String getModVersion() {
+        try (var is = IPlatformHelper.class.getClassLoader().getResourceAsStream("neoauth-version.properties")) {
+            if (is != null) {
+                var props = new java.util.Properties();
+                props.load(is);
+                String v = props.getProperty("version");
+                if (v != null && !v.isBlank() && !v.startsWith("${")) {
+                    return v.trim();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "2.0.0";
+    }
+
+    /**
      * 對尚未登入的玩家施加凍結防護效果（緩速、跳躍抑制、失明）。
      * <p>
      * 在 1.20.1 與 1.21.1 中，MobEffects 的型別定義有所不同 (MobEffect vs Holder&lt;MobEffect&gt;)，

@@ -28,6 +28,8 @@ import tw.yuaner.neoauth.config.ConfigManager;
 import tw.yuaner.neoauth.core.AuthLogic;
 import tw.yuaner.neoauth.platform.Services;
 
+import tw.yuaner.neoauth.neoforge.login.NeoForgeLoginStateHolder;
+
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import java.lang.reflect.Field;
@@ -46,9 +48,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -84,18 +84,7 @@ public abstract class NeoForgeServerLoginMixin {
     private static KeyPair neoauth$KEY_PAIR;
 
     @Unique
-    private static class LoginStateHolder {
-        final ServerboundHelloPacket helloPacket;
-        final AtomicBoolean released = new AtomicBoolean(false);
-        volatile ScheduledFuture<?> watchdogTask;
-
-        LoginStateHolder(ServerboundHelloPacket helloPacket) {
-            this.helloPacket = helloPacket;
-        }
-    }
-
-    @Unique
-    private static final Map<Object, LoginStateHolder> neoauth$STATES = new ConcurrentHashMap<>();
+    private static final Map<Object, NeoForgeLoginStateHolder> neoauth$STATES = new ConcurrentHashMap<>();
 
     @Unique
     private static final Set<Object> neoauth$HANDLED = ConcurrentHashMap.newKeySet();
@@ -166,7 +155,7 @@ public abstract class NeoForgeServerLoginMixin {
                 ClientboundHelloPacket helloPacket = new ClientboundHelloPacket("", publicKey.getEncoded(), this.challenge, true);
                 this.connection.send(helloPacket);
 
-                LoginStateHolder state = new LoginStateHolder(packet);
+                NeoForgeLoginStateHolder state = new NeoForgeLoginStateHolder(packet);
                 neoauth$STATES.put(this, state);
                 neoauth$setLoginState("KEY");
                 ci.cancel();
@@ -175,7 +164,7 @@ public abstract class NeoForgeServerLoginMixin {
                 int rawTimeout = Services.PLATFORM.getConfig().getDynamicVerificationTimeout();
                 final int timeout = rawTimeout <= 0 ? 7 : rawTimeout;
 
-                state.watchdogTask = neoauth$WATCHDOG.schedule(() -> neoauth$fallbackToOffline(this, state, "握手階段客戶端未回應"), timeout, TimeUnit.SECONDS);
+                state.setWatchdogTask(neoauth$WATCHDOG.schedule(() -> neoauth$fallbackToOffline(this, state, "握手階段客戶端未回應"), timeout, TimeUnit.SECONDS));
             } catch (Exception ignored) {
             }
         }
@@ -186,7 +175,7 @@ public abstract class NeoForgeServerLoginMixin {
      */
     @Inject(method = "handleKey", at = @At("HEAD"), cancellable = true)
     private void neoauth$handleKey(ServerboundKeyPacket packet, CallbackInfo ci) {
-        LoginStateHolder state = neoauth$STATES.get(this);
+        NeoForgeLoginStateHolder state = neoauth$STATES.get(this);
         if (state == null) {
             return; // 非動態握手，走原版流程
         }
@@ -194,9 +183,7 @@ public abstract class NeoForgeServerLoginMixin {
         ci.cancel();
 
         // 收到 Key 封包，先取消 Stage 1 Watchdog
-        if (state.watchdogTask != null) {
-            state.watchdogTask.cancel(false);
-        }
+        state.cancelWatchdog();
 
         try {
             KeyPair keyPair = neoauth$getKeyPair(this.server);
@@ -204,7 +191,7 @@ public abstract class NeoForgeServerLoginMixin {
             PublicKey publicKey = keyPair.getPublic();
 
             if (!packet.isChallengeValid(this.challenge, privateKey)) {
-                neoauth$LOGGER.warn("NeoAuth: 連線 challenge 驗證不匹配，降級為離線玩家: {}", state.helloPacket.name());
+                neoauth$LOGGER.warn("NeoAuth: 連線 challenge 驗證不匹配，降級為離線玩家: {}", state.getHelloPacket().name());
                 neoauth$fallbackToOffline(this, state, "Challenge 不匹配");
                 return;
             }
@@ -217,14 +204,14 @@ public abstract class NeoForgeServerLoginMixin {
             byte[] digestBytes = Crypt.digestData("", publicKey, secretKey);
             String digest = new BigInteger(digestBytes).toString(16);
 
-            String username = state.helloPacket.name();
+            String username = state.getHelloPacket().name();
             UUID offlineUuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes(StandardCharsets.UTF_8));
 
             int rawTimeout = Services.PLATFORM.getConfig().getDynamicVerificationTimeout();
             final int timeout = rawTimeout <= 0 ? 7 : rawTimeout;
 
             // 啟動 Stage 2 (Session 驗證查詢) 專屬超時 Watchdog
-            state.watchdogTask = neoauth$WATCHDOG.schedule(() -> neoauth$fallbackToOffline(this, state, "Session 驗證回應逾時 (" + timeout + " 秒)"), timeout, TimeUnit.SECONDS);
+            state.setWatchdogTask(neoauth$WATCHDOG.schedule(() -> neoauth$fallbackToOffline(this, state, "Session 驗證回應逾時 (" + timeout + " 秒)"), timeout, TimeUnit.SECONDS));
 
             CompletableFuture.runAsync(() -> {
                 try {
@@ -291,13 +278,11 @@ public abstract class NeoForgeServerLoginMixin {
                     neoauth$LOGGER.error("NeoAuth: 查詢 Session 驗證伺服器時發生異常 (" + username + "): " + e.getMessage(), e);
                 } finally {
                     // 原子放行判定：若尚未被 Watchdog 放行過，在此處放行進入 HELLO 重放
-                    if (state.released.compareAndSet(false, true)) {
-                        if (state.watchdogTask != null) {
-                            state.watchdogTask.cancel(false);
-                        }
+                    if (state.getReleased().compareAndSet(false, true)) {
+                        state.cancelWatchdog();
                         neoauth$STATES.remove(this);
                         neoauth$HANDLED.add(this);
-                        neoauth$replayHello(this, state.helloPacket);
+                        neoauth$replayHello(this, state.getHelloPacket());
                     }
                 }
             });
@@ -312,12 +297,10 @@ public abstract class NeoForgeServerLoginMixin {
      */
     @Inject(method = "onDisconnect", at = @At("HEAD"), require = 0)
     private void neoauth$onDisconnect(DisconnectionDetails details, CallbackInfo ci) {
-        LoginStateHolder state = neoauth$STATES.remove(this);
+        NeoForgeLoginStateHolder state = neoauth$STATES.remove(this);
         if (state != null) {
-            state.released.set(true);
-            if (state.watchdogTask != null) {
-                state.watchdogTask.cancel(false);
-            }
+            state.getReleased().set(true);
+            state.cancelWatchdog();
         }
         neoauth$HANDLED.remove(this);
     }
@@ -349,16 +332,14 @@ public abstract class NeoForgeServerLoginMixin {
     }
 
     @Unique
-    private void neoauth$fallbackToOffline(Object handler, LoginStateHolder state, String reason) {
+    private void neoauth$fallbackToOffline(Object handler, NeoForgeLoginStateHolder state, String reason) {
         if (state == null) return;
-        if (state.watchdogTask != null) {
-            state.watchdogTask.cancel(false);
-        }
-        if (state.released.compareAndSet(false, true)) {
+        state.cancelWatchdog();
+        if (state.getReleased().compareAndSet(false, true)) {
             neoauth$STATES.remove(handler);
             neoauth$HANDLED.add(handler);
-            neoauth$LOGGER.warn("NeoAuth: 動態正版驗證已先降級為離線模式放行 [{}] (玩家: {})", reason, state.helloPacket.name());
-            neoauth$replayHello(handler, state.helloPacket);
+            neoauth$LOGGER.warn("NeoAuth: 動態正版驗證已先降級為離線模式放行 [{}] (玩家: {})", reason, state.getHelloPacket().name());
+            neoauth$replayHello(handler, state.getHelloPacket());
         }
     }
 

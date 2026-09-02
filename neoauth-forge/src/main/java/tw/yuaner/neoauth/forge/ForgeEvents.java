@@ -599,7 +599,8 @@ public class ForgeEvents {
     private static int executeAdminVersion(CommandSourceStack source) {
         MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
         String platform = Services.PLATFORM.getPlatformName();
-        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.version_info", "1.0.0", platform)), false);
+        String version = Services.PLATFORM.getModVersion();
+        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.version_info", version, platform)), false);
         return 1;
     }
 

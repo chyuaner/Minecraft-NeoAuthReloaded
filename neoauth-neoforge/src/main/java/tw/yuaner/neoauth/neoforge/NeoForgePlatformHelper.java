@@ -37,6 +37,23 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
     }
 
     @Override
+    public String getModVersion() {
+        try {
+            if (net.neoforged.fml.ModList.get() != null) {
+                var container = net.neoforged.fml.ModList.get().getModContainerById("neoauthreloaded");
+                if (container.isPresent()) {
+                    String v = container.get().getModInfo().getVersion().toString();
+                    if (v != null && !v.isBlank() && !"NONE".equalsIgnoreCase(v)) {
+                        return v.trim();
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return IPlatformHelper.super.getModVersion();
+    }
+
+    @Override
     public void applyFreezeEffects(Object playerObj) {
         if (playerObj instanceof ServerPlayer player) {
             IAuthConfig config = getConfig();

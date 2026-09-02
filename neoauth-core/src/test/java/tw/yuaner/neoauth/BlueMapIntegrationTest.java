@@ -238,4 +238,50 @@ public class BlueMapIntegrationTest {
         assertEquals("https://custom-avatar.com/{username}", config.getBlueMapAvatarUrl());
         assertEquals("https://skin.yuaner.tw/{username}", config.getBlueMapCustomAvatarUrl());
     }
+
+    @Test
+    public void testCachedAvatarTextureHashAndTtl() {
+        byte[] sampleData = new byte[]{1, 2, 3, 4};
+        String hash1 = BlueMapIntegration.computeTextureHash("sample_texture_base64_v1");
+        String hash2 = BlueMapIntegration.computeTextureHash("sample_texture_base64_v2");
+        assertNotNull(hash1);
+        assertNotNull(hash2);
+        assertNotEquals(hash1, hash2);
+
+        // 建立快取 (時間為當前時間)
+        BlueMapIntegration.CachedAvatar avatar = new BlueMapIntegration.CachedAvatar(sampleData, hash1, System.currentTimeMillis());
+        assertArrayEquals(sampleData, avatar.getData());
+        assertEquals(hash1, avatar.getTextureHash());
+
+        // 1. 同樣的 Texture Hash 且未過期 -> 有效
+        assertTrue(avatar.isValid(hash1, 120));
+
+        // 2. 玩家更換了皮膚 (Texture Hash 改變) -> 立即無效！
+        assertFalse(avatar.isValid(hash2, 120));
+
+        // 3. 測試 TTL 逾時
+        long oldTime = System.currentTimeMillis() - (121 * 60 * 1000L); // 121 分鐘前
+        BlueMapIntegration.CachedAvatar expiredAvatar = new BlueMapIntegration.CachedAvatar(sampleData, hash1, oldTime);
+        assertFalse(expiredAvatar.isValid(hash1, 120)); // 超過 120 分鐘 -> 失效
+        assertTrue(expiredAvatar.isValid(hash1, 0));    // 0 為不檢查時間 -> 有效
+    }
+
+    @Test
+    public void testBlueMapIntegrationClearCache() {
+        BlueMapIntegration.clearCache();
+        assertNull(BlueMapIntegration.getCachedAvatar("Steve"));
+
+        // 手動模擬寫入快取
+        byte[] data = new byte[]{10, 20, 30};
+        String hash = BlueMapIntegration.computeTextureHash("texture_data");
+        BlueMapIntegration.CachedAvatar cached = new BlueMapIntegration.CachedAvatar(data, hash, System.currentTimeMillis());
+
+        // 驗證清空特定玩家
+        assertFalse(BlueMapIntegration.clearCacheForPlayer("Steve"));
+
+        // 驗證全域清空
+        BlueMapIntegration.clearCache();
+        assertNull(BlueMapIntegration.getCachedAvatar("Steve"));
+    }
 }
+

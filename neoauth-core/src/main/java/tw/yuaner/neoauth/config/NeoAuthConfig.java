@@ -79,6 +79,7 @@ public class NeoAuthConfig implements IAuthConfig {
     private String blueMapPriority = "OFFICIAL_FIRST";
     private String blueMapAvatarUrl = "https://mc-heads.net/avatar/{username}/64";
     private String blueMapCustomAvatarUrl = "";
+    private int blueMapCacheTtlMinutes = 120;
 
     public NeoAuthConfig() {}
 
@@ -212,6 +213,10 @@ public class NeoAuthConfig implements IAuthConfig {
             if (bmMap.get("customAvatarUrl") != null) config.blueMapCustomAvatarUrl = String.valueOf(bmMap.get("customAvatarUrl"));
             else if (bmMap.get("custom-avatar-url") != null) config.blueMapCustomAvatarUrl = String.valueOf(bmMap.get("custom-avatar-url"));
             else if (bmMap.get("custom_avatar_url") != null) config.blueMapCustomAvatarUrl = String.valueOf(bmMap.get("custom_avatar_url"));
+
+            if (bmMap.get("cacheTtlMinutes") instanceof Number n) config.blueMapCacheTtlMinutes = n.intValue();
+            else if (bmMap.get("cache-ttl-minutes") instanceof Number n) config.blueMapCacheTtlMinutes = n.intValue();
+            else if (bmMap.get("cache_ttl_minutes") instanceof Number n) config.blueMapCacheTtlMinutes = n.intValue();
         }
 
         return config;
@@ -524,5 +529,10 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public String getBlueMapPriority() {
         return blueMapPriority != null && !blueMapPriority.isBlank() ? blueMapPriority.trim().toUpperCase() : "OFFICIAL_FIRST";
+    }
+
+    @Override
+    public int getBlueMapCacheTtlMinutes() {
+        return blueMapCacheTtlMinutes >= 0 ? blueMapCacheTtlMinutes : 120;
     }
 }

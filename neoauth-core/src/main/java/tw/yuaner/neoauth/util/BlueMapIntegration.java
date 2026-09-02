@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 import tw.yuaner.neoauth.config.ConfigManager;
 import tw.yuaner.neoauth.config.IAuthConfig;
 
+import tw.yuaner.neoauth.AuthManager;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Reader;
@@ -21,6 +23,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,6 +35,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -59,8 +64,116 @@ public class BlueMapIntegration {
     private static final Map<UUID, byte[]> PENDING_HEADS = new ConcurrentHashMap<>();
     private static volatile Object activeBlueMapApi = null;
 
+    /**
+     * 獨立低優先級背景 Daemon 執行緒池，專門負責頭像下載與多地圖檔案/API寫入，徹底杜絕阻塞登入與主執行緒。
+     */
+    private static final ExecutorService BACKGROUND_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "NeoAuth-BlueMap-Worker");
+        t.setDaemon(true);
+        return t;
+    });
+
+    /**
+     * 玩家頭像本機快取結構 (支援 Texture Hash 指紋比對與 TTL)。
+     */
+    public static class CachedAvatar {
+        private final byte[] data;
+        private final String textureHash;
+        private final long timestamp;
+
+        public CachedAvatar(byte[] data, String textureHash, long timestamp) {
+            this.data = data;
+            this.textureHash = textureHash;
+            this.timestamp = timestamp;
+        }
+
+        public byte[] getData() {
+            return data;
+        }
+
+        public String getTextureHash() {
+            return textureHash;
+        }
+
+        public long getTimestamp() {
+            return timestamp;
+        }
+
+        public boolean isValid(String currentTextureHash, int ttlMinutes) {
+            // 1. 若兩者皆有 Texture Hash 且不相等 -> 代表玩家更換了皮膚，快取即刻失效！
+            if (currentTextureHash != null && !currentTextureHash.isBlank() && textureHash != null && !textureHash.isBlank()) {
+                if (!currentTextureHash.equalsIgnoreCase(textureHash)) {
+                    return false;
+                }
+            }
+            // 2. 檢查 TTL 存活時間
+            if (ttlMinutes > 0) {
+                long maxAgeMillis = ttlMinutes * 60L * 1000L;
+                if (System.currentTimeMillis() - timestamp > maxAgeMillis) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    private static final Map<String, CachedAvatar> AVATAR_CACHE = new ConcurrentHashMap<>();
+
     static {
         registerBlueMapListener();
+    }
+
+    /**
+     * 清空所有頭像快取與待同步隊列。
+     */
+    public static void clearCache() {
+        AVATAR_CACHE.clear();
+        PENDING_HEADS.clear();
+        LOGGER.info("NeoAuth: 已成功清空 BlueMap 頭像快取與佇列。");
+    }
+
+    /**
+     * 清空指定玩家的頭像快取。
+     *
+     * @param username 玩家名稱
+     * @return true 若原先存在快取並已移除
+     */
+    public static boolean clearCacheForPlayer(String username) {
+        if (username == null || username.isBlank()) return false;
+        return AVATAR_CACHE.remove(username.toLowerCase().trim()) != null;
+    }
+
+    /**
+     * 取得指定玩家之快取頭像資料。
+     */
+    public static CachedAvatar getCachedAvatar(String username) {
+        if (username == null || username.isBlank()) return null;
+        return AVATAR_CACHE.get(username.toLowerCase().trim());
+    }
+
+    /**
+     * 計算 Textures Base64 字串之 SHA-256 雜湊指紋。
+     */
+    public static String computeTextureHash(String texturesValue) {
+        if (texturesValue == null || texturesValue.isBlank()) return null;
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(texturesValue.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (Exception e) {
+            return String.valueOf(texturesValue.hashCode());
+        }
+    }
+
+    /**
+     * 關閉背景執行緒池。
+     */
+    public static void shutdown() {
+        BACKGROUND_EXECUTOR.shutdown();
     }
 
     /**
@@ -140,7 +253,7 @@ public class BlueMapIntegration {
      * @return 包含同步成功與否的 CompletableFuture
      */
     public static CompletableFuture<Boolean> syncBlueMapPlayerHead(String username, UUID offlineUuid) {
-        return syncBlueMapPlayerHead(username, offlineUuid, false);
+        return syncBlueMapPlayerHead(username, offlineUuid, false, null);
     }
 
     /**
@@ -152,6 +265,19 @@ public class BlueMapIntegration {
      * @return 包含同步成功與否的 CompletableFuture
      */
     public static CompletableFuture<Boolean> syncBlueMapPlayerHead(String username, UUID offlineUuid, boolean isCustomAuth) {
+        return syncBlueMapPlayerHead(username, offlineUuid, isCustomAuth, null);
+    }
+
+    /**
+     * 非同步執行 BlueMap 正版或外置站頭像下載與同步（支援 Texture Hash 快取加速）。
+     *
+     * @param username     玩家名稱
+     * @param offlineUuid  玩家在遊戲中使用的離線 UUID
+     * @param isCustomAuth 是否為自訂外置驗證站登入
+     * @param textureHash  Textures 雜湊指紋（可為空，為空時自動檢索）
+     * @return 包含同步成功與否的 CompletableFuture
+     */
+    public static CompletableFuture<Boolean> syncBlueMapPlayerHead(String username, UUID offlineUuid, boolean isCustomAuth, String textureHash) {
         return CompletableFuture.supplyAsync(() -> {
             if (username == null || username.isBlank() || offlineUuid == null) {
                 return false;
@@ -167,8 +293,17 @@ public class BlueMapIntegration {
                 return false;
             }
 
+            String effectiveHash = textureHash;
+            if (effectiveHash == null || effectiveHash.isBlank()) {
+                TextureProperty tex = AuthManager.getVerifiedTextures(offlineUuid);
+                if (tex == null) tex = AuthManager.getVerifiedTextures(username);
+                if (tex != null && tex.value() != null) {
+                    effectiveHash = computeTextureHash(tex.value());
+                }
+            }
+
             try {
-                byte[] headBytes = fetchPlayerHeadBytes(config, username, offlineUuid, isCustomAuth);
+                byte[] headBytes = fetchPlayerHeadBytes(config, username, offlineUuid, isCustomAuth, effectiveHash);
                 if (headBytes == null || headBytes.length == 0) {
                     LOGGER.warn("NeoAuth: 無法取得玩家 {} ({}) 的頭像圖檔數據。", username, offlineUuid);
                     return false;
@@ -193,7 +328,7 @@ public class BlueMapIntegration {
                 LOGGER.warn("NeoAuth: 同步 BlueMap 頭像時發生錯誤 ({}): {}", username, e.getMessage());
                 return false;
             }
-        });
+        }, BACKGROUND_EXECUTOR);
     }
 
     /**
@@ -222,6 +357,23 @@ public class BlueMapIntegration {
      * 依設定優先順序下載玩家頭像圖檔位元組陣列。
      */
     public static byte[] fetchPlayerHeadBytes(IAuthConfig config, String username, UUID offlineUuid, boolean isCustomAuth) {
+        return fetchPlayerHeadBytes(config, username, offlineUuid, isCustomAuth, null);
+    }
+
+    /**
+     * 依設定優先順序與快取機制取得玩家頭像圖檔位元組陣列。
+     */
+    public static byte[] fetchPlayerHeadBytes(IAuthConfig config, String username, UUID offlineUuid, boolean isCustomAuth, String currentTextureHash) {
+        if (username == null || username.isBlank()) return null;
+
+        String userKey = username.toLowerCase().trim();
+        int ttlMinutes = config != null ? config.getBlueMapCacheTtlMinutes() : 120;
+        CachedAvatar cached = AVATAR_CACHE.get(userKey);
+        if (cached != null && cached.isValid(currentTextureHash, ttlMinutes)) {
+            LOGGER.debug("NeoAuth: 命中頭像本地快取 ({})，直接使用快取圖檔。", username);
+            return cached.getData();
+        }
+
         String officialUrlTemplate = "https://mc-heads.net/avatar/{username}/64";
         List<String> customUrlTemplates = new ArrayList<>();
         String priority = "OFFICIAL_FIRST";
@@ -294,6 +446,7 @@ public class BlueMapIntegration {
             String url = formatAvatarUrl(template, username, offlineUuid);
             byte[] bytes = downloadImage(url);
             if (bytes != null && bytes.length > 0) {
+                AVATAR_CACHE.put(userKey, new CachedAvatar(bytes, currentTextureHash, System.currentTimeMillis()));
                 return bytes;
             }
         }

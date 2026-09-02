@@ -358,5 +358,11 @@ public interface IAuthConfig {
      * 取得獨立模式下的頭像來源優先順序 (對應 bluemap.priority，預設: "OFFICIAL_FIRST")
      */
     String getBlueMapPriority();
+
+    /**
+     * 取得頭像快取存活時間（分鐘，對應 bluemap.cacheTtlMinutes，預設: 120）
+     */
+    int getBlueMapCacheTtlMinutes();
 }
+
 

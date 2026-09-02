@@ -63,11 +63,12 @@ public class ForgeAuthMod {
     }
 
     /**
-     * 伺服器停止事件：關閉資料庫連線池。
+     * 伺服器停止事件：關閉資料庫連線池與背景執行緒池。
      */
     @SubscribeEvent
     public void onServerStopping(ServerStoppingEvent event) {
-        LOGGER.info("NeoAuth: 伺服器正在停止，正在關閉資料庫連線池...");
+        LOGGER.info("NeoAuth: 伺服器正在停止，正在關閉資料庫連線池與背景執行緒...");
         DatabaseManager.close();
+        tw.yuaner.neoauth.util.BlueMapIntegration.shutdown();
     }
 }

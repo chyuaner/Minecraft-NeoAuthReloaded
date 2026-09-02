@@ -401,6 +401,7 @@ public class NeoForgeEvents {
     private static int executeReload(CommandSourceStack source) {
         boolean success = ConfigManager.getInstance().reload();
         if (success) {
+            tw.yuaner.neoauth.util.BlueMapIntegration.clearCache();
             source.sendSuccess(() -> Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.reload_success")), true);
             return 1;
         } else {

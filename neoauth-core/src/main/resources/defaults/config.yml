@@ -193,3 +193,10 @@ bluemap:
   # - 例如 Blessing Skin 站點: "https://mc8.yuaner.tw/avatar/player/{username}?size=64" 或 "https://mc8.yuaner.tw/avatar/{username}/64"
   # - 當連動 SkinRestorer 且成功讀取時，此項將由 SkinRestorer 設定自動覆蓋。
   customAvatarUrl: ""
+
+  # 頭像本機快取存活時間（分鐘，預設: 120，0 為不使用時間快取）
+  # - 系統採用「Texture Hash 指紋比對 + TTL」雙重快取防護：
+  #   若玩家更換皮膚（Texture Hash 改變），系統將立即自動失效並重新下載最新頭像；
+  #   若未更換皮膚且在 TTL 內，直接讀取快取秒級同步，避免每次進服對外發送 HTTP 請求！
+  cacheTtlMinutes: 120
+

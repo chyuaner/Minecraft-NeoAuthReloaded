@@ -57,6 +57,188 @@ NeoAuthReloaded 支援原廠 `server.properties` 中的兩種連線模式，服�
 
 ---
 
+## 🏗️ 核心架構與深度防護技術規格 (Architecture & Deep Security)
+
+### 🔐 1. 登入穩定度改良與架構重構 (Login Pipeline & Stability)
+
+本機制針對正版玩家連線中斷、握手卡頓（如外部網路延遲造成的數十秒卡頓）以及狀態機重複重放引發的競態條件進行深度修復與架構重構。
+
+#### 痛點背景與解決思路
+- **原版/舊版痛點**：
+  1. 握手階段同步執行 Mojang 驗證與 BlueMap 頭像下載寫入，導致握手時間過長（2~32 秒），客戶端極易握手逾時斷線。
+  2. Watchdog 逾時降級與背景非同步驗證同時運行時，缺乏互斥控制，兩者皆可能觸發 `replayHello` 導致封包重複發送，破壞 Netty Channel 狀態。
+- **重構架構核心**：
+  - **原子狀態機 (Atomic State Machine)**：維護 `LoginStateHolder`，使用 `AtomicBoolean released` 進行 CAS 原子搶佔，**確保 `replayHello` 於單一連線中絕對僅執行恰好一次**。
+  - **非核心工作背景化**：BlueMap 網頁地圖頭像下載與寫入徹底移出連線握手，移至玩家進入世界後由專屬 Daemon 背景執行緒非同步處理。
+
+#### 登入認證完整循序圖表 (Login Sequence Diagram)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as 玩家客戶端 (Client)
+    participant N as NeoAuth 登入監聽 (Netty / Mixin)
+    participant W as 7 秒 Watchdog 計時器
+    participant S as 驗證伺服器 (Mojang / Yggdrasil)
+    participant MC as Minecraft 主執行緒 (Server Thread)
+    participant B as BlueMap 背景 Worker
+
+    Note over C,N: 握手開始：玩家連線
+    C->>N: ServerboundHelloPacket (玩家連線請求)
+    N->>C: ClientboundHelloPacket (請求動態密鑰握手)
+    C->>N: ServerboundKeyPacket (回傳加密密鑰)
+
+    Note over N: 初始化 LoginStateHolder (Atomic released = false)
+    par 啟動 7 秒超時守門狗
+        N->>W: 排程 7 秒 Watchdog Task
+    and 發起非同步身分驗證
+        N->>S: 查詢 hasJoinedServer(...)
+    end
+
+    alt 情境 A：7 秒內驗證成功 (正版玩家正常登入)
+        S-->>N: 回傳 GameProfile (含 Textures 簽章)
+        N->>N: CAS released (false ➔ true 搶佔成功)
+        N->>W: 取消 Watchdog Task
+        N->>N: 標記正版 (markPremiumVerified)
+        N->>C: 執行 replayHello 放行進入遊戲
+        MC->>C: 進入世界 (PlayerLoggedInEvent)
+        MC->>B: 非同步投遞頭像同步工作 (textures)
+        B->>B: 檢查 Texture Hash / 寫入 BlueMap
+
+    else 情境 B：驗證超時 (逾 7 秒先降級放行)
+        W-->>N: 7 秒逾時觸發！
+        N->>N: CAS released (false ➔ true 搶佔成功)
+        N->>N: 標記離線降級 (Mojang Fallback)
+        N->>C: 執行 replayHello 離線放行進服
+        Note over C: 玩家以離線身分進入世界 (受到全方位限制)
+        opt 情境 C：背景驗證隨後於 8 秒成功 (延遲晉升 Delayed Promotion)
+            S-->>N: 背景回傳 GameProfile 成功
+            N->>N: CAS released (搶佔失敗，已被 Watchdog 放行過)
+            Note over N: 嚴禁重複 replayHello！
+            N->>MC: server.execute(...) 投遞主執行緒晉升
+            MC->>MC: 即時解除限制 (markPremiumVerified)
+            MC->>C: 免密登入成功，解除失明與定身
+            MC->>B: 投遞頭像同步工作
+        end
+
+    else 情境 D：離線玩家 / 驗證失敗 / 熔斷生效
+        S-->>N: 404 Not Found / 拋出連線異常 / 熔斷開啟
+        N->>N: CAS released (false ➔ true 搶佔成功)
+        N->>W: 取消 Watchdog Task
+        N->>C: 執行 replayHello 離線放行進服
+        Note over C: 提示玩家使用 /login 或 /register 密碼驗證
+    end
+```
+
+#### 狀態機原子控制決策流程圖 (Race-Free Pipeline Flowchart)
+
+```mermaid
+flowchart TD
+    A[客戶端發送 Key 封包] --> B[建立 LoginStateHolder 並啟動 7 秒 Watchdog]
+    B --> C[非同步發起 Mojang / Yggdrasil 驗證]
+
+    C -->|7 秒內返回結果| D{"CAS 搶佔 (false ➔ true)"}
+    B -->|超過 7 秒 Watchdog 觸發| E{"CAS 搶佔 (false ➔ true)"}
+
+    D -->|成功贏得搶佔| F[取消 Watchdog，標記正版，執行一次 replayHello]
+    E -->|成功贏得搶佔| G[以離線模式執行一次 replayHello 放行]
+
+    C -->|7 秒後才返回正版驗證| H{"CAS 搶佔 (false ➔ true)"}
+    H -->|搶佔失敗: 已被逾時放行| I["嚴禁二次 replayHello！<br>透過 server.execute 於主執行緒延遲晉升玩家為正版"]
+
+    J[客戶端中途斷線 onDisconnect] --> K["CAS released 標記為 true<br>取消 Watchdog 與非同步任務，防止幽靈重放"]
+```
+
+#### 7 秒動態驗證逾時與延遲晉升 (Delayed Promotion)
+- **7 秒守門機制**：在 `config.yml` 中預設 `settings.dynamicVerificationTimeout: 7`。當外部驗證伺服器網路壅塞或反應緩慢超過 7 秒時，伺服器先以離線模式放行玩家進服，客戶端無感連線、不卡在載入畫面。
+- **延遲晉升 (Delayed Promotion)**：若背景查詢於數秒後成功回傳，伺服器主執行緒將自動執行「延遲晉升」：
+  - 玩家若仍在線且尚未完成手動密碼登入，系統即刻將其標記為已驗證正版玩家。
+  - 自動解除失明、定身與移動限制，並補齊正版皮膚屬性。
+
+#### Mojang 驗證伺服器狀態熔斷保護 (Circuit Breaker)
+- **智慧狀態熔斷**：當 Mojang Session 伺服器發生大範圍故障、連線超時或異常拋錯時，系統自動啟動熔斷保護機制（冷卻時間預設 180 秒）。
+- **零中斷平滑切換**：處於熔斷期間時，伺服器**完全不向連線客戶端發送加密握手請求**，客戶端直接以離線流程順暢進服，徹底避免客戶端因嘗試連線掛掉的 Mojang 服務而出現「登入失敗：目前無法連線到驗證伺服器」並主動斷線。
+- **進服提示**：熔斷生效期間進服之玩家，系統自動發送提示訊息引導改用密碼登入（`/login`）。可透過管理員指令 `/neoauth circuitbreaker` 隨時查看狀態、重置或手動測試觸發。
+
+#### BlueMap 背景解耦與三層頭像快取機制 (Avatar Cache Specification)
+- **解耦核心**：Mojang 握手階段僅會回傳包含皮膚 URL 的 `textures` 中繼資料，**絕不包含 2D PNG 頭像圖檔**。下載 64×64 PNG 與寫入多個世界地圖目錄改交由背景專屬單執行緒佇列（`NeoAuth-BlueMap-Worker`）依序執行，對遊戲主執行緒與 Netty 網路迴圈達到 **0 毫秒阻塞**。
+- **與 SkinRestorer 協同**：在 `PlayerLoggedInEvent (priority = EventPriority.HIGHEST)` 階段，NeoAuth 率先將通過驗證之 `textures` 注入玩家實體的 `GameProfile`。當下游的 `SkinRestorer` 模組讀取到玩家已具備正版皮膚材質時，會直接沿用現有外觀，不觸發多餘的外部網路請求，避免多模組衝突與競態。
+- **三層快取更新防護**：
+  1. **Texture Hash 指紋比對（最強即時性）**：記錄 `textures` 屬性的 SHA-256 雜湊。即使快取尚未過期，一旦玩家在官方更換皮膚，登入時因 Hash 改變，快取即刻失效並觸發自動重新下載，換造型即時生效。
+  2. **TTL 存活時間（預設 120 分鐘）**：在 `config.yml` 中配置 `bluemap.cacheTtlMinutes: 120`，離線玩家或固定外觀玩家於時間內直接命中記憶體快取，0 網路請求、0 磁碟負擔。
+  3. **熱重載與指令手動清理**：執行 `/neoauth reload` 時自動調用 `BlueMapIntegration.clearCache()` 清空快取。
+
+```mermaid
+flowchart TD
+    A[背景同步玩家頭像] --> B{檢查記憶體與本地快取}
+    B -->|無快取 或 快取已過期 TTL| E[向外部 API 下載最新頭像]
+    B -->|有快取 且 未過期| C{比對當前 Texture Hash 與快取 Hash}
+    C -->|Hash 相同: 玩家未改造型| D["直接使用快取圖檔寫入 BlueMap<br>(0ms / 零網路請求)"]
+    C -->|Hash 不同: 玩家已換皮膚| E
+    E --> F[更新記憶體與磁碟快取，記錄新 Hash 與時間戳]
+    F --> G[非同步寫入 BlueMap 各世界資源庫]
+```
+
+---
+
+### 🛡️ 2. 未登入狀態物品欄與容器深度防護 (Inventory & Container Security)
+
+為解決未登入玩家（正版未驗證 / 離線未登入 / 未註冊訪客）可能透過客戶端原版特性、模組快捷鍵、方塊互動或地面掉落物進行非法操作或物品轉移的安全性漏洞，NeoAuthReloaded 導入了「封包底層 + 模組事件層」的雙層立體防護架構。
+
+#### 漏洞成因與安全威脅
+1. **原版個人背包 (E 鍵)**：開啟個人物品欄（Container ID 0）純屬客戶端本地行為，不發送開啟封包。點擊拖曳或換裝時，客戶端向伺服器發送點擊與動作封包。若伺服端未嚴格攔截，可能導致物品被違規移動或寫入存檔。
+2. **模組背包 (Sophisticated Backpacks 等)**：玩家透過按鍵綁定或快捷鍵開啟背部裝備的模組背包時，模組會在伺服端為玩家開啟 `ContainerMenu`，繞過了傳統的方塊點擊判定。
+3. **地面掉落物與副手偷渡**：未登入玩家走過地面物品時會自動吸取；按 F 鍵交換主副手或按 Q 鍵丟棄物品時，伺服端若無封包重置與數據同步，易造成客戶端產生幽靈物品（Ghost Items）或物品被非法拋擲轉移。
+
+#### 雙層立體防護架構實作
+
+NeoAuthReloaded 在 **Forge 1.20.1** 與 **NeoForge 1.21.1** 雙平台同步實作：
+
+##### 1. 封包層攔截 (Packet-Level Interception - Mixin 注入 `ServerGamePacketListenerImpl`)
+在最底層封包監聽器攔截未登入玩家的所有物品相關操作，並透過伺服端權威同步徹底消除客戶端畫面幽靈殘留：
+
+* **`handleContainerClick` (容器/背包槽位點擊)**：
+  - 檢測玩家登入狀態，未登入者直接取消執行（`ci.cancel()`）。
+  - 若玩家開啟了非個人預設物品欄的容器，立即強制執行 `player.closeContainer()` 關閉視窗。
+  - 調用 `containerMenu.sendAllDataToRemote()` 與 `inventoryMenu.sendAllDataToRemote()`，強制向客戶端推送伺服端真實槽位與鼠標手持數據，物品位置立刻回彈復原。
+* **`handleContainerButtonClick` (容器按鈕點擊)**：
+  - 攔截切石機、附魔台、信標、合成台等 GUI 內部的所有按鈕點擊封包。
+* **`handleContainerSlotStateChanged` (NeoForge 1.21+ 槽位狀態變更)**：
+  - 阻擋 1.21+ 全新槽位狀態切換。
+* **`handlePlayerAction` (玩家動作封包)**：
+  - 嚴格攔截 `SWAP_ITEM_WITH_OFFHAND`（按 F 交換主副手）。
+  - 嚴格攔截 `DROP_ITEM` 與 `DROP_ALL_ITEMS`（按 Q 丟棄物品），並即時回傳物品欄真實數據。
+* **`handleSetCreativeModeSlot` (創造模式槽位修改)**：
+  - 取消未驗證玩家在創造模式下憑空獲取或竄改物品欄槽位。
+* **進階交互封包全面攔截**：
+  - `handlePlaceRecipe`：阻擋配方書自動合成與材料放置。
+  - `handleSelectTrade`：阻擋與村民的交易項目選取。
+  - `handleRenameItem`：阻擋鐵砧更名與修理。
+  - `handlePickItem`：阻擋中鍵拾取方塊至快捷列。
+
+##### 2. 事件層防護 (Event-Level Interception - 模組事件監聽)
+在生命週期與物理世界層面建立外圍防禦：
+
+* **`PlayerContainerEvent.Open` (容器開啟防護)**：
+  - 當任何模組（如精妙背包 Sophisticated Backpacks）或方塊試圖在伺服端為未登入玩家開啟外部容器 GUI 時，事件處理器立即呼叫 `player.closeContainer()` 強制關閉，杜絕 GUI 被開啟的可能性。
+* **`EntityItemPickupEvent` (Forge) / `ItemEntityPickupEvent.Pre` (NeoForge) (地面拾取防護)**：
+  - 當未登入玩家走過地面掉落物時，直接拒絕拾取（`event.setCanceled(true)` 或 `event.setCanPickup(TriState.FALSE)`），防止未登入玩家吸取或撿拾任何地面物資。
+
+#### 全方位安全防護矩陣對照表
+
+| 操作行為 | 觸發路徑 | 防禦層級 | 處置方式 | 防護效果 |
+| :--- | :--- | :--- | :--- | :--- |
+| **開啟個人背包點擊物品 (E 鍵)** | 客戶端發送點擊封包 | 封包層 (`handleContainerClick`) | 取消封包 + `sendAllDataToRemote()` | 物品即刻彈回原位，禁止移動、裝備與整理 |
+| **開啟箱子/熔爐/工作台** | 玩家與方塊互動 | 事件層 + 封包層 | 取消方塊互動 + `closeContainer()` | 容器無法開啟，若強開則立即被伺服器強制關閉 |
+| **模組背包快捷鍵 (精妙背包等)** | 模組發起開啟請求 | 事件層 (`PlayerContainerEvent.Open`) | 立即執行 `player.closeContainer()` | 模組背包視窗無法開啟，完全無法存取內容物 |
+| **按 F 鍵交換副手物品** | `SWAP_ITEM_WITH_OFFHAND` | 封包層 (`handlePlayerAction`) | 取消動作 + 回傳槽位同步 | 副手與主手物品維持原樣，無法切換 |
+| **按 Q 鍵丟棄物品** | `DROP_ITEM` / `DROP_ALL_ITEMS` | 封包層 (`handlePlayerAction`) | 取消動作 + 回傳槽位同步 | 物品無法扔出，禁止向外界轉移物資 |
+| **走過地面掉落物** | 實體碰撞拾取 | 事件層 (`ItemPickupEvent`) | 取消拾取權限 (`setCanPickup: FALSE`) | 玩家直接穿過掉落物，物品不會被吸入背包 |
+| **村民交易 / 鐵砧 / 切石機** | 特殊容器封包 | 封包層 (`handleSelectTrade` 等) | 全面取消動作封包 | 無法選取交易配方、無法消耗經驗或物品 |
+| **創造模式物品生成/修改** | `SetCreativeModeSlot` | 封包層 (`handleSetCreativeModeSlot`) | 取消封包並覆寫還原 | 無法透過創造模式封包竄改背包槽位 |
+
+---
+
 ## 📥 安裝步驟 (Installation)
 
 ### 步驟 1：下載並安裝模組

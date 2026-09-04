@@ -2,6 +2,7 @@ package tw.yuaner.neoauth.forge;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -177,7 +178,33 @@ public class ForgeEvents {
                         .executes(context -> executeAdminRecent(context.getSource())))
                 .then(Commands.literal("setenableregister")
                         .then(Commands.argument("enabled", BoolArgumentType.bool())
-                                .executes(context -> executeAdminSetEnableRegister(context.getSource(), BoolArgumentType.getBool(context, "enabled"))))));
+                                .executes(context -> executeAdminSetEnableRegister(context.getSource(), BoolArgumentType.getBool(context, "enabled")))))
+                .then(Commands.literal("circuitbreaker")
+                        .executes(context -> executeCircuitBreakerStatus(context.getSource()))
+                        .then(Commands.literal("status")
+                                .executes(context -> executeCircuitBreakerStatus(context.getSource())))
+                        .then(Commands.literal("reset")
+                                .executes(context -> executeCircuitBreakerReset(context.getSource())))
+                        .then(Commands.literal("trip")
+                                .executes(context -> executeCircuitBreakerTrip(context.getSource(), 0))
+                                .then(Commands.argument("seconds", IntegerArgumentType.integer(1))
+                                        .executes(context -> executeCircuitBreakerTrip(context.getSource(), IntegerArgumentType.getInteger(context, "seconds")))))
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("seconds", IntegerArgumentType.integer(1))
+                                        .executes(context -> executeCircuitBreakerTrip(context.getSource(), IntegerArgumentType.getInteger(context, "seconds"))))))
+                .then(Commands.literal("cb")
+                        .executes(context -> executeCircuitBreakerStatus(context.getSource()))
+                        .then(Commands.literal("status")
+                                .executes(context -> executeCircuitBreakerStatus(context.getSource())))
+                        .then(Commands.literal("reset")
+                                .executes(context -> executeCircuitBreakerReset(context.getSource())))
+                        .then(Commands.literal("trip")
+                                .executes(context -> executeCircuitBreakerTrip(context.getSource(), 0))
+                                .then(Commands.argument("seconds", IntegerArgumentType.integer(1))
+                                        .executes(context -> executeCircuitBreakerTrip(context.getSource(), IntegerArgumentType.getInteger(context, "seconds")))))
+                        .then(Commands.literal("set")
+                                .then(Commands.argument("seconds", IntegerArgumentType.integer(1))
+                                        .executes(context -> executeCircuitBreakerTrip(context.getSource(), IntegerArgumentType.getInteger(context, "seconds")))))));
     }
 
     private static int executeRegisterArgs(CommandSourceStack source, String rawArgs) {
@@ -637,6 +664,40 @@ public class ForgeEvents {
         source.sendSuccess(() -> Component.literal("§e/neoauth version §7- Show version info"), false);
         source.sendSuccess(() -> Component.literal("§e/neoauth recent §7- Show recent logged in players"), false);
         source.sendSuccess(() -> Component.literal("§e/neoauth setenableregister <true|false> §7- Enable/disable registration"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth cb [status] §7- Check circuit breaker status"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth cb reset §7- Reset circuit breaker"), false);
+        source.sendSuccess(() -> Component.literal("§e/neoauth cb trip [seconds] §7- Trip circuit breaker manually"), false);
+        return 1;
+    }
+
+    private static int executeCircuitBreakerStatus(CommandSourceStack source) {
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        boolean isTripped = tw.yuaner.neoauth.util.MojangCircuitBreaker.isTripped();
+        if (isTripped) {
+            int remaining = tw.yuaner.neoauth.util.MojangCircuitBreaker.getCooldownSecondsRemaining();
+            String reason = tw.yuaner.neoauth.util.MojangCircuitBreaker.getLastFailureReason();
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.circuitbreaker_status_tripped", remaining, reason)), false);
+        } else {
+            boolean enabled = ConfigManager.getInstance().getConfig().isCircuitBreakerEnabled();
+            int duration = ConfigManager.getInstance().getConfig().getCircuitBreakerDurationSeconds();
+            String reason = tw.yuaner.neoauth.util.MojangCircuitBreaker.getLastFailureReason();
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.circuitbreaker_status_closed", enabled ? "啟用" : "關閉", duration, reason)), false);
+        }
+        return 1;
+    }
+
+    private static int executeCircuitBreakerReset(CommandSourceStack source) {
+        tw.yuaner.neoauth.util.MojangCircuitBreaker.reset();
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.circuitbreaker_reset_success")), true);
+        return 1;
+    }
+
+    private static int executeCircuitBreakerTrip(CommandSourceStack source, int seconds) {
+        int duration = seconds > 0 ? seconds : ConfigManager.getInstance().getConfig().getCircuitBreakerDurationSeconds();
+        tw.yuaner.neoauth.util.MojangCircuitBreaker.tripManually(duration, "管理員指令手動觸發");
+        MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        source.sendSuccess(() -> Component.literal(msgMgr.get("admin.circuitbreaker_trip_success", duration)), true);
         return 1;
     }
 
@@ -677,13 +738,12 @@ public class ForgeEvents {
                         ? new com.mojang.authlib.properties.Property("textures", tex.value(), tex.signature())
                         : new com.mojang.authlib.properties.Property("textures", tex.value());
                 player.getGameProfile().getProperties().put("textures", prop);
-                AuthManager.markPremiumVerified(uuid);
             }
 
             boolean isOffline = AuthManager.isOfflineUuid(username, uuid);
             boolean hasTextures = player.getGameProfile().getProperties() != null
                     && player.getGameProfile().getProperties().containsKey("textures");
-            boolean isPremium = AuthManager.isPremiumVerified(uuid) || (tex != null) || (!isOffline && hasTextures);
+            boolean isPremium = AuthManager.isPremiumVerified(uuid) || (!isOffline && hasTextures);
 
             // 發送 welcome.txt 歡迎公告 (若啟用)
             if (ConfigManager.getInstance().getConfig().isDisplayWelcomeMessage()) {
@@ -693,6 +753,13 @@ public class ForgeEvents {
                         Services.PLATFORM.sendMessage(player, line);
                     }
                 }
+            }
+
+            // 若玩家為 Mojang 伺服器異常或熔斷降級進入，發送專屬提示文案
+            if (AuthManager.isMojangFallback(uuid)) {
+                String fallbackMsg = ConfigManager.getInstance().getMessagesManager().get("general.mojang_unavailable_fallback");
+                Services.PLATFORM.sendMessage(player, fallbackMsg);
+                AuthManager.clearMojangFallback(uuid);
             }
 
             boolean autoLoggedIn = AuthLogic.handlePlayerJoin(uuid, username, player.getIpAddress(), isPremium);

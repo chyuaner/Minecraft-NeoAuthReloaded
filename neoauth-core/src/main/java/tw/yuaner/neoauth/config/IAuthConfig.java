@@ -226,6 +226,16 @@ public interface IAuthConfig {
     int getDynamicVerificationTimeout();
 
     /**
+     * 是否啟用 Mojang 驗證伺服器熔斷保護 (預設: true)
+     */
+    boolean isCircuitBreakerEnabled();
+
+    /**
+     * 取得 Mojang 驗證伺服器熔斷持續秒數 (預設: 180)
+     */
+    int getCircuitBreakerDurationSeconds();
+
+    /**
      * 取得自訂第三方 Yggdrasil 外置驗證伺服器網址 (例如: "https://mc8.yuaner.tw/api/yggdrasil")
      *
      * @return Yggdrasil 根網址，若未設定則為空字串

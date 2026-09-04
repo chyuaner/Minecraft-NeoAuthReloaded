@@ -111,6 +111,16 @@ settings:
   # - 若隨後 Mojang 正版驗證在背景非同步完成通過，且玩家尚未手動登入，系統將即時自動將玩家晉升為「已登入」狀態並解除限制！
   dynamicVerificationTimeout: 7
 
+  # 是否啟用 Mojang 驗證伺服器熔斷保護 (預設: true)
+  # - 當伺服器與 Mojang 驗證連線失敗/異常，或客戶端因 Mojang 故障而在握手階段斷線時，
+  #   系統將自動開啟熔斷保護，在設定秒數內暫時跳過正版動態握手，改由傳統密碼方式放行進服，
+  #   徹底杜絕正版玩家在 Mojang 全球當機時被客戶端拋出「目前無法連線到驗證伺服器」而無法進服的問題！
+  circuitBreakerEnabled: true
+
+  # Mojang 驗證伺服器熔斷冷卻時間（秒，預設: 180）
+  # - 當熔斷保護啟動後，在此秒數內所有正版客戶端連線將直接走傳統密碼放行，倒數結束後自動恢復正常正版動態握手。
+  circuitBreakerDurationSeconds: 180
+
   # 自訂第三方 Yggdrasil 外置驗證伺服器 API 網址 (預設: 空字串 "")
   # - 例如: "https://mc8.yuaner.tw/api/yggdrasil" (Blessing Skin, LittleSkin 等自建皮膚站/驗證站)
   # - 若設定此項，NeoAuth 將原生支援「雙向雙驗證」：

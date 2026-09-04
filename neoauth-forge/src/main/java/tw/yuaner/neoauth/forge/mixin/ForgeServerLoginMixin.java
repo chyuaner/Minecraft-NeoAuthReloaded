@@ -138,6 +138,14 @@ public abstract class ForgeServerLoginMixin {
                 return;
             }
 
+            // 【熔斷保護檢查】
+            // 若未設定自訂 Yggdrasil (即走 Mojang 官方驗證)，且 Mojang 熔斷保護啟動中：
+            if ((customUrl == null || customUrl.isBlank()) && tw.yuaner.neoauth.util.MojangCircuitBreaker.isTripped()) {
+                AuthManager.markMojangFallback(offlineUuid);
+                neoauth$LOGGER.warn("NeoAuth: Mojang 驗證伺服器處於熔斷保護中，直接放行玩家 {} 進入傳統密碼登入 (避免客戶端拋錯斷線)。", username);
+                return; // 直接放行原版離線處理，不發送 ClientboundHelloPacket！
+            }
+
             if (neoauth$HANDLED.contains(this)) {
                 return;
             }
@@ -268,6 +276,7 @@ public abstract class ForgeServerLoginMixin {
                     }
 
                     if (verified) {
+                        tw.yuaner.neoauth.util.MojangCircuitBreaker.recordSuccess();
                         AuthManager.markPremiumVerifiedWithTextures(offlineUuid, username, texturesValue, texturesSignature);
                         neoauth$LOGGER.info("NeoAuth: {} 驗證成功 ({})，已標記免密自動登入與皮膚保留。", authSource, username);
 
@@ -293,6 +302,12 @@ public abstract class ForgeServerLoginMixin {
                     }
                 } catch (Exception e) {
                     neoauth$LOGGER.error("NeoAuth: 查詢 Session 驗證伺服器時發生異常 (" + username + "): " + e.getMessage(), e);
+                    String customUrl = Services.PLATFORM.getConfig().getCustomYggdrasilUrl();
+                    if (customUrl == null || customUrl.isBlank()) {
+                        tw.yuaner.neoauth.util.MojangCircuitBreaker.recordFailure(
+                                e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "null"));
+                    }
+                    AuthManager.markMojangFallback(offlineUuid);
                 } finally {
                     // 原子放行判定：若尚未被 Watchdog 放行過，在此處放行進入 HELLO 重放
                     if (state.getReleased().compareAndSet(false, true)) {
@@ -327,6 +342,10 @@ public abstract class ForgeServerLoginMixin {
         if (state != null) {
             state.getReleased().set(true);
             state.cancelWatchdog();
+            String customUrl = Services.PLATFORM.getConfig().getCustomYggdrasilUrl();
+            if (customUrl == null || customUrl.isBlank()) {
+                tw.yuaner.neoauth.util.MojangCircuitBreaker.recordClientDisconnection(state.getHelloPacket().name());
+            }
         }
         neoauth$HANDLED.remove(this);
     }
@@ -358,7 +377,6 @@ public abstract class ForgeServerLoginMixin {
                             ? new com.mojang.authlib.properties.Property("textures", tex.value(), tex.signature())
                             : new com.mojang.authlib.properties.Property("textures", tex.value());
                     profile.getProperties().put("textures", prop);
-                    AuthManager.markPremiumVerified(profile.getId());
                 }
             }
         }
@@ -371,7 +389,10 @@ public abstract class ForgeServerLoginMixin {
         if (state.getReleased().compareAndSet(false, true)) {
             neoauth$STATES.remove(handler);
             neoauth$HANDLED.add(handler);
-            neoauth$LOGGER.warn("NeoAuth: 動態正版驗證已先降級為離線模式放行 [{}] (玩家: {})", reason, state.getHelloPacket().name());
+            String username = state.getHelloPacket().name();
+            UUID offlineUuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes(StandardCharsets.UTF_8));
+            AuthManager.markMojangFallback(offlineUuid);
+            neoauth$LOGGER.warn("NeoAuth: 動態正版驗證已先降級為離線模式放行 [{}] (玩家: {})", reason, username);
             neoauth$replayHello(handler, state.getHelloPacket());
         }
     }

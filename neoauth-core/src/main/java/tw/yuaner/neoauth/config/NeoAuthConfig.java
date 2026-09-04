@@ -52,6 +52,8 @@ public class NeoAuthConfig implements IAuthConfig {
     private boolean allowOfflinePlayers = true;
     private boolean dynamicPremiumVerification = true;
     private int dynamicVerificationTimeout = 7;
+    private boolean circuitBreakerEnabled = true;
+    private int circuitBreakerDurationSeconds = 180;
     private String customYggdrasilUrl = "";
 
     private String passwordHash = "SHA256";
@@ -144,6 +146,8 @@ public class NeoAuthConfig implements IAuthConfig {
             if (setMap.get("allowOfflinePlayers") instanceof Boolean b) config.allowOfflinePlayers = b;
             if (setMap.get("dynamicPremiumVerification") instanceof Boolean b) config.dynamicPremiumVerification = b;
             if (setMap.get("dynamicVerificationTimeout") instanceof Number n) config.dynamicVerificationTimeout = n.intValue();
+            if (setMap.get("circuitBreakerEnabled") instanceof Boolean b) config.circuitBreakerEnabled = b;
+            if (setMap.get("circuitBreakerDurationSeconds") instanceof Number n) config.circuitBreakerDurationSeconds = n.intValue();
             if (setMap.get("customYggdrasilUrl") != null) config.customYggdrasilUrl = String.valueOf(setMap.get("customYggdrasilUrl"));
             // registration (AuthMeReloaded 相容結構)
             Object regObj = setMap.get("registration");
@@ -415,6 +419,16 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public int getDynamicVerificationTimeout() {
         return dynamicVerificationTimeout;
+    }
+
+    @Override
+    public boolean isCircuitBreakerEnabled() {
+        return circuitBreakerEnabled;
+    }
+
+    @Override
+    public int getCircuitBreakerDurationSeconds() {
+        return circuitBreakerDurationSeconds;
     }
 
     @Override

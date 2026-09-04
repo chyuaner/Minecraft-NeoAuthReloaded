@@ -38,6 +38,11 @@ public class AuthManager {
     private static final java.util.Map<String, tw.yuaner.neoauth.util.TextureProperty> NAME_TO_TEXTURES = new ConcurrentHashMap<>();
 
     /**
+     * 儲存因 Mojang 驗證伺服器不可用、逾時或熔斷而回退為密碼登入的玩家 UUID 集合。
+     */
+    private static final Set<UUID> MOJANG_FALLBACK_PLAYERS = ConcurrentHashMap.newKeySet();
+
+    /**
      * 檢查指定 UUID 的玩家是否已經完成登入。
      *
      * @param uuid 玩家 UUID
@@ -143,6 +148,38 @@ public class AuthManager {
         if (uuid != null) {
             PREMIUM_VERIFIED.remove(uuid);
             PREMIUM_TEXTURES.remove(uuid);
+        }
+    }
+
+    /**
+     * 將指定 UUID 標記為 Mojang 伺服器不可用之 Fallback 降級玩家。
+     *
+     * @param uuid 玩家 UUID
+     */
+    public static void markMojangFallback(UUID uuid) {
+        if (uuid != null) {
+            MOJANG_FALLBACK_PLAYERS.add(uuid);
+        }
+    }
+
+    /**
+     * 檢查指定 UUID 的玩家是否處於 Mojang Fallback 降級狀態。
+     *
+     * @param uuid 玩家 UUID
+     * @return true 若為降級玩家
+     */
+    public static boolean isMojangFallback(UUID uuid) {
+        return uuid != null && MOJANG_FALLBACK_PLAYERS.contains(uuid);
+    }
+
+    /**
+     * 清除指定 UUID 的 Mojang Fallback 降級狀態。
+     *
+     * @param uuid 玩家 UUID
+     */
+    public static void clearMojangFallback(UUID uuid) {
+        if (uuid != null) {
+            MOJANG_FALLBACK_PLAYERS.remove(uuid);
         }
     }
 

@@ -66,11 +66,16 @@ admin:
   recent_item: "&e- &f%s &7(%s) - &7IP: %s"
   recent_none: "&c目前尚無任何登入紀錄。"
   version_info: "&6===== &eNeoAuthReloaded 版本資訊 &6=====\n&e模組名稱: &fNeoAuthReloaded\n&e模組版本: &f%s\n&e執行平台: &f%s\n&e開發者: &fYuan Chiu\n&e相容系統: &fAuthMeReloaded / Blessing Skin / MariaDB / SQLite / MySQL"
+  circuitbreaker_status_tripped: "&6===== &eNeoAuth 熔斷保護狀態 &6=====\n&e狀態: &c熔斷中 (OPEN)\n&e剩餘冷卻時間: &f%d 秒\n&e最近觸發原因: &7%s\n&7(在此期間所有正版連線皆自動走傳統密碼放行)"
+  circuitbreaker_status_closed: "&6===== &eNeoAuth 熔斷保護狀態 &6=====\n&e狀態: &a正常運作 (CLOSED)\n&e熔斷保護功能: &f%s\n&e預設熔斷時長: &f%d 秒\n&e最近一次原因: &7%s"
+  circuitbreaker_reset_success: "&aNeoAuth: 已手動重置 Mojang 驗證熔斷狀態，已恢復正常動態正版握手。"
+  circuitbreaker_trip_success: "&eNeoAuth: 已手動啟動 Mojang 驗證熔斷狀態，持續 &f%d &e秒。期間將直接放行傳統密碼登入。"
 
 general:
   only_players: "&c只有玩家可以使用此指令！"
   database_error: "&c資料庫連線異常，請聯繫管理員。"
   welcome_premium: "&a歡迎回來，%s！ &7(已通過 Mojang 官方正版驗證)"
+  mojang_unavailable_fallback: "&eNeoAuth: 目前無法連線 Mojang 驗證伺服器，請改用傳統密碼方式登入"
   command_not_allowed: "&c您必須先完成登入驗證才能使用其他指令！"
   action_blocked: "&c您必須先完成登入驗證才能執行此動作！"
   reload_success: "&aNeoAuthReloaded 設定檔與語言訊息已成功重新載入。"

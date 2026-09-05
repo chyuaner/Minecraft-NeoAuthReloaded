@@ -201,7 +201,7 @@ public class ConfigManager {
                     diskMap = reloaded;
                 }
             } catch (Exception e) {
-                LOGGER.error("NeoAuth: 儲存合併設定檔 {} 失敗: {}", diskPath, e.getMessage());
+                LOGGER.error("NeoAuth: 儲存合併設定檔 {} 失敗 (請檢查檔案與目錄之寫入權限): {}", diskPath, e.getMessage());
             }
         }
 

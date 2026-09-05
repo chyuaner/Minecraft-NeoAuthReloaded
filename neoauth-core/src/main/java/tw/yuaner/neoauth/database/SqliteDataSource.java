@@ -37,6 +37,9 @@ public class SqliteDataSource extends AbstractSqlDataSource {
         if (parent != null && !Files.exists(parent)) {
             Files.createDirectories(parent);
         }
+        if (parent != null && Files.exists(parent) && !Files.isWritable(parent)) {
+            LOGGER.error("NeoAuth: SQLite 目錄無寫入權限 [{}]: 請確認 Linux 目錄擁有者與權限 (例如執行 chown -R 或 chmod -R 775)！", parent);
+        }
 
         HikariConfig hikariConfig = new HikariConfig();
         hikariConfig.setDriverClassName("org.sqlite.JDBC");

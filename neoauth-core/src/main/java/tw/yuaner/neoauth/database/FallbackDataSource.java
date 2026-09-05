@@ -9,7 +9,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /**
  * 資料庫備援代理類別。
@@ -39,22 +44,36 @@ public class FallbackDataSource implements IDataSource {
     public void connect(IAuthConfig config) throws Exception {
         this.config = config != null ? config : Services.PLATFORM.getConfig();
 
-        // 1. 本地 SQLite 備援資料庫優先連線（本機檔案必定成功）
-        fallback.connect(this.config);
+        boolean fallbackOk = false;
+        try {
+            fallback.connect(this.config);
+            fallbackOk = true;
+        } catch (Exception e) {
+            LOGGER.error("NeoAuth: 本地 SQLite 備援資料庫初始化失敗 (請檢查目錄寫入權限): {}", e.getMessage());
+        }
 
-        // 2. 嘗試連線主資料庫
+        boolean primaryOk = false;
         try {
             primary.connect(this.config);
             markPrimarySuccess();
             LOGGER.info("NeoAuth: 主資料庫連線成功！");
+            primaryOk = true;
 
-            if (primary instanceof AbstractSqlDataSource pSql && fallback instanceof AbstractSqlDataSource fSql) {
+            if (fallbackOk && primary instanceof AbstractSqlDataSource pSql && fallback instanceof AbstractSqlDataSource fSql) {
                 syncData(pSql, fSql, this.config);
             }
         } catch (Exception e) {
             markPrimaryFailure();
-            LOGGER.warn("NeoAuth: 主資料庫連線失敗，已自動降級為本地 SQLite 備援模式 (唯讀登入): {}", e.getMessage());
-            // 正常返回，絕不拋出例外，確保 activeDataSource 保持有效且使用 SQLite 備援
+            if (fallbackOk) {
+                LOGGER.warn("NeoAuth: 主資料庫連線失敗，已自動降級為本地 SQLite 備援模式 (唯讀登入): {}", e.getMessage());
+            } else {
+                LOGGER.error("NeoAuth: 主資料庫與本地備援資料庫皆連線失敗！");
+                throw e;
+            }
+        }
+
+        if (!fallbackOk && !primaryOk) {
+            throw new DatabaseConnectionException("NeoAuth: 主資料庫與備援資料庫皆無法連線！");
         }
     }
 
@@ -62,44 +81,67 @@ public class FallbackDataSource implements IDataSource {
         if (primary.dataSource == null || fallback.dataSource == null) return;
         LOGGER.info("NeoAuth: 正在從主資料庫同步資料至 SQLite 備援資料庫...");
         String table = config.getDbTable();
-        String selectSql = "SELECT * FROM " + table;
 
-        try (Connection pConn = primary.dataSource.getConnection();
-             PreparedStatement pStmt = pConn.prepareStatement(selectSql);
-             ResultSet rs = pStmt.executeQuery()) {
+        try {
+            // 取得 fallback SQLite 的所有欄位名稱 (轉為小寫以利大小寫不敏感比對)
+            Set<String> fallbackCols = new HashSet<>();
+            try (Connection fConn = fallback.dataSource.getConnection();
+                 Statement fStmt = fConn.createStatement();
+                 ResultSet fRs = fStmt.executeQuery("SELECT * FROM " + table + " WHERE 1=0")) {
+                ResultSetMetaData fMeta = fRs.getMetaData();
+                for (int i = 1; i <= fMeta.getColumnCount(); i++) {
+                    fallbackCols.add(fMeta.getColumnName(i).toLowerCase(Locale.ROOT));
+                }
+            }
 
-            ResultSetMetaData meta = rs.getMetaData();
-            int colCount = meta.getColumnCount();
+            // 取得 primary 與 fallback 兩端皆存在的共同欄位
+            List<String> commonCols = new ArrayList<>();
+            try (Connection pConn = primary.dataSource.getConnection();
+                 Statement pStmt = pConn.createStatement();
+                 ResultSet pRs = pStmt.executeQuery("SELECT * FROM " + table + " WHERE 1=0")) {
+                ResultSetMetaData pMeta = pRs.getMetaData();
+                for (int i = 1; i <= pMeta.getColumnCount(); i++) {
+                    String colName = pMeta.getColumnName(i);
+                    if (fallbackCols.contains(colName.toLowerCase(Locale.ROOT))) {
+                        commonCols.add(colName);
+                    }
+                }
+            }
 
-            if (colCount == 0) {
+            if (commonCols.isEmpty()) {
+                LOGGER.warn("NeoAuth: 主資料庫與 SQLite 備援資料庫無共同欄位，略過資料同步。");
                 return;
             }
 
+            String selectCols = String.join(", ", commonCols);
+            String selectSql = "SELECT " + selectCols + " FROM " + table;
+
             StringBuilder insertSql = new StringBuilder("INSERT OR REPLACE INTO ").append(table).append(" (");
-            StringBuilder values = new StringBuilder(" VALUES (");
-            for (int i = 1; i <= colCount; i++) {
-                insertSql.append(meta.getColumnName(i));
-                values.append("?");
-                if (i < colCount) {
+            insertSql.append(selectCols).append(") VALUES (");
+            for (int i = 0; i < commonCols.size(); i++) {
+                insertSql.append("?");
+                if (i < commonCols.size() - 1) {
                     insertSql.append(", ");
-                    values.append(", ");
                 }
             }
             insertSql.append(")");
-            values.append(")");
-            insertSql.append(values);
 
-            try (Connection fConn = fallback.dataSource.getConnection();
+            int count = 0;
+            try (Connection pConn = primary.dataSource.getConnection();
+                 PreparedStatement pStmt = pConn.prepareStatement(selectSql);
+                 ResultSet rs = pStmt.executeQuery();
+                 Connection fConn = fallback.dataSource.getConnection();
                  PreparedStatement fStmt = fConn.prepareStatement(insertSql.toString())) {
 
                 while (rs.next()) {
-                    for (int i = 1; i <= colCount; i++) {
+                    for (int i = 1; i <= commonCols.size(); i++) {
                         fStmt.setObject(i, rs.getObject(i));
                     }
                     fStmt.addBatch();
+                    count++;
                 }
                 fStmt.executeBatch();
-                LOGGER.info("NeoAuth: SQLite 備援資料庫同步完成！");
+                LOGGER.info("NeoAuth: SQLite 備援資料庫同步完成！共同步 {} 筆帳號資料。", count);
             }
         } catch (Exception e) {
             LOGGER.warn("NeoAuth: 同步至 SQLite 備援資料庫時發生錯誤 (不影響主流程)", e);
@@ -172,7 +214,7 @@ public class FallbackDataSource implements IDataSource {
 
     @Override
     public boolean isFallbackActive() {
-        return !isPrimaryHealthy();
+        return !isPrimaryHealthy() && fallback != null && fallback.isConnected();
     }
 
     @Override
@@ -184,11 +226,17 @@ public class FallbackDataSource implements IDataSource {
                 return res;
             } catch (DatabaseConnectionException e) {
                 markPrimaryFailure();
-                LOGGER.warn("NeoAuth: 主資料庫連線異常，啟用 SQLite 備援進行查詢: {}", username);
-                return fallback.isRegistered(username);
+                if (fallback != null && fallback.isConnected()) {
+                    LOGGER.warn("NeoAuth: 主資料庫連線異常，啟用 SQLite 備援進行查詢: {}", username);
+                    return fallback.isRegistered(username);
+                }
+                throw e;
             }
         }
-        return fallback.isRegistered(username);
+        if (fallback != null && fallback.isConnected()) {
+            return fallback.isRegistered(username);
+        }
+        return primary.isRegistered(username);
     }
 
     @Override
@@ -200,11 +248,17 @@ public class FallbackDataSource implements IDataSource {
                 return res;
             } catch (DatabaseConnectionException e) {
                 markPrimaryFailure();
-                LOGGER.warn("NeoAuth: 主資料庫連線異常，啟用 SQLite 備援進行查詢: {}", username);
-                return fallback.hasPassword(username);
+                if (fallback != null && fallback.isConnected()) {
+                    LOGGER.warn("NeoAuth: 主資料庫連線異常，啟用 SQLite 備援進行查詢: {}", username);
+                    return fallback.hasPassword(username);
+                }
+                throw e;
             }
         }
-        return fallback.hasPassword(username);
+        if (fallback != null && fallback.isConnected()) {
+            return fallback.hasPassword(username);
+        }
+        return primary.hasPassword(username);
     }
 
     @Override
@@ -216,11 +270,17 @@ public class FallbackDataSource implements IDataSource {
                 return res;
             } catch (DatabaseConnectionException e) {
                 markPrimaryFailure();
-                LOGGER.warn("NeoAuth: 主資料庫連線異常，啟用 SQLite 備援進行密碼驗證: {}", username);
-                return fallback.checkPassword(username, password);
+                if (fallback != null && fallback.isConnected()) {
+                    LOGGER.warn("NeoAuth: 主資料庫連線異常，啟用 SQLite 備援進行密碼驗證: {}", username);
+                    return fallback.checkPassword(username, password);
+                }
+                throw e;
             }
         }
-        return fallback.checkPassword(username, password);
+        if (fallback != null && fallback.isConnected()) {
+            return fallback.checkPassword(username, password);
+        }
+        return primary.checkPassword(username, password);
     }
 
     @Override
@@ -314,11 +374,17 @@ public class FallbackDataSource implements IDataSource {
                 return data;
             } catch (DatabaseConnectionException e) {
                 markPrimaryFailure();
-                LOGGER.warn("NeoAuth: 主資料庫連線異常，啟用 SQLite 備援進行查詢: {}", username);
-                return fallback.getPlayerData(username);
+                if (fallback != null && fallback.isConnected()) {
+                    LOGGER.warn("NeoAuth: 主資料庫連線異常，啟用 SQLite 備援進行查詢: {}", username);
+                    return fallback.getPlayerData(username);
+                }
+                throw e;
             }
         }
-        return fallback.getPlayerData(username);
+        if (fallback != null && fallback.isConnected()) {
+            return fallback.getPlayerData(username);
+        }
+        return primary.getPlayerData(username);
     }
 
     @Override

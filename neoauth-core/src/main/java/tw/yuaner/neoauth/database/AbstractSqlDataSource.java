@@ -85,11 +85,31 @@ public abstract class AbstractSqlDataSource implements IDataSource {
      */
     protected void createTableIfNotExists(IAuthConfig config) {
         if (dataSource == null) return;
+        String table = config.getDbTable();
+        // 先檢查資料表是否已經存在且可存取，避免使用者無 CREATE 權限 (僅有 DML 權限) 時觸發權限拒絕例外
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement checkStmt = conn.prepareStatement("SELECT 1 FROM " + table + " LIMIT 1")) {
+            checkStmt.executeQuery();
+            LOGGER.info("NeoAuth: 資料表 {} 已存在且可正常存取。", table);
+            return;
+        } catch (SQLException checkEx) {
+            // 資料表可能尚未建立或無存取權限，嘗試執行建立資料表語法
+            LOGGER.debug("NeoAuth: 資料表 {} 尚未存在或無法直接查詢，嘗試自動建立...", table);
+        }
+
         String sql = getCreateTableSql(config);
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.execute();
         } catch (SQLException e) {
+            // 若建立失敗，再次確認資料表是否已存在 (例如雖然無 CREATE 權限但資料表已由管理員建置好)
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement checkStmt = conn.prepareStatement("SELECT 1 FROM " + table + " LIMIT 1")) {
+                checkStmt.executeQuery();
+                LOGGER.warn("NeoAuth: 無法執行建立資料表指令 (可能缺乏 CREATE 權限)，但資料表 {} 已存在，繼續使用既有資料表。", table);
+                return;
+            } catch (SQLException ignored) {
+            }
             LOGGER.error("NeoAuth: 建立資料表 {} 失敗", config.getDbTable(), e);
             throw new DatabaseConnectionException("NeoAuth: 建立資料表失敗", e);
         }

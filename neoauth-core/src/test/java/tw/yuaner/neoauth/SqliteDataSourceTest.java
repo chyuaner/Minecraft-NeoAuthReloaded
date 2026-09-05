@@ -16,12 +16,15 @@ import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import tw.yuaner.neoauth.config.IAuthConfig;
+import tw.yuaner.neoauth.database.FallbackDataSource;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -382,6 +385,79 @@ public class SqliteDataSourceTest {
             fallbackDs.registerPlayer("newuser", "pass", "127.0.0.1");
         }, "主庫離線時禁止註冊新玩家");
 
+        fallbackDs.close();
+    }
+
+    @Test
+    public void testFallbackDataSourceSyncWithDifferentColumns() throws Exception {
+        Path primaryDbFile = tempDir.resolve("primary_extra_cols.db");
+        Path fallbackDbFile = tempDir.resolve("fallback_dest.db");
+
+        // 1. 在 Primary 資料庫中建立包含額外欄位 (如 nickname, score 等類似皮膚站/論壇的結構) 的 users 資料表
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + primaryDbFile.toString());
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE TABLE users (" +
+                    "uid INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "username VARCHAR(255) NOT NULL UNIQUE, " +
+                    "password VARCHAR(255) NOT NULL DEFAULT '', " +
+                    "nickname VARCHAR(50), " +
+                    "score INT, " +
+                    "ip VARCHAR(40), " +
+                    "lastlogin BIGINT, " +
+                    "regdate BIGINT NOT NULL DEFAULT 0, " +
+                    "regip VARCHAR(40), " +
+                    "x DOUBLE NOT NULL DEFAULT 0.0, " +
+                    "y DOUBLE NOT NULL DEFAULT 0.0, " +
+                    "z DOUBLE NOT NULL DEFAULT 0.0, " +
+                    "world VARCHAR(255) NOT NULL DEFAULT 'world', " +
+                    "yaw FLOAT, pitch FLOAT, email VARCHAR(255), isLogged INT NOT NULL DEFAULT 0, " +
+                    "realname VARCHAR(255) NOT NULL DEFAULT 'Player', hasSession INT NOT NULL DEFAULT 0)");
+
+            // 插入一筆具有額外欄位的測試資料
+            stmt.execute("INSERT INTO users (username, password, nickname, score, realname) " +
+                    "VALUES ('barian_user', 'hashed_pass_123', 'BarianNickname', 100, 'Barian_User')");
+        }
+
+        SqliteDataSource primaryDs = new SqliteDataSource() {
+            @Override
+            protected String getCreateTableSql(tw.yuaner.neoauth.config.IAuthConfig config) {
+                // 如果嘗試再次建立，拋出異常模擬無 CREATE 權限
+                throw new UnsupportedOperationException("模擬無 CREATE TABLE 權限");
+            }
+        };
+
+        SqliteDataSource fallbackDs = new SqliteDataSource();
+
+        // 建立測試配置 (table 名稱為 users)
+        String yamlConfig = "DataSource:\n" +
+                "  backend: 'SQLITE'\n" +
+                "  sqLiteFile: '" + primaryDbFile.toString() + "'\n" +
+                "  mySQLTablename: 'users'\n" +
+                "  mySQLColumnId: 'uid'\n";
+        Map<String, Object> testMap = new org.yaml.snakeyaml.Yaml().load(yamlConfig);
+        IAuthConfig testConfig = NeoAuthConfig.fromMap(testMap);
+
+        // Fallback 資料庫使用另一檔案
+        String fallbackYaml = "DataSource:\n" +
+                "  backend: 'SQLITE'\n" +
+                "  sqLiteFile: '" + fallbackDbFile.toString() + "'\n" +
+                "  mySQLTablename: 'users'\n" +
+                "  mySQLColumnId: 'uid'\n";
+        Map<String, Object> fallbackMap = new org.yaml.snakeyaml.Yaml().load(fallbackYaml);
+        IAuthConfig fallbackConfig = NeoAuthConfig.fromMap(fallbackMap);
+
+        fallbackDs.connect(fallbackConfig);
+
+        FallbackDataSource proxyDs = new FallbackDataSource(primaryDs, fallbackDs);
+
+        // 連線並自動執行同步，不應拋出無 CREATE 權限例外，且欄位差異不應造成同步崩潰
+        assertDoesNotThrow(() -> proxyDs.connect(testConfig));
+
+        // 驗證 Fallback 資料庫中已有從 Primary 同步過去的帳號
+        assertTrue(fallbackDs.isRegistered("barian_user"), "Fallback 資料庫應成功同步 primary 的玩家");
+
+        proxyDs.close();
+        primaryDs.close();
         fallbackDs.close();
     }
 }

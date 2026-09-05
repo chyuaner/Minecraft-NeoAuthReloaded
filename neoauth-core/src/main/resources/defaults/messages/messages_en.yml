@@ -10,6 +10,7 @@ login:
   login_prompt: "&cPlease log in with: &e/login <password>"
   timeout: "&cLogin timeout! You took too long to log in."
   max_tries: "&cYou have exceeded the maximum number of login attempts!"
+  fallback_warning: "&ePrimary database connection failed. Logged in with backup database. Please contact an administrator promptly."
 
 register:
   success: "&aSuccessfully registered and logged in! Enjoy your game."

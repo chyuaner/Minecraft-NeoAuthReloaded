@@ -171,6 +171,11 @@ public class FallbackDataSource implements IDataSource {
     }
 
     @Override
+    public boolean isFallbackActive() {
+        return !isPrimaryHealthy();
+    }
+
+    @Override
     public boolean isRegistered(String username) {
         if (isPrimaryHealthy()) {
             try {

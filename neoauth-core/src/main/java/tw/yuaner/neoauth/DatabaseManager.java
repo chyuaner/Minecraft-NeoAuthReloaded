@@ -95,6 +95,15 @@ public class DatabaseManager {
     }
 
     /**
+     * 檢查目前是否正處於備援資料庫 (Fallback SQLite) 運作狀態。
+     *
+     * @return true 若主資料庫異常且正使用備援資料庫，否則為 false
+     */
+    public static boolean isFallbackActive() {
+        return activeDataSource != null && activeDataSource.isFallbackActive();
+    }
+
+    /**
      * 檢查指定的使用者名稱是否已經註冊。
      *
      * @param username 玩家名稱

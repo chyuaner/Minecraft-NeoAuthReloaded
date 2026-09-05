@@ -10,6 +10,7 @@ login:
   login_prompt: "&c請先登入！使用指令: &e/login <密碼>"
   timeout: "&c登入超時！您已花費過多時間未登入。"
   max_tries: "&c您已超過密碼嘗試次數上限！"
+  fallback_warning: "&e主資料庫連線異常，以備用資料庫登入，請及時聯繫管理員處理。"
 
 register:
   success: "&a註冊並登入成功！祝您遊戲愉快。"

@@ -37,6 +37,15 @@ public interface IDataSource {
     boolean isConnected();
 
     /**
+     * 檢查目前是否正處於備援資料庫 (Fallback SQLite) 運作狀態。
+     *
+     * @return true 若主資料庫異常且正使用備援資料庫，否則為 false
+     */
+    default boolean isFallbackActive() {
+        return false;
+    }
+
+    /**
      * 檢查指定使用者名稱是否已註冊。
      *
      * @param username 玩家名稱

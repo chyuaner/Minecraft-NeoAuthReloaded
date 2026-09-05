@@ -70,6 +70,7 @@ public class MessagesManager {
     private String getFallback(String key) {
         return switch (key) {
             case "login.success" -> "§a登入成功！祝您遊戲愉快。";
+            case "login.fallback_warning" -> "§e主資料庫連線異常，以備用資料庫登入，請及時聯繫管理員處理。";
             case "login.wrong_password" -> "§c密碼錯誤！請重新嘗試。";
             case "login.already_logged_in" -> "§c您已經處於登入狀態！";
             case "login.login_prompt" -> "§c請先登入！使用指令: §e/login <密碼>";

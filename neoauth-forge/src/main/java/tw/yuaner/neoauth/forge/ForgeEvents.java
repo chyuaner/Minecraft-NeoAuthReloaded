@@ -245,6 +245,10 @@ public class ForgeEvents {
         if (result == AuthLogic.LoginResult.SUCCESS) {
             Services.PLATFORM.removeFreezeEffects(player);
             source.sendSuccess(() -> Component.literal(result.getMessage()), false);
+            if (DatabaseManager.isFallbackActive()) {
+                String fallbackWarning = ConfigManager.getInstance().getMessagesManager().get("login.fallback_warning");
+                Services.PLATFORM.sendMessage(player, fallbackWarning);
+            }
             AuthLogic.executeHooks(source.getServer(), player, username,
                     ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
                     ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());
@@ -774,6 +778,10 @@ public class ForgeEvents {
                 if (DatabaseManager.isRegistered(username)) {
                     String msg = ConfigManager.getInstance().getMessagesManager().get("general.welcome_premium", username);
                     Services.PLATFORM.sendMessage(player, msg);
+                    if (DatabaseManager.isFallbackActive()) {
+                        String fallbackWarning = ConfigManager.getInstance().getMessagesManager().get("login.fallback_warning");
+                        Services.PLATFORM.sendMessage(player, fallbackWarning);
+                    }
                     AuthLogic.executeHooks(player.getServer(), player, username,
                             ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
                             ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());

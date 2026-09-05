@@ -345,4 +345,43 @@ public class SqliteDataSourceTest {
         assertTrue(result);
         assertTrue(ConfigManager.getInstance().getConfig().isRegistrationEnabled());
     }
+
+    @Test
+    public void testFallbackDataSourceWithOfflinePrimary() throws Exception {
+        // 先在 SQLite 備援資料庫中註冊一個玩家
+        dataSource.registerPlayer("fallbackuser", "Password123", "127.0.0.1");
+        assertTrue(dataSource.isRegistered("fallbackuser"));
+
+        // 建立一個模擬主庫斷線（或連線失敗）的資料來源
+        tw.yuaner.neoauth.database.IDataSource brokenPrimary = new tw.yuaner.neoauth.database.AbstractSqlDataSource() {
+            @Override
+            protected com.zaxxer.hikari.HikariDataSource createDataSource(tw.yuaner.neoauth.config.IAuthConfig config) throws Exception {
+                throw new java.net.ConnectException("模擬主資料庫連線失敗 (Connection refused)");
+            }
+
+            @Override
+            protected String getCreateTableSql(tw.yuaner.neoauth.config.IAuthConfig config) {
+                return "";
+            }
+        };
+
+        // 建立 FallbackDataSource
+        tw.yuaner.neoauth.database.FallbackDataSource fallbackDs = new tw.yuaner.neoauth.database.FallbackDataSource(brokenPrimary, dataSource);
+
+        // 伺服器啟動時連線：主庫失敗但不應拋出例外，且整體應保持已連線 (SQLite)
+        assertDoesNotThrow(() -> fallbackDs.connect(ConfigManager.getInstance().getConfig()));
+        assertTrue(fallbackDs.isConnected(), "SQLite 正常連線時 isConnected 應為 true");
+
+        // 讀取操作應正常回退至 SQLite，能順利驗證已存在之帳號
+        assertTrue(fallbackDs.isRegistered("fallbackuser"), "斷線時應由 SQLite 備援提供查詢");
+        assertTrue(fallbackDs.checkPassword("fallbackuser", "Password123"), "斷線時應由 SQLite 備援提供密碼驗證");
+        assertFalse(fallbackDs.checkPassword("fallbackuser", "WrongPassword"), "密碼錯誤仍應正確判定");
+
+        // 寫入操作（如註冊）應被安全阻擋
+        assertThrows(tw.yuaner.neoauth.database.DatabaseConnectionException.class, () -> {
+            fallbackDs.registerPlayer("newuser", "pass", "127.0.0.1");
+        }, "主庫離線時禁止註冊新玩家");
+
+        fallbackDs.close();
+    }
 }

@@ -33,6 +33,9 @@ import tw.yuaner.neoauth.core.AuthLogic;
 import tw.yuaner.neoauth.platform.Services;
 import tw.yuaner.neoauth.util.ArgumentTokenizer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -51,6 +54,8 @@ import java.util.UUID;
  */
 @Mod.EventBusSubscriber(modid = "neoauthreloaded", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class ForgeEvents {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("NeoAuth");
 
     /**
      * 註冊登入、註冊與管理指令。
@@ -789,7 +794,11 @@ public class ForgeEvents {
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             String username = player.getGameProfile().getName();
-            AuthLogic.attemptLogout(player.getUUID(), username);
+            try {
+                AuthLogic.attemptLogout(player.getUUID(), username);
+            } catch (Exception e) {
+                LOGGER.warn("NeoAuth: 處理玩家登出事件時發生異常: {}", username, e);
+            }
             AuthManager.clearPremiumVerified(player.getUUID());
         }
     }

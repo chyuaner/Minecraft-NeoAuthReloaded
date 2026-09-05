@@ -74,6 +74,12 @@ public abstract class AbstractSqlDataSource implements IDataSource {
         return dataSource != null && !dataSource.isClosed();
     }
 
+    protected void ensureConnected() {
+        if (dataSource == null) {
+            throw new DatabaseConnectionException("NeoAuth: 資料庫尚未建立連線");
+        }
+    }
+
     /**
      * 檢查並自動建立 AuthMe 相容之資料表結構。
      */
@@ -85,12 +91,14 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             stmt.execute();
         } catch (SQLException e) {
             LOGGER.error("NeoAuth: 建立資料表 {} 失敗", config.getDbTable(), e);
+            throw new DatabaseConnectionException("NeoAuth: 建立資料表失敗", e);
         }
     }
 
     @Override
     public boolean isRegistered(String username) {
-        if (dataSource == null || username == null) return false;
+        if (username == null) return false;
+        ensureConnected();
         IAuthConfig config = getConfig();
         String sql = "SELECT " + config.getMySqlColumnId() + " FROM " + config.getDbTable() + " WHERE " + config.getMySqlColumnName() + " = ?";
         try (Connection conn = dataSource.getConnection();
@@ -101,13 +109,14 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             }
         } catch (SQLException e) {
             LOGGER.error("NeoAuth: 查詢玩家註冊狀態時發生資料庫錯誤", e);
-            return false;
+            throw new DatabaseConnectionException("NeoAuth: 查詢玩家註冊狀態時發生資料庫錯誤", e);
         }
     }
 
     @Override
     public boolean hasPassword(String username) {
-        if (dataSource == null || username == null) return false;
+        if (username == null) return false;
+        ensureConnected();
         IAuthConfig config = getConfig();
         String sql = "SELECT " + config.getMySqlColumnPassword() + " FROM " + config.getDbTable() + " WHERE " + config.getMySqlColumnName() + " = ?";
         try (Connection conn = dataSource.getConnection();
@@ -121,13 +130,15 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             }
         } catch (SQLException e) {
             LOGGER.error("NeoAuth: 檢查玩家是否有密碼時發生資料庫錯誤", e);
+            throw new DatabaseConnectionException("NeoAuth: 檢查玩家是否有密碼時發生資料庫錯誤", e);
         }
         return false;
     }
 
     @Override
     public boolean checkPassword(String username, String password) {
-        if (dataSource == null || username == null || password == null) return false;
+        if (username == null || password == null) return false;
+        ensureConnected();
         IAuthConfig config = getConfig();
         String colSalt = config.getMySqlColumnSalt();
         boolean hasSaltCol = colSalt != null && !colSalt.isBlank();
@@ -147,13 +158,14 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             }
         } catch (SQLException e) {
             LOGGER.error("NeoAuth: 驗證密碼時發生資料庫錯誤", e);
+            throw new DatabaseConnectionException("NeoAuth: 驗證密碼時發生資料庫錯誤", e);
         }
         return false;
     }
 
     @Override
     public boolean registerPlayer(String username, String password, String ip) {
-        if (dataSource == null) return false;
+        ensureConnected();
         if (isRegistered(username)) return false;
 
         IAuthConfig config = getConfig();
@@ -201,7 +213,7 @@ public abstract class AbstractSqlDataSource implements IDataSource {
                 return true;
             } catch (SQLException e) {
                 LOGGER.error("NeoAuth: 註冊玩家時發生資料庫錯誤", e);
-                return false;
+                throw new DatabaseConnectionException("NeoAuth: 註冊玩家時發生資料庫錯誤", e);
             }
         } else {
             if (isEmptyPassword) {
@@ -234,14 +246,15 @@ public abstract class AbstractSqlDataSource implements IDataSource {
                 return true;
             } catch (SQLException e) {
                 LOGGER.error("NeoAuth: 註冊玩家時發生資料庫錯誤", e);
-                return false;
+                throw new DatabaseConnectionException("NeoAuth: 註冊玩家時發生資料庫錯誤", e);
             }
         }
     }
 
     @Override
     public void updateLogin(String username, String ip) {
-        if (dataSource == null || username == null) return;
+        if (username == null) return;
+        ensureConnected();
         IAuthConfig config = getConfig();
         String sql = "UPDATE " + config.getDbTable() + " SET " +
                 config.getMySqlColumnLastLogin() + " = ?, " +
@@ -257,12 +270,14 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             stmt.executeUpdate();
         } catch (SQLException e) {
             LOGGER.error("NeoAuth: 更新登入資訊時發生資料庫錯誤", e);
+            throw new DatabaseConnectionException("NeoAuth: 更新登入資訊時發生資料庫錯誤", e);
         }
     }
 
     @Override
     public void updateQuit(String username) {
-        if (dataSource == null || username == null) return;
+        if (username == null) return;
+        ensureConnected();
         IAuthConfig config = getConfig();
         String sql = "UPDATE " + config.getDbTable() + " SET " +
                 config.getMySqlColumnLogged() + " = 0 WHERE " +
@@ -274,12 +289,14 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             stmt.executeUpdate();
         } catch (SQLException e) {
             LOGGER.error("NeoAuth: 更新登出資訊時發生資料庫錯誤", e);
+            throw new DatabaseConnectionException("NeoAuth: 更新登出資訊時發生資料庫錯誤", e);
         }
     }
 
     @Override
     public boolean changePassword(String username, String newPassword) {
-        if (dataSource == null || username == null || newPassword == null) return false;
+        if (username == null || newPassword == null) return false;
+        ensureConnected();
         if (!isRegistered(username)) return false;
 
         IAuthConfig config = getConfig();
@@ -305,7 +322,7 @@ public abstract class AbstractSqlDataSource implements IDataSource {
                 return true;
             } catch (SQLException e) {
                 LOGGER.error("NeoAuth: 修改密碼時發生資料庫錯誤", e);
-                return false;
+                throw new DatabaseConnectionException("NeoAuth: 修改密碼時發生資料庫錯誤", e);
             }
         } else {
             String hash = PasswordManager.hashPassword(newPassword);
@@ -321,14 +338,15 @@ public abstract class AbstractSqlDataSource implements IDataSource {
                 return true;
             } catch (SQLException e) {
                 LOGGER.error("NeoAuth: 修改密碼時發生資料庫錯誤", e);
-                return false;
+                throw new DatabaseConnectionException("NeoAuth: 修改密碼時發生資料庫錯誤", e);
             }
         }
     }
 
     @Override
     public PlayerAuthData getPlayerData(String username) {
-        if (dataSource == null || username == null) return null;
+        if (username == null) return null;
+        ensureConnected();
         IAuthConfig config = getConfig();
         String sql = "SELECT " +
                 config.getMySqlColumnName() + ", " +
@@ -359,6 +377,7 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             }
         } catch (SQLException e) {
             LOGGER.error("NeoAuth: 查詢玩家資料時發生資料庫錯誤", e);
+            throw new DatabaseConnectionException("NeoAuth: 查詢玩家資料時發生資料庫錯誤", e);
         }
         return null;
     }
@@ -371,7 +390,8 @@ public abstract class AbstractSqlDataSource implements IDataSource {
 
     @Override
     public boolean setEmail(String username, String email) {
-        if (dataSource == null || username == null) return false;
+        if (username == null) return false;
+        ensureConnected();
         if (!isRegistered(username)) return false;
         IAuthConfig config = getConfig();
         String sql = "UPDATE " + config.getDbTable() + " SET " +
@@ -385,7 +405,7 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             return true;
         } catch (SQLException e) {
             LOGGER.error("NeoAuth: 更新 Email 時發生資料庫錯誤", e);
-            return false;
+            throw new DatabaseConnectionException("NeoAuth: 更新 Email 時發生資料庫錯誤", e);
         }
     }
 
@@ -398,7 +418,8 @@ public abstract class AbstractSqlDataSource implements IDataSource {
     @Override
     public List<String> getAccounts(String usernameOrIp) {
         List<String> accounts = new ArrayList<>();
-        if (dataSource == null || usernameOrIp == null || usernameOrIp.isBlank()) return accounts;
+        if (usernameOrIp == null || usernameOrIp.isBlank()) return accounts;
+        ensureConnected();
         IAuthConfig config = getConfig();
 
         String ip1 = null;
@@ -448,6 +469,7 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             }
         } catch (SQLException e) {
             LOGGER.error("NeoAuth: 查詢關聯帳號時發生資料庫錯誤", e);
+            throw new DatabaseConnectionException("NeoAuth: 查詢關聯帳號時發生資料庫錯誤", e);
         }
         return accounts;
     }
@@ -455,7 +477,7 @@ public abstract class AbstractSqlDataSource implements IDataSource {
     @Override
     public List<PlayerAuthData> getRecentPlayers(int limit) {
         List<PlayerAuthData> list = new ArrayList<>();
-        if (dataSource == null) return list;
+        ensureConnected();
         IAuthConfig config = getConfig();
         int max = limit > 0 ? limit : 10;
         String sql = "SELECT " +
@@ -487,6 +509,7 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             }
         } catch (SQLException e) {
             LOGGER.error("NeoAuth: 查詢最近登入玩家時發生資料庫錯誤", e);
+            throw new DatabaseConnectionException("NeoAuth: 查詢最近登入玩家時發生資料庫錯誤", e);
         }
         return list;
     }

@@ -7,6 +7,9 @@ import tw.yuaner.neoauth.config.IAuthConfig;
 import tw.yuaner.neoauth.config.MessagesManager;
 import tw.yuaner.neoauth.platform.Services;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.UUID;
 
 /**
@@ -15,6 +18,8 @@ import java.util.UUID;
  * 提供跨版本共用的身分驗證邏輯，包含登入驗證、註冊驗證、指令白名單過濾與提示訊息生成。
  */
 public class AuthLogic {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("NeoAuth");
 
     /**
      * 登入結果列舉。
@@ -97,7 +102,11 @@ public class AuthLogic {
         boolean match = DatabaseManager.checkPassword(username, password);
         if (match) {
             AuthManager.setLoggedIn(uuid);
-            DatabaseManager.updateLogin(username, ip);
+            try {
+                DatabaseManager.updateLogin(username, ip);
+            } catch (Exception e) {
+                LOGGER.warn("NeoAuth: 登入時更新資料庫記錄失敗: {}", username, e);
+            }
             return LoginResult.SUCCESS;
         } else {
             return LoginResult.WRONG_PASSWORD;
@@ -142,13 +151,17 @@ public class AuthLogic {
         }
 
         boolean success;
-        if (DatabaseManager.isRegistered(username)) {
-            success = DatabaseManager.changePassword(username, password);
-            if (success) {
-                DatabaseManager.updateLogin(username, ip);
+        try {
+            if (DatabaseManager.isRegistered(username)) {
+                success = DatabaseManager.changePassword(username, password);
+                if (success) {
+                    DatabaseManager.updateLogin(username, ip);
+                }
+            } else {
+                success = DatabaseManager.registerPlayer(username, password, ip);
             }
-        } else {
-            success = DatabaseManager.registerPlayer(username, password, ip);
+        } catch (tw.yuaner.neoauth.database.DatabaseConnectionException e) {
+            return RegisterResult.DATABASE_ERROR;
         }
 
         if (success) {
@@ -244,7 +257,12 @@ public class AuthLogic {
             return ChangePasswordResult.PASSWORD_TOO_LONG;
         }
 
-        boolean success = DatabaseManager.changePassword(username, newPassword);
+        boolean success;
+        try {
+            success = DatabaseManager.changePassword(username, newPassword);
+        } catch (tw.yuaner.neoauth.database.DatabaseConnectionException e) {
+            return ChangePasswordResult.DATABASE_ERROR;
+        }
         return success ? ChangePasswordResult.SUCCESS : ChangePasswordResult.DATABASE_ERROR;
     }
 
@@ -268,7 +286,12 @@ public class AuthLogic {
             return ChangePasswordResult.PASSWORD_TOO_LONG;
         }
 
-        boolean success = DatabaseManager.changePassword(username, newPassword);
+        boolean success;
+        try {
+            success = DatabaseManager.changePassword(username, newPassword);
+        } catch (tw.yuaner.neoauth.database.DatabaseConnectionException e) {
+            return ChangePasswordResult.DATABASE_ERROR;
+        }
         return success ? ChangePasswordResult.SUCCESS : ChangePasswordResult.DATABASE_ERROR;
     }
 
@@ -285,7 +308,11 @@ public class AuthLogic {
         }
         AuthManager.setLoggedOut(uuid);
         if (username != null) {
-            DatabaseManager.updateQuit(username);
+            try {
+                DatabaseManager.updateQuit(username);
+            } catch (Exception e) {
+                LOGGER.warn("NeoAuth: 登出時更新資料庫記錄失敗: {}", username, e);
+            }
         }
         return true;
     }

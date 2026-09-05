@@ -3,6 +3,7 @@ package tw.yuaner.neoauth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tw.yuaner.neoauth.config.IAuthConfig;
+import tw.yuaner.neoauth.database.FallbackDataSource;
 import tw.yuaner.neoauth.database.IDataSource;
 import tw.yuaner.neoauth.database.MySqlDataSource;
 import tw.yuaner.neoauth.database.PlayerAuthData;
@@ -32,13 +33,20 @@ public class DatabaseManager {
         IAuthConfig config = Services.PLATFORM.getConfig();
         String backend = config.getDbBackend() != null ? config.getDbBackend().trim().toUpperCase() : "SQLITE";
 
+        IDataSource primary;
         switch (backend) {
-            case "MARIADB", "MYSQL" -> activeDataSource = new MySqlDataSource();
-            case "SQLITE" -> activeDataSource = new SqliteDataSource();
+            case "MARIADB", "MYSQL" -> primary = new MySqlDataSource();
+            case "SQLITE" -> primary = new SqliteDataSource();
             default -> {
                 LOGGER.warn("NeoAuth: 未知的資料庫類型 '{}'，將使用預設的 SQLITE！", backend);
-                activeDataSource = new SqliteDataSource();
+                primary = new SqliteDataSource();
             }
+        }
+
+        if (config.isFallbackToSqLite() && !(primary instanceof SqliteDataSource)) {
+            activeDataSource = new FallbackDataSource(primary, new SqliteDataSource());
+        } else {
+            activeDataSource = primary;
         }
 
         try {

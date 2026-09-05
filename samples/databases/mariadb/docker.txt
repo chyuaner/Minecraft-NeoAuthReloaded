@@ -1,1 +1,2 @@
 docker run -d --name mariadb-neoauth -p 3306:3306 -e MARIADB_ROOT_PASSWORD=rootpassword -e MARIADB_DATABASE=neoauth -e MARIADB_USER=neoauth -e MARIADB_PASSWORD=a12345 mariadb:latest
+docker exec -it mariadb-neoauth mariadb -uneoauth -pa12345 neoauth

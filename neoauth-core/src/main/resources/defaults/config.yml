@@ -81,6 +81,9 @@ DataSource:
   # 連線最大存活時間 (秒)
   maxLifetime: 1800
 
+  # 是否啟用本地 SQLite 備援，當主資料庫 (如 MySQL) 異常時提供最基本的登入功能
+  fallbackToSqLite: false
+
 # 外部系統 / 論壇 / 皮膚站整合選項 (External Board Options)
 ExternalBoardOptions:
   # 外部資料庫鹽值欄位名稱 (若使用 SALTED2MD5 或外部系統，可設為 'salt')

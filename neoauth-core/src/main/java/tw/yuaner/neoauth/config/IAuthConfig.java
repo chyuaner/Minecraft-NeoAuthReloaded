@@ -74,6 +74,12 @@ public interface IAuthConfig {
     boolean isMySqlCheckServerCertificate();
 
     /**
+     * 是否在主資料庫非 SQLite 時，啟用本地 SQLite 作為登入備援 (預設: false)
+     */
+    boolean isFallbackToSqLite();
+
+
+    /**
      * 是否允許客戶端取得 RSA 伺服器公鑰
      */
     boolean isMySqlAllowPublicKeyRetrieval();

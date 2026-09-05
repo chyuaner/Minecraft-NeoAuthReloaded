@@ -32,7 +32,7 @@ public class MySqlDataSource extends AbstractSqlDataSource {
         hikariConfig.setMinimumIdle(2);
         hikariConfig.setIdleTimeout(30000);
         hikariConfig.setMaxLifetime(maxLifetime > 0 ? maxLifetime * 1000L : 1800000L);
-        hikariConfig.setConnectionTimeout(10000);
+        hikariConfig.setConnectionTimeout(5000);
         hikariConfig.addDataSourceProperty("cachePrepStmts", "true");
         hikariConfig.addDataSourceProperty("prepStmtCacheSize", "250");
         hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");

@@ -17,6 +17,7 @@ public class NeoAuthConfig implements IAuthConfig {
     private String dbTable = "neoauth";
     private int dbPoolSize = 10;
     private int dbMaxLifetime = 1800;
+    private boolean fallbackToSqLite = false;
 
     // SSL 與連線進階設定
     private boolean mySQLUseSSL = false;
@@ -104,6 +105,7 @@ public class NeoAuthConfig implements IAuthConfig {
             if (dsMap.get("mySQLTablename") != null) config.dbTable = String.valueOf(dsMap.get("mySQLTablename"));
             if (dsMap.get("poolSize") instanceof Number n) config.dbPoolSize = n.intValue();
             if (dsMap.get("maxLifetime") instanceof Number n) config.dbMaxLifetime = n.intValue();
+            if (dsMap.get("fallbackToSqLite") instanceof Boolean b) config.fallbackToSqLite = b;
 
             // SSL & 連線設定
             if (dsMap.get("mySQLUseSSL") instanceof Boolean b) config.mySQLUseSSL = b;
@@ -274,6 +276,11 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public boolean isMySqlCheckServerCertificate() {
         return mySQLCheckServerCertificate;
+    }
+
+    @Override
+    public boolean isFallbackToSqLite() {
+        return fallbackToSqLite;
     }
 
     @Override

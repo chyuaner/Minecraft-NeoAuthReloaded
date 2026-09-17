@@ -84,6 +84,10 @@ public class NeoAuthConfig implements IAuthConfig {
     private String blueMapCustomAvatarUrl = "";
     private int blueMapCacheTtlMinutes = 120;
 
+    // tab (TAB by NEZNAMY 模組連動)
+    private boolean tabEnabled = true;
+    private String tabDateFormat = "yyyy-MM-dd HH:mm:ss";
+
     public NeoAuthConfig() {}
 
     @SuppressWarnings("unchecked")
@@ -223,6 +227,16 @@ public class NeoAuthConfig implements IAuthConfig {
             if (bmMap.get("cacheTtlMinutes") instanceof Number n) config.blueMapCacheTtlMinutes = n.intValue();
             else if (bmMap.get("cache-ttl-minutes") instanceof Number n) config.blueMapCacheTtlMinutes = n.intValue();
             else if (bmMap.get("cache_ttl_minutes") instanceof Number n) config.blueMapCacheTtlMinutes = n.intValue();
+        }
+
+        Object tabObj = map.get("tab");
+        if (tabObj instanceof Map<?, ?> tabMap) {
+            if (tabMap.get("enabled") instanceof Boolean b) config.tabEnabled = b;
+            else if (tabMap.get("enable") instanceof Boolean b) config.tabEnabled = b;
+
+            if (tabMap.get("dateFormat") != null) config.tabDateFormat = String.valueOf(tabMap.get("dateFormat"));
+            else if (tabMap.get("date-format") != null) config.tabDateFormat = String.valueOf(tabMap.get("date-format"));
+            else if (tabMap.get("date_format") != null) config.tabDateFormat = String.valueOf(tabMap.get("date_format"));
         }
 
         return config;
@@ -555,5 +569,15 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public int getBlueMapCacheTtlMinutes() {
         return blueMapCacheTtlMinutes >= 0 ? blueMapCacheTtlMinutes : 120;
+    }
+
+    @Override
+    public boolean isTabIntegrationEnabled() {
+        return tabEnabled;
+    }
+
+    @Override
+    public String getTabDateFormat() {
+        return tabDateFormat != null && !tabDateFormat.isBlank() ? tabDateFormat.trim() : "yyyy-MM-dd HH:mm:ss";
     }
 }

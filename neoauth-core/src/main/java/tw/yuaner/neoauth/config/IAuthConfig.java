@@ -379,6 +379,20 @@ public interface IAuthConfig {
      * 取得頭像快取存活時間（分鐘，對應 bluemap.cacheTtlMinutes，預設: 120）
      */
     int getBlueMapCacheTtlMinutes();
+
+    /**
+     * 是否啟用向 TAB by NEZNAMY 模組註冊 NeoAuth 變數 (對應 tab.enabled，預設: true)
+     */
+    default boolean isTabIntegrationEnabled() {
+        return true;
+    }
+
+    /**
+     * 取得 %neoauth_login_time% 變數之日期時間格式 (對應 tab.dateFormat，預設: "yyyy-MM-dd HH:mm:ss")
+     */
+    default String getTabDateFormat() {
+        return "yyyy-MM-dd HH:mm:ss";
+    }
 }
 
 

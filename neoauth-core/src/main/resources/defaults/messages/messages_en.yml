@@ -93,3 +93,12 @@ help:
   lastlogin: "&e/lastlogin &7- View your last login history"
   getip: "&e/getip &7- View your current IP address"
   reload: "&e/neoauth reload &7- Reload NeoAuth configurations"
+
+tab:
+  login_type_premium: "&aMojang/Premium"
+  login_type_password: "&ePassword"
+  login_type_unlogged: "&7Not Logged In"
+  ip_type_ipv4: "&7IPv4"
+  ip_type_ipv6: "&dIPv6"
+  ip_type_unknown: "&7Unknown"
+  email_none: "&7None"

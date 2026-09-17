@@ -426,6 +426,7 @@ public class NeoForgeEvents {
         String username = player.getGameProfile().getName();
         boolean success = DatabaseManager.setEmail(username, email);
         if (success) {
+            AuthManager.updateSessionEmail(player.getUUID(), email);
             source.sendSuccess(() -> Component.literal(msgMgr.get("email.set_success", email)), false);
             return 1;
         } else {
@@ -438,6 +439,7 @@ public class NeoForgeEvents {
         boolean success = ConfigManager.getInstance().reload();
         if (success) {
             tw.yuaner.neoauth.util.BlueMapIntegration.clearCache();
+            tw.yuaner.neoauth.util.TabIntegration.register();
             source.sendSuccess(() -> Component.literal(ConfigManager.getInstance().getMessagesManager().get("general.reload_success")), true);
             return 1;
         } else {
@@ -479,6 +481,7 @@ public class NeoForgeEvents {
         Object targetObj = Services.PLATFORM.getOnlinePlayer(source, targetPlayerName);
         if (targetObj instanceof ServerPlayer target) {
             AuthManager.setLoggedIn(target.getUUID());
+            AuthManager.createSession(target.getUUID(), target.getGameProfile().getName(), target.getIpAddress(), AuthManager.isPremiumVerified(target.getUUID()));
             Services.PLATFORM.removeFreezeEffects(target);
             target.sendSystemMessage(Component.literal(msgMgr.get("login.success")));
             source.sendSuccess(() -> Component.literal(msgMgr.get("admin.forcelogin_success", target.getGameProfile().getName())), true);
@@ -496,6 +499,7 @@ public class NeoForgeEvents {
         MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
         if (source.getEntity() instanceof ServerPlayer player) {
             AuthManager.setLoggedIn(player.getUUID());
+            AuthManager.createSession(player.getUUID(), player.getGameProfile().getName(), player.getIpAddress(), AuthManager.isPremiumVerified(player.getUUID()));
             Services.PLATFORM.removeFreezeEffects(player);
             source.sendSuccess(() -> Component.literal(msgMgr.get("admin.forcelogin_self_success")), true);
             AuthLogic.executeHooks(source.getServer(), player, player.getGameProfile().getName(),
@@ -604,6 +608,7 @@ public class NeoForgeEvents {
 
         boolean success = DatabaseManager.setEmail(targetPlayer, email);
         if (success) {
+            AuthManager.updateSessionEmail(targetPlayer, email);
             source.sendSuccess(() -> Component.literal(msgMgr.get("admin.email_updated", targetPlayer, email)), true);
             return 1;
         } else {

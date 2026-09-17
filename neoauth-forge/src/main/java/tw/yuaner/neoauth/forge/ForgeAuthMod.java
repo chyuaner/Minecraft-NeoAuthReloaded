@@ -48,6 +48,7 @@ public class ForgeAuthMod {
     public void onServerStarting(ServerStartingEvent event) {
         LOGGER.info("NeoAuth: 伺服器啟動中，正在初始化資料庫連線...");
         DatabaseManager.init();
+        tw.yuaner.neoauth.util.TabIntegration.register();
     }
 
     /**
@@ -68,6 +69,7 @@ public class ForgeAuthMod {
     @SubscribeEvent
     public void onServerStopping(ServerStoppingEvent event) {
         LOGGER.info("NeoAuth: 伺服器正在停止，正在關閉資料庫連線池與背景執行緒...");
+        tw.yuaner.neoauth.util.TabIntegration.unregister();
         DatabaseManager.close();
         tw.yuaner.neoauth.util.BlueMapIntegration.shutdown();
     }

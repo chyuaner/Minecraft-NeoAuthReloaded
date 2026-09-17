@@ -40,6 +40,10 @@ NeoAuthReloaded 支援原廠 `server.properties` 中的兩種連線模式，服�
   - 完美彌平 `online-mode: false` 下分配離線 UUID 所造成的 BlueMap 頭像 404 斷層。
   - 當玩家通過官方正版或外置皮膚站驗證時，背景非同步下載 64x64 頭像並自動寫入 BlueMap 各世界地圖資源庫 (`assets/playerheads/<offlineUuid>.png`)，網頁端即時呈現正版頭像。
   - 支援自架皮膚站（如 Blessing Skin、authlib-injector）頭像網址設定與多來源智慧備援。
+- **TAB by NEZNAMY 模組連動與自訂變數 (Tab Integration)**：
+  - 原生支援向 TAB 模組註冊專屬變數，可於 Tab 列表、Scoreboard、Bossbar 呈現登入方式、IPv4/IPv6 連線線路、當前登入時間與 Email。
+  - 採用記憶體會話快取（In-Memory Session Cache），0 次磁碟資料庫請求，杜絕高頻更新卡頓。
+  - 反射型軟相依設計，未安裝 TAB 時 100% 零依賴運作；並支援監聽 `/tab reload` 自動重註冊變數。
 - **開箱即用 SQLite & 高效能連線池**：
   - 預設提供零配置的 SQLite 支援（檔案位於 `config/neoauth/neoauth.db`），支援相對路徑跨目錄讀取舊 AuthMe 檔案。
   - 支援 MariaDB 與 MySQL，透過 HikariCP 高效連線池進行執行緒安全的資料操作（SQLite 啟用 WAL 高效並行模式）。
@@ -302,6 +306,9 @@ config/neoauth/
   - `priority`：獨立模式下的頭像來源優先順序（`OFFICIAL_FIRST` 官方優先 / `CUSTOM_FIRST` 自架站優先，預設 `OFFICIAL_FIRST`）。
   - `avatarUrl`：官方正版頭像下載來源 API 網址範本（預設 `"https://mc-heads.net/avatar/{username}/64"`）。
   - `customAvatarUrl`：自架第三方皮膚站 / Blessing Skin 外置頭像來源 API 範本（例如 `"https://mc8.yuaner.tw/avatar/player/{username}?size=64"`）。
+- `tab`：TAB by NEZNAMY 模組連動設定區塊：
+  - `enabled`：是否向 TAB 模組註冊 NeoAuth 專屬變數（預設 `true`）。
+  - `dateFormat`：`%neoauth_login_time%` 變數顯示之日期時間格式（預設 `"yyyy-MM-dd HH:mm:ss"`）。
 
 ---
 
@@ -317,6 +324,46 @@ config/neoauth/
 # 僅建置 NeoForge 1.21.1
 ./gradlew buildNeoForge
 ```
+
+---
+
+## 📊 TAB by NEZNAMY 模組連動與變數清單 (TAB Integration)
+
+NeoAuthReloaded 支援直接向 **[TAB by NEZNAMY](https://github.com/NEZNAMY/TAB)** 模組註冊專屬變數。伺服端無需安裝任何額外橋接套件或 Bukkit PlaceholderAPI，即可在 TAB 列表、Scoreboard、Bossbar 與玩家名牌中顯示驗證資訊：
+
+### 📌 支援變數清單
+
+| 變數名稱 | 類型 | 說明 | 範例輸出 |
+| :--- | :--- | :--- | :--- |
+| `%neoauth_login_type%` | 玩家 | 顯示玩家目前的登入方式 | `§aMojang 正版`、`§e密碼登入`、`§7未登入` |
+| `%neoauth_ip_type%` | 玩家 | 顯示玩家目前連線之網路協定版本 | `§dIPv6`、`§7IPv4`、`§7未知` |
+| `%neoauth_login_time%` | 玩家 | 顯示玩家當前登入伺服器的時間戳 | `2026-09-17 16:30:00`（未登入為 `-`） |
+| `%neoauth_email%` | 玩家 | 顯示玩家綁定之電子信箱 | `player@example.com`（未綁定為 `§7未綁定`） |
+| `%neoauth_player%` | 玩家 | 顯示玩家使用者名稱 | `Steve` |
+
+### 🛠️ TAB 設定範例 (`config/tab/config.yml`)
+
+服主可直接在 TAB 模組的設定檔中使用上述變數，例如配置計分板（Scoreboard）或 Tab 列表：
+
+```yaml
+scoreboard:
+  enabled: true
+  scoreboards:
+    default:
+      title: "&6&l我的伺服器"
+      lines:
+        - "&7-----------------"
+        - "&e玩家: &f%player%"
+        - "&e驗證: %neoauth_login_type%"
+        - "&e線路: %neoauth_ip_type%"
+        - "&e信箱: %neoauth_email%"
+        - "&e登入: &7%neoauth_login_time%"
+        - "&7-----------------"
+```
+
+### 🎨 自訂顯示文案 (`messages_zhtw.yml` / `messages_en.yml`)
+
+各變數的渲染文字與色彩代碼可於 `config/neoauth/messages/messages_*.yml` 的 `tab:` 區塊自由設定，並支援熱重載（執行 `/neoauth reload` 或 `/tab reload` 皆可自動生效）。
 
 ---
 

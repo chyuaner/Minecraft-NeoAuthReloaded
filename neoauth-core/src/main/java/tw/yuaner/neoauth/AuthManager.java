@@ -43,6 +43,11 @@ public class AuthManager {
     private static final Set<UUID> MOJANG_FALLBACK_PLAYERS = ConcurrentHashMap.newKeySet();
 
     /**
+     * 儲存目前線上玩家之會話快取資料 (以 UUID 索引)。
+     */
+    private static final java.util.Map<UUID, tw.yuaner.neoauth.core.PlayerSessionData> SESSIONS = new ConcurrentHashMap<>();
+
+    /**
      * 檢查指定 UUID 的玩家是否已經完成登入。
      *
      * @param uuid 玩家 UUID
@@ -196,5 +201,96 @@ public class AuthManager {
         if (username == null || uuid == null) return false;
         UUID expectedOfflineUuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes(StandardCharsets.UTF_8));
         return expectedOfflineUuid.equals(uuid);
+    }
+
+    /**
+     * 建立或更新指定玩家的線上會話快取。
+     *
+     * @param uuid       玩家 UUID
+     * @param username   玩家名稱
+     * @param ip         連線 IP
+     * @param isPremium  是否為通過正版或外置站握手驗證
+     * @return 建立或更新之 {@link tw.yuaner.neoauth.core.PlayerSessionData} 實例
+     */
+    public static tw.yuaner.neoauth.core.PlayerSessionData createSession(UUID uuid, String username, String ip, boolean isPremium) {
+        if (uuid == null) return null;
+        String email = null;
+        try {
+            if (username != null) {
+                email = DatabaseManager.getEmail(username);
+            }
+        } catch (Exception ignored) {}
+        tw.yuaner.neoauth.core.PlayerSessionData session = new tw.yuaner.neoauth.core.PlayerSessionData(
+                uuid, username, ip, isPremium, System.currentTimeMillis(), email
+        );
+        SESSIONS.put(uuid, session);
+        return session;
+    }
+
+    /**
+     * 取得指定玩家的會話快取。
+     *
+     * @param uuid 玩家 UUID
+     * @return {@link tw.yuaner.neoauth.core.PlayerSessionData}，若不存在則為 null
+     */
+    public static tw.yuaner.neoauth.core.PlayerSessionData getSession(UUID uuid) {
+        return uuid != null ? SESSIONS.get(uuid) : null;
+    }
+
+    /**
+     * 依玩家名稱取得線上會話快取。
+     *
+     * @param username 玩家名稱
+     * @return {@link tw.yuaner.neoauth.core.PlayerSessionData}，若不存在則為 null
+     */
+    public static tw.yuaner.neoauth.core.PlayerSessionData getSessionByName(String username) {
+        if (username == null) return null;
+        for (tw.yuaner.neoauth.core.PlayerSessionData session : SESSIONS.values()) {
+            if (username.equalsIgnoreCase(session.getUsername())) {
+                return session;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 清除指定玩家的會話快取（玩家離線或登出時呼叫）。
+     *
+     * @param uuid 玩家 UUID
+     */
+    public static void removeSession(UUID uuid) {
+        if (uuid != null) {
+            SESSIONS.remove(uuid);
+        }
+    }
+
+    /**
+     * 更新指定玩家會話中的 Email 資訊。
+     *
+     * @param uuid  玩家 UUID
+     * @param email 新 Email
+     */
+    public static void updateSessionEmail(UUID uuid, String email) {
+        if (uuid != null) {
+            tw.yuaner.neoauth.core.PlayerSessionData session = SESSIONS.get(uuid);
+            if (session != null) {
+                session.setEmail(email);
+            }
+        }
+    }
+
+    /**
+     * 依玩家名稱更新會話中的 Email 資訊。
+     *
+     * @param username 玩家名稱
+     * @param email    新 Email
+     */
+    public static void updateSessionEmail(String username, String email) {
+        if (username == null) return;
+        for (tw.yuaner.neoauth.core.PlayerSessionData session : SESSIONS.values()) {
+            if (username.equalsIgnoreCase(session.getUsername())) {
+                session.setEmail(email);
+            }
+        }
     }
 }

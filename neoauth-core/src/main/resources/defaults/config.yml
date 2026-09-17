@@ -213,3 +213,16 @@ bluemap:
   #   若未更換皮膚且在 TTL 內，直接讀取快取秒級同步，避免每次進服對外發送 HTTP 請求！
   cacheTtlMinutes: 120
 
+# -------------------------------------------------------------
+# TAB by NEZNAMY 模組連動設定
+# -------------------------------------------------------------
+tab:
+  # 是否啟用向 TAB 模組註冊 NeoAuth 專屬變數 (預設: true)
+  # - 啟用後可在 TAB 的 Tablist、Scoreboard、Bossbar 中使用：
+  #   %neoauth_login_type%、%neoauth_ip_type%、%neoauth_login_time%、%neoauth_email%、%neoauth_player%
+  enabled: true
+
+  # %neoauth_login_time% 變數顯示之日期時間格式 (遵循 Java SimpleDateFormat 語法，預設: "yyyy-MM-dd HH:mm:ss")
+  dateFormat: "yyyy-MM-dd HH:mm:ss"
+
+

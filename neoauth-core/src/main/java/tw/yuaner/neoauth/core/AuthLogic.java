@@ -102,6 +102,13 @@ public class AuthLogic {
         boolean match = DatabaseManager.checkPassword(username, password);
         if (match) {
             AuthManager.setLoggedIn(uuid);
+            tw.yuaner.neoauth.core.PlayerSessionData session = AuthManager.getSession(uuid);
+            if (session != null) {
+                session.setLoginTime(System.currentTimeMillis());
+                session.setIp(ip);
+            } else {
+                AuthManager.createSession(uuid, username, ip, false);
+            }
             try {
                 DatabaseManager.updateLogin(username, ip);
             } catch (Exception e) {
@@ -167,6 +174,13 @@ public class AuthLogic {
         if (success) {
             if (config == null || !config.isForceLoginAfterRegister()) {
                 AuthManager.setLoggedIn(uuid);
+                tw.yuaner.neoauth.core.PlayerSessionData session = AuthManager.getSession(uuid);
+                if (session != null) {
+                    session.setLoginTime(System.currentTimeMillis());
+                    session.setIp(ip);
+                } else {
+                    AuthManager.createSession(uuid, username, ip, false);
+                }
             }
             return RegisterResult.SUCCESS;
         } else {
@@ -307,6 +321,7 @@ public class AuthLogic {
             return false;
         }
         AuthManager.setLoggedOut(uuid);
+        AuthManager.removeSession(uuid);
         if (username != null) {
             try {
                 DatabaseManager.updateQuit(username);
@@ -383,6 +398,7 @@ public class AuthLogic {
     public static boolean handlePlayerJoin(UUID uuid, String username, String ip, boolean isPremium) {
         if (isPremium && DatabaseManager.isRegistered(username)) {
             AuthManager.setLoggedIn(uuid);
+            AuthManager.createSession(uuid, username, ip, true);
             DatabaseManager.updateLogin(username, ip);
             return true;
         }
@@ -393,16 +409,19 @@ public class AuthLogic {
                 // 非強制註冊模式：未註冊訪客玩家自動於資料庫建立紀錄（密碼為空）並直接放行
                 DatabaseManager.registerPlayer(username, "", ip);
                 AuthManager.setLoggedIn(uuid);
+                AuthManager.createSession(uuid, username, ip, isPremium);
                 return true;
             } else if (!DatabaseManager.hasPassword(username)) {
                 // 訪客帳號（密碼為空）：直接放行並更新登入資訊
                 AuthManager.setLoggedIn(uuid);
+                AuthManager.createSession(uuid, username, ip, isPremium);
                 DatabaseManager.updateLogin(username, ip);
                 return true;
             }
         }
 
         AuthManager.setLoggedOut(uuid);
+        AuthManager.createSession(uuid, username, ip, isPremium);
         return false;
     }
 

@@ -93,3 +93,12 @@ help:
   lastlogin: "&e/lastlogin &7- 查詢自己的最後登入紀錄"
   getip: "&e/getip &7- 查詢自己的 IP 位址"
   reload: "&e/neoauth reload &7- 重新載入 NeoAuth 設定檔"
+
+tab:
+  login_type_premium: "&aMojang 正版"
+  login_type_password: "&e密碼登入"
+  login_type_unlogged: "&7未登入"
+  ip_type_ipv4: "&7IPv4"
+  ip_type_ipv6: "&dIPv6"
+  ip_type_unknown: "&7未知"
+  email_none: "&7未綁定"

@@ -2,6 +2,7 @@ package tw.yuaner.neoauth.forge;
 
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -52,10 +53,24 @@ public class ForgeAuthMod {
     }
 
     /**
+     * 伺服器已完全就緒事件：所有模組與世界載入完畢，確保 TAB 模組若稍晚載入能自動補註冊變數。
+     */
+    @SubscribeEvent
+    public void onServerStarted(ServerStartedEvent event) {
+        if (!tw.yuaner.neoauth.util.TabIntegration.isRegistered()) {
+            LOGGER.info("NeoAuth: 伺服器完全就緒，正在為 TAB 模組補註冊變數...");
+            tw.yuaner.neoauth.util.TabIntegration.register();
+        }
+    }
+
+    /**
      * 玩家成功進入世界事件：確保此時 BlueMap 已完全載入，即時同步或補寫頭像至 BlueMap 儲存庫。
      */
     @SubscribeEvent
     public void onPlayerLoggedIn(net.minecraftforge.event.entity.player.PlayerEvent.PlayerLoggedInEvent event) {
+        if (!tw.yuaner.neoauth.util.TabIntegration.isRegistered()) {
+            tw.yuaner.neoauth.util.TabIntegration.register();
+        }
         if (event.getEntity() != null) {
             String username = event.getEntity().getGameProfile().getName();
             java.util.UUID offlineUuid = event.getEntity().getUUID();

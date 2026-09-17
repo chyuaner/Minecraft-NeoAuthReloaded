@@ -9,11 +9,11 @@ import tw.yuaner.neoauth.config.MessagesManager;
 import tw.yuaner.neoauth.core.PlayerSessionData;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -21,7 +21,7 @@ import java.util.function.Function;
  * <p>
  * 透過純反射安全介接 TAB 模組的 {@code TabAPI}，在完全不依賴外部編譯依賴的前提下，
  * 向 TAB 註冊 NeoAuth 專屬變數（如登入方式、IPv4/IPv6 連線線路、當前登入時間、綁定信箱）。
- * 同時監聽 TAB 的 {@code TabLoadEvent}，確保在遊戲內執行 {@code /tab reload} 時能自動重新註冊變數。
+ * 同時透過動態 Proxy 代理監聽 TAB 的 {@code TabLoadEvent}，確保在遊戲內執行 {@code /tab reload} 時能自動重新註冊變數。
  */
 public class TabIntegration {
 
@@ -44,6 +44,13 @@ public class TabIntegration {
     }
 
     /**
+     * 檢查是否已成功向 TAB 註冊變數。
+     */
+    public static boolean isRegistered() {
+        return REGISTERED.get();
+    }
+
+    /**
      * 向 TAB 模組註冊 NeoAuth 專屬變數與生命週期監聽器。
      */
     public static void register() {
@@ -63,7 +70,7 @@ public class TabIntegration {
             Method getInstanceMethod = tabApiClass.getMethod("getInstance");
             Object tabApi = getInstanceMethod.invoke(null);
             if (tabApi == null) {
-                LOGGER.debug("NeoAuth: TabAPI.getInstance() 回傳 null，TAB 模組可能尚未完全初始化。");
+                LOGGER.debug("NeoAuth: TabAPI.getInstance() 回傳 null，TAB 模組可能尚未完全初始化，稍後將自動重試。");
                 return;
             }
 
@@ -124,33 +131,80 @@ public class TabIntegration {
             Object eventBus = getEventBusMethod.invoke(tabApi);
             if (eventBus == null) return;
 
+            ClassLoader tabClassLoader = tabApi.getClass().getClassLoader();
+
             Class<?> tabLoadEventClass = null;
-            try {
-                tabLoadEventClass = Class.forName("me.neznamy.tab.api.event.plugin.TabLoadEvent");
-            } catch (ClassNotFoundException e) {
+            String[] candidateEventClasses = {
+                    "me.neznamy.tab.api.event.plugin.TabLoadEvent",
+                    "me.neznamy.tab.api.event.events.TabLoadEvent",
+                    "me.neznamy.tab.api.event.TabLoadEvent"
+            };
+            for (String className : candidateEventClasses) {
                 try {
-                    tabLoadEventClass = Class.forName("me.neznamy.tab.api.event.TabLoadEvent");
+                    tabLoadEventClass = Class.forName(className, true, tabClassLoader);
+                    break;
                 } catch (ClassNotFoundException ignored) {}
             }
 
-            if (tabLoadEventClass != null) {
-                Method registerMethod = eventBus.getClass().getMethod("register", Class.class, Consumer.class);
-                registerMethod.invoke(eventBus, tabLoadEventClass, (Consumer<Object>) event -> {
-                    LOGGER.info("NeoAuth: 偵測到 TAB 重新載入，正在自動重新註冊 NeoAuth 變數...");
-                    try {
-                        Method getInstanceMethod = tabApi.getClass().getMethod("getInstance");
-                        Object latestApi = getInstanceMethod.invoke(null);
-                        if (latestApi != null) {
-                            registerPlaceholders(latestApi);
-                        }
-                    } catch (Exception ex) {
-                        LOGGER.warn("NeoAuth: 重新註冊 TAB 變數失敗: {}", ex.getMessage());
-                    }
-                });
-                LISTENER_REGISTERED.set(true);
+            if (tabLoadEventClass == null) {
+                LOGGER.warn("NeoAuth: 未能在 TAB 模組中找到 TabLoadEvent 類別。");
+                return;
             }
+
+            // 尋找 EventBus.register(Class, EventHandler) 方法
+            Method registerMethod = null;
+            Class<?> eventHandlerInterface = null;
+
+            for (Method m : eventBus.getClass().getMethods()) {
+                if ("register".equals(m.getName()) && m.getParameterCount() == 2) {
+                    Class<?>[] params = m.getParameterTypes();
+                    if (params[0].isAssignableFrom(Class.class) && params[1].isInterface()) {
+                        registerMethod = m;
+                        eventHandlerInterface = params[1];
+                        break;
+                    }
+                }
+            }
+
+            if (registerMethod == null || eventHandlerInterface == null) {
+                try {
+                    eventHandlerInterface = Class.forName("me.neznamy.tab.api.event.EventHandler", true, tabClassLoader);
+                    registerMethod = eventBus.getClass().getMethod("register", Class.class, eventHandlerInterface);
+                } catch (Throwable t) {
+                    LOGGER.warn("NeoAuth: 未能在 TAB EventBus 中找到相容的 register 方法: {}", t.getMessage());
+                    return;
+                }
+            }
+
+            final Class<?> finalEventHandlerInterface = eventHandlerInterface;
+            Object eventHandlerProxy = Proxy.newProxyInstance(
+                    tabClassLoader,
+                    new Class<?>[]{finalEventHandlerInterface},
+                    (proxy, method, args) -> {
+                        if ("handle".equals(method.getName()) || method.getDeclaringClass() == finalEventHandlerInterface) {
+                            LOGGER.info("NeoAuth: 偵測到 TAB 重新載入 (TabLoadEvent)，正在自動重新註冊 NeoAuth 變數...");
+                            try {
+                                Class<?> tabApiClass = Class.forName("me.neznamy.tab.api.TabAPI", true, tabClassLoader);
+                                Method getInstanceMethod = tabApiClass.getMethod("getInstance");
+                                Object latestApi = getInstanceMethod.invoke(null);
+                                if (latestApi != null) {
+                                    registerPlaceholders(latestApi);
+                                    REGISTERED.set(true);
+                                    LOGGER.info("NeoAuth: TAB 重新載入後已成功恢復變數註冊！");
+                                }
+                            } catch (Exception ex) {
+                                LOGGER.warn("NeoAuth: 重新註冊 TAB 變數失敗: {}", ex.getMessage());
+                            }
+                        }
+                        return null;
+                    }
+            );
+
+            registerMethod.invoke(eventBus, tabLoadEventClass, eventHandlerProxy);
+            LISTENER_REGISTERED.set(true);
+            LOGGER.info("NeoAuth: 成功向 TAB 模組註冊 TabLoadEvent 重新載入監聽器！");
         } catch (Throwable t) {
-            LOGGER.debug("NeoAuth: 註冊 TAB reload 監聽器時略過: {}", t.getMessage());
+            LOGGER.warn("NeoAuth: 註冊 TAB reload 監聽器時發生異常: {}", t.getMessage());
         }
     }
 

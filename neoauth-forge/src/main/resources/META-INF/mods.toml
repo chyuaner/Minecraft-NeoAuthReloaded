@@ -28,3 +28,10 @@ versionRange="[1.20.1,1.21)"
 ordering="NONE"
 side="SERVER"
 
+[[dependencies.${mod_id}]]
+modId="tab"
+mandatory=false
+versionRange="[0,)"
+ordering="AFTER"
+side="SERVER"
+

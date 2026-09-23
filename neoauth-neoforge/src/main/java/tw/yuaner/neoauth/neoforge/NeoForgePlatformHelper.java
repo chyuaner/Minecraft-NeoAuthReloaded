@@ -80,8 +80,43 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
     @Override
     public void sendMessage(Object playerObj, String message) {
         if (playerObj instanceof ServerPlayer player) {
-            player.sendSystemMessage(Component.literal(message));
+            player.sendSystemMessage(parseLinks(message));
         }
+    }
+
+    private Component parseLinks(String message) {
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\[([^\\]]+)\\]\\((https?://[^)]+)\\)|<(https?://[^>]+)>");
+        java.util.regex.Matcher matcher = pattern.matcher(message);
+        net.minecraft.network.chat.MutableComponent result = Component.empty();
+        int lastEnd = 0;
+        
+        while (matcher.find()) {
+            if (matcher.start() > lastEnd) {
+                result.append(Component.literal(message.substring(lastEnd, matcher.start())));
+            }
+            String text;
+            String url;
+            if (matcher.group(1) != null && matcher.group(2) != null) {
+                // 配對到 [text](url)
+                text = matcher.group(1).replace("http:", "http\u200B:").replace("https:", "https\u200B:");
+                url = matcher.group(2);
+            } else {
+                // 配對到 <url>
+                url = matcher.group(3);
+                text = url.replace("http:", "http\u200B:").replace("https:", "https\u200B:");
+            }
+            
+            result.append(Component.literal(text).withStyle(style -> style
+                    .withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.OPEN_URL, url))
+                    .withUnderlined(true)));
+            lastEnd = matcher.end();
+        }
+        
+        if (lastEnd < message.length()) {
+            result.append(Component.literal(message.substring(lastEnd)));
+        }
+        
+        return result;
     }
 
     @Override

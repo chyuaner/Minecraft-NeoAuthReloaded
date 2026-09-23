@@ -2,4 +2,5 @@
 &a歡迎加入伺服器，{PLAYER}！
 &b若您是第一次遊玩，請使用 &e/register <密碼> <確認密碼> &b註冊。
 &b若您已註冊過帳號，請使用 &e/login <密碼> &b登入。
+&7NeoAuthReloaded登入系統，作者: Yuan Chiu - [專案Github連結](https://github.com/chyuaner/Minecraft-NeoAuthReloaded)
 &e====================================================

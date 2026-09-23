@@ -240,11 +240,14 @@ public class ForgeEvents {
 
         String username = player.getGameProfile().getName();
         String ip = player.getIpAddress();
-        AuthLogic.LoginResult result = AuthLogic.attemptLogin(player.getUUID(), username, ip, password);
+        AuthLogic.LoginAttemptResult result = AuthLogic.attemptLogin(player.getUUID(), username, ip, password);
 
-        if (result == AuthLogic.LoginResult.SUCCESS) {
+        if (result.getResult() == AuthLogic.LoginResult.SUCCESS) {
             Services.PLATFORM.removeFreezeEffects(player);
-            source.sendSuccess(() -> Component.literal(result.getMessage()), false);
+            source.sendSuccess(() -> Component.literal(result.getResult().getMessage()), false);
+            
+            // 處理 Vanish 隱形狀態與加入遊戲通知廣播
+            handlePostAuthVanishAndJoinMessage(player, result.isVanishRequested(), source.hasPermission(2));
             if (DatabaseManager.isFallbackActive()) {
                 String fallbackWarning = ConfigManager.getInstance().getMessagesManager().get("login.fallback_warning");
                 Services.PLATFORM.sendMessage(player, fallbackWarning);
@@ -254,7 +257,7 @@ public class ForgeEvents {
                     ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());
             return 1;
         } else {
-            source.sendFailure(Component.literal(result.getMessage()));
+            source.sendFailure(Component.literal(result.getResult().getMessage()));
             return 0;
         }
     }
@@ -282,6 +285,10 @@ public class ForgeEvents {
             }
             Services.PLATFORM.removeFreezeEffects(player);
             source.sendSuccess(() -> Component.literal(result.getMessage()), false);
+            
+            // 註冊成功即視為正式進入遊戲，解除由 NeoAuth 強制附加的隱身並補發加入通知
+            handlePostAuthVanishAndJoinMessage(player, false, false);
+
             AuthLogic.executeHooks(source.getServer(), player, username,
                     ConfigManager.getInstance().getCommandsConfig().getOnRegisterConsole(),
                     ConfigManager.getInstance().getCommandsConfig().getOnRegisterPlayer());
@@ -484,6 +491,7 @@ public class ForgeEvents {
             AuthManager.createSession(target.getUUID(), target.getGameProfile().getName(), target.getIpAddress(), AuthManager.isPremiumVerified(target.getUUID()));
             Services.PLATFORM.removeFreezeEffects(target);
             target.sendSystemMessage(Component.literal(msgMgr.get("login.success")));
+            handlePostAuthVanishAndJoinMessage(target, false, false);
             source.sendSuccess(() -> Component.literal(msgMgr.get("admin.forcelogin_success", target.getGameProfile().getName())), true);
             AuthLogic.executeHooks(source.getServer(), target, target.getGameProfile().getName(),
                     ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
@@ -501,6 +509,7 @@ public class ForgeEvents {
             AuthManager.setLoggedIn(player.getUUID());
             AuthManager.createSession(player.getUUID(), player.getGameProfile().getName(), player.getIpAddress(), AuthManager.isPremiumVerified(player.getUUID()));
             Services.PLATFORM.removeFreezeEffects(player);
+            handlePostAuthVanishAndJoinMessage(player, false, false);
             source.sendSuccess(() -> Component.literal(msgMgr.get("admin.forcelogin_self_success")), true);
             AuthLogic.executeHooks(source.getServer(), player, player.getGameProfile().getName(),
                     ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
@@ -727,15 +736,74 @@ public class ForgeEvents {
         }
     }
 
+    /**
+     * 當玩家完成驗證（登入、註冊、自動放行等）進入遊戲時，處理 Vanishmod 狀態恢復並向全體玩家補發加入遊戲通知。
+     */
+    private static void handlePostAuthVanishAndJoinMessage(ServerPlayer player, boolean isVanishRequested, boolean hasVanishPermission) {
+        boolean shouldBroadcastJoin = true;
+        tw.yuaner.neoauth.core.PlayerSessionData session = AuthManager.getSession(player.getUUID());
+        
+        if (session != null && session.isJoinMessageBroadcasted()) {
+            shouldBroadcastJoin = false;
+        }
+
+        if (ConfigManager.getInstance().getConfig().isVanishIntegrationEnabled() && tw.yuaner.neoauth.util.VanishmodIntegration.isVanishmodAvailable()) {
+            if (isVanishRequested && hasVanishPermission) {
+                // 隱形方式登入：保持隱身
+                tw.yuaner.neoauth.util.VanishmodIntegration.vanishPlayer(player);
+                if (session != null) session.setNeoAuthVanished(false);
+                tw.yuaner.neoauth.util.VanishmodIntegration.removeForcedVanished(player.getUUID());
+                shouldBroadcastJoin = false;
+            } else {
+                if (session != null && session.isNeoAuthVanished()) {
+                    tw.yuaner.neoauth.util.VanishmodIntegration.unvanishPlayer(player);
+                    session.setNeoAuthVanished(false);
+                    tw.yuaner.neoauth.util.VanishmodIntegration.removeForcedVanished(player.getUUID());
+                } else if (tw.yuaner.neoauth.util.VanishmodIntegration.isVanished(player)) {
+                    // 若玩家原本已是隱身狀態（例如離線前為管理員 /v 隱形），則登入後維持隱身且不發布加入通知
+                    shouldBroadcastJoin = false;
+                }
+            }
+        }
+        
+        if (shouldBroadcastJoin && player.getServer() != null) {
+            if (session != null) {
+                session.setJoinMessageBroadcasted(true);
+            }
+            net.minecraft.network.chat.Component joinMsg = net.minecraft.network.chat.Component.translatable(
+                "multiplayer.player.joined", player.getDisplayName()
+            ).withStyle(net.minecraft.ChatFormatting.YELLOW);
+            player.getServer().getPlayerList().broadcastSystemMessage(joinMsg, false);
+        }
+    }
+
     private static void promptAuth(ServerPlayer player) {
         String msg = AuthLogic.getPromptMessage(player.getGameProfile().getName());
         Services.PLATFORM.sendActionBar(player, msg);
     }
 
     /**
-     * 玩家進入伺服器事件處理。
+     * 玩家進入伺服器事件處理 (最高優先級：攔截 Vanishmod 原生訊息)
+     * Vanishmod 預設在 NORMAL 階段檢查玩家是否已隱身（透過讀取 NBT），若是，會發送聊天室提示訊息。
+     * 我們在這裡先將 NeoAuth 強制隱身的玩家暫時從 VANISHED_PLAYERS 集合移除，讓 Vanishmod 以為玩家沒隱身，從而抑制訊息。
      */
     @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onPlayerLoggedInHighest(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            UUID uuid = player.getUUID();
+            // 如果玩家上次是未登入離開，帶有強制隱身標記
+            if (tw.yuaner.neoauth.util.VanishmodIntegration.hasForcedVanished(uuid)) {
+                // 暫時從集合移除，欺騙 Vanishmod NORMAL 監聽器
+                tw.yuaner.neoauth.util.VanishmodIntegration.setSilentlyVanished(uuid, false);
+            }
+        }
+    }
+
+    /**
+     * 玩家進入伺服器事件處理 (最低優先級：恢復隱身並處理登入邏輯)
+     * 在 Vanishmod NORMAL 監聽器執行完畢後，我們恢復玩家的隱身狀態，並處理未登入玩家的隱身邏輯。
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             String username = player.getGameProfile().getName();
@@ -791,11 +859,28 @@ public class ForgeEvents {
                             ConfigManager.getInstance().getCommandsConfig().getOnLoginConsole(),
                             ConfigManager.getInstance().getCommandsConfig().getOnLoginPlayer());
                 }
+                handlePostAuthVanishAndJoinMessage(player, false, false);
             } else {
                 // 未註冊玩家（強制註冊模式下）或離線玩家：進入待註冊/待登入狀態
                 Services.PLATFORM.applyFreezeEffects(player);
                 String msg = AuthLogic.getPromptMessage(username);
                 Services.PLATFORM.sendMessage(player, msg);
+                
+                // Vanishmod 整合：處理隱身
+                if (ConfigManager.getInstance().getConfig().isVanishIntegrationEnabled() && tw.yuaner.neoauth.util.VanishmodIntegration.isVanishmodAvailable()) {
+                    tw.yuaner.neoauth.core.PlayerSessionData session = AuthManager.getSession(uuid);
+                    if (session != null) {
+                        // 若玩家帶有上次未登入留下的強制隱身標記，將其加回 session，並默默放回 VANISHED_PLAYERS
+                        if (tw.yuaner.neoauth.util.VanishmodIntegration.hasForcedVanished(uuid)) {
+                            session.setNeoAuthVanished(true);
+                            tw.yuaner.neoauth.util.VanishmodIntegration.setSilentlyVanished(uuid, true);
+                        } else if (!tw.yuaner.neoauth.util.VanishmodIntegration.isVanished(player)) {
+                            // 否則如果是首次進服且尚未隱身，強制打上標記並隱身
+                            session.setNeoAuthVanished(true);
+                            tw.yuaner.neoauth.util.VanishmodIntegration.vanishPlayer(player);
+                        }
+                    }
+                }
             }
         }
     }
@@ -808,6 +893,17 @@ public class ForgeEvents {
         if (event.getEntity() instanceof ServerPlayer player) {
             String username = player.getGameProfile().getName();
             Services.PLATFORM.clearTimeoutDisplay(player);
+            
+            tw.yuaner.neoauth.core.PlayerSessionData session = AuthManager.getSession(player.getUUID());
+            if (session != null && session.isNeoAuthVanished()) {
+                tw.yuaner.neoauth.util.VanishmodIntegration.addForcedVanished(player.getUUID());
+            }
+            
+            // 修改：我們不再於斷線時解除隱形。
+            // 這樣可以讓 Vanishmod 正常將隱形狀態存入玩家 NBT 中。
+            // 當玩家下次進入伺服器時，Vanishmod 會在最早期 (placeNewPlayer) 直接讓他保持隱形，從而徹底避免「進服瞬間閃爍出現」的問題。
+            // 而我們的 onPlayerLoggedInHighest 與 LOWEST 會負責壓制訊息並在登入後正確解除隱形！
+            
             try {
                 AuthLogic.attemptLogout(player.getUUID(), username);
             } catch (Exception e) {

@@ -6,7 +6,9 @@
   "refMap": "neoauth-forge.refmap.json",
   "mixins": [
     "ForgeServerLoginMixin",
-    "ForgeServerGamePacketListenerMixin"
+    "ForgeServerGamePacketListenerMixin",
+    "ForgePlayerListMixin",
+    "ForgeServerCommonPacketListenerMixin"
   ],
   "client": [],
   "server": [],

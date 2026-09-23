@@ -90,9 +90,18 @@ public class NeoAuthConfig implements IAuthConfig {
     private boolean tabEnabled = true;
     private String tabDateFormat = "yyyy-MM-dd HH:mm:ss";
 
+    // vanish (Vanishmod 隱形整合)
+    private boolean vanishEnabled = true;
+    private boolean vanishCharEnabled = true;
+    private char vanishChar = '-';
+
     public NeoAuthConfig() {}
 
     @SuppressWarnings("unchecked")
+    public static NeoAuthConfig fromMap(Map<String, Object> map) {
+        return fromMap(map, new java.util.HashMap<>());
+    }
+
     public static NeoAuthConfig fromMap(Map<String, Object> map, Map<String, Object> extMap) {
         NeoAuthConfig config = new NeoAuthConfig();
         if (map == null) map = java.util.Collections.emptyMap();
@@ -251,6 +260,27 @@ public class NeoAuthConfig implements IAuthConfig {
             if (tabMap.get("dateFormat") != null) config.tabDateFormat = String.valueOf(tabMap.get("dateFormat"));
             else if (tabMap.get("date-format") != null) config.tabDateFormat = String.valueOf(tabMap.get("date-format"));
             else if (tabMap.get("date_format") != null) config.tabDateFormat = String.valueOf(tabMap.get("date_format"));
+        }
+
+        // vanish
+        // 優先從 extensions.yml 的 vanish 節點讀取
+        Object vanishObj = extMap.get("vanish");
+        // 如果沒有，向下相容從 config.yml 的 settings.login.vanish 讀取
+        if (vanishObj == null && settingsObj instanceof Map<?, ?> sMap) {
+            Object loginObj = sMap.get("login");
+            if (loginObj instanceof Map<?, ?> loginMap) {
+                vanishObj = loginMap.get("vanish");
+            }
+        }
+        
+        if (vanishObj instanceof Map<?, ?> vanishMap) {
+            if (vanishMap.get("enabled") instanceof Boolean b) config.vanishEnabled = b;
+            if (vanishMap.get("vanishcharEnabled") instanceof Boolean b) config.vanishCharEnabled = b;
+            Object vcObj = vanishMap.get("vanishchar");
+            if (vcObj != null) {
+                String s = String.valueOf(vcObj);
+                if (!s.isEmpty()) config.vanishChar = s.charAt(0);
+            }
         }
 
         return config;
@@ -603,5 +633,20 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public String getTabDateFormat() {
         return tabDateFormat != null && !tabDateFormat.isBlank() ? tabDateFormat.trim() : "yyyy-MM-dd HH:mm:ss";
+    }
+
+    @Override
+    public boolean isVanishIntegrationEnabled() {
+        return vanishEnabled;
+    }
+
+    @Override
+    public boolean isVanishCharEnabled() {
+        return vanishCharEnabled;
+    }
+
+    @Override
+    public char getVanishLoginChar() {
+        return vanishChar;
     }
 }

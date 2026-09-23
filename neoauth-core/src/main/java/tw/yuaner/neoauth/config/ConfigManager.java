@@ -45,6 +45,10 @@ public class ConfigManager {
         this.messagesDir = this.configDir.resolve("messages");
     }
 
+    public Path getConfigDir() {
+        return this.configDir;
+    }
+
     /**
      * 初始化設定檔管理器：確保檔案存在並完成初次載入與合併。
      */

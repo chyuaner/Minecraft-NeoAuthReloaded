@@ -405,6 +405,21 @@ public interface IAuthConfig {
     default String getTabDateFormat() {
         return "yyyy-MM-dd HH:mm:ss";
     }
+
+    /**
+     * 是否啟用與 Vanishmod 的隱形整合 (預設: true)
+     */
+    boolean isVanishIntegrationEnabled();
+
+    /**
+     * 是否允許管理員使用特殊符號隱身登入 (預設: true)
+     */
+    boolean isVanishCharEnabled();
+
+    /**
+     * 取得隱形登入的判定字元 (預設: '-')
+     */
+    char getVanishLoginChar();
 }
 
 

@@ -130,3 +130,4 @@ settings:
     slowness: true
     # 玩家進服時是否顯示 welcome.txt 歡迎文字公告
     displayWelcomeMessage: true
+

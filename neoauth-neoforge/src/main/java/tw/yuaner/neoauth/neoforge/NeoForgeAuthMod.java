@@ -29,6 +29,7 @@ public class NeoForgeAuthMod {
 
         // 初始化設定檔目錄 (config/neoauth/) 與預設檔案
         ConfigManager.init();
+        tw.yuaner.neoauth.util.VanishmodIntegration.init(ConfigManager.getInstance().getConfigDir());
 
         // 註冊伺服器生命週期監聽
         NeoForge.EVENT_BUS.register(this);

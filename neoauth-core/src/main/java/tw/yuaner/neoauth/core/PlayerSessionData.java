@@ -17,6 +17,8 @@ public class PlayerSessionData {
     private volatile boolean isPremium;
     private volatile long loginTime;
     private volatile String email;
+    private volatile boolean neoauthVanished;
+    private volatile boolean joinMessageBroadcasted;
 
     public PlayerSessionData(UUID uuid, String username, String ip, boolean isPremium, long loginTime, String email) {
         this.uuid = uuid;
@@ -71,5 +73,21 @@ public class PlayerSessionData {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public boolean isNeoAuthVanished() {
+        return neoauthVanished;
+    }
+
+    public void setNeoAuthVanished(boolean neoauthVanished) {
+        this.neoauthVanished = neoauthVanished;
+    }
+
+    public boolean isJoinMessageBroadcasted() {
+        return joinMessageBroadcasted;
+    }
+
+    public void setJoinMessageBroadcasted(boolean joinMessageBroadcasted) {
+        this.joinMessageBroadcasted = joinMessageBroadcasted;
     }
 }

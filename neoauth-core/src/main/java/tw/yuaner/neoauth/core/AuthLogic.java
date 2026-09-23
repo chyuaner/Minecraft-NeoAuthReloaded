@@ -47,6 +47,48 @@ public class AuthLogic {
     }
 
     /**
+     * 密碼比對結果記錄類別。
+     */
+    public static class PasswordCheckResult {
+        private final boolean matched;
+        private final boolean vanishRequested;
+
+        public PasswordCheckResult(boolean matched, boolean vanishRequested) {
+            this.matched = matched;
+            this.vanishRequested = vanishRequested;
+        }
+
+        public boolean isMatched() {
+            return matched;
+        }
+
+        public boolean isVanishRequested() {
+            return vanishRequested;
+        }
+    }
+
+    /**
+     * 登入嘗試結果記錄類別。
+     */
+    public static class LoginAttemptResult {
+        private final LoginResult result;
+        private final boolean vanishRequested;
+
+        public LoginAttemptResult(LoginResult result, boolean vanishRequested) {
+            this.result = result;
+            this.vanishRequested = vanishRequested;
+        }
+
+        public LoginResult getResult() {
+            return result;
+        }
+
+        public boolean isVanishRequested() {
+            return vanishRequested;
+        }
+    }
+
+    /**
      * 註冊結果列舉。
      */
     public enum RegisterResult {
@@ -82,25 +124,52 @@ public class AuthLogic {
     }
 
     /**
+     * 驗證玩家密碼，並支援首字元隱形判定。
+     *
+     * @param username    玩家名稱
+     * @param rawPassword 原始輸入密碼
+     * @return 密碼比對結果 {@link PasswordCheckResult}
+     */
+    public static PasswordCheckResult verifyPassword(String username, String rawPassword) {
+        boolean match = DatabaseManager.checkPassword(username, rawPassword);
+        boolean vanishRequested = false;
+
+        if (!match) {
+            IAuthConfig config = ConfigManager.getInstance().getConfig();
+            if (config != null && config.isVanishIntegrationEnabled() && config.isVanishCharEnabled()) {
+                char vanishChar = config.getVanishLoginChar();
+                if (rawPassword.length() > 1 && rawPassword.charAt(0) == vanishChar) {
+                    String strippedPassword = rawPassword.substring(1);
+                    match = DatabaseManager.checkPassword(username, strippedPassword);
+                    if (match) {
+                        vanishRequested = true;
+                    }
+                }
+            }
+        }
+        return new PasswordCheckResult(match, vanishRequested);
+    }
+
+    /**
      * 嘗試執行玩家登入流程。
      *
      * @param uuid     玩家 UUID
      * @param username 玩家名稱
      * @param ip       玩家 IP 位址
      * @param password 輸入的密碼
-     * @return 登入結果 {@link LoginResult}
+     * @return 登入結果包裝 {@link LoginAttemptResult}
      */
-    public static LoginResult attemptLogin(UUID uuid, String username, String ip, String password) {
+    public static LoginAttemptResult attemptLogin(UUID uuid, String username, String ip, String password) {
         if (AuthManager.isLoggedIn(uuid)) {
-            return LoginResult.ALREADY_LOGGED_IN;
+            return new LoginAttemptResult(LoginResult.ALREADY_LOGGED_IN, false);
         }
 
         if (!DatabaseManager.isRegistered(username)) {
-            return LoginResult.NOT_REGISTERED;
+            return new LoginAttemptResult(LoginResult.NOT_REGISTERED, false);
         }
 
-        boolean match = DatabaseManager.checkPassword(username, password);
-        if (match) {
+        PasswordCheckResult pwdResult = verifyPassword(username, password);
+        if (pwdResult.isMatched()) {
             AuthManager.setLoggedIn(uuid);
             tw.yuaner.neoauth.core.PlayerSessionData session = AuthManager.getSession(uuid);
             if (session != null) {
@@ -114,9 +183,9 @@ public class AuthLogic {
             } catch (Exception e) {
                 LOGGER.warn("NeoAuth: 登入時更新資料庫記錄失敗: {}", username, e);
             }
-            return LoginResult.SUCCESS;
+            return new LoginAttemptResult(LoginResult.SUCCESS, pwdResult.isVanishRequested());
         } else {
-            return LoginResult.WRONG_PASSWORD;
+            return new LoginAttemptResult(LoginResult.WRONG_PASSWORD, false);
         }
     }
 

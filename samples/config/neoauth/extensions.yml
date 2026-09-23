@@ -39,3 +39,16 @@ tab:
 
   # %neoauth_login_time% 變數顯示之日期時間格式 (遵循 Java SimpleDateFormat 語法，預設: "yyyy-MM-dd HH:mm:ss")
   dateFormat: "yyyy-MM-dd HH:mm:ss"
+
+# -------------------------------------------------------------
+# Vanishmod by Redstone_Dubstep 隱形功能連動設定
+# -------------------------------------------------------------
+vanish:
+  # 是否啟用未登入隱身功能 (預設: true)
+  enabled: true
+  
+  # 是否允許管理員特殊符號隱身登入 (預設: true)
+  vanishcharEnabled: true
+  
+  # 隱身登入觸發字元，當密碼首字元相符且具有權限時將保持隱身 (預設: "-")
+  vanishchar: "-"

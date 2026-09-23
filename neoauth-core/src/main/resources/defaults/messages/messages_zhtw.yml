@@ -9,6 +9,8 @@ login:
   already_logged_in: "&c您已經處於登入狀態！"
   login_prompt: "&c請先登入！使用指令: &e/login <密碼>"
   timeout: "&c登入超時！您已花費過多時間未登入。"
+  timeout_bossbar: "&c請在 %d 秒內登入或註冊！"
+  timeout_actionbar: "&c請先登入(%d)！使用指令: &e/login <密碼>"
   max_tries: "&c您已超過密碼嘗試次數上限！"
   fallback_warning: "&e主資料庫連線異常，以備用資料庫登入，請及時聯繫管理員處理。"
 
@@ -20,6 +22,7 @@ register:
   password_too_short: "&c密碼長度過短！最少需要 %d 個字元。"
   password_too_long: "&c密碼長度過長！最多允許 %d 個字元。"
   register_prompt: "&c請先註冊！使用指令: &e/register <密碼> <確認密碼>"
+  timeout_actionbar: "&c請先註冊(%d)！使用指令: &e/register <密碼> <確認密碼>"
 
 changepassword:
   success: "&a密碼修改成功！請牢記您的新密碼。"

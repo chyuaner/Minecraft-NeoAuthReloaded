@@ -9,17 +9,18 @@ login:
   already_logged_in: "&cYou are already logged in!"
   login_prompt: "&cPlease log in with: &e/login <password>"
   timeout: "&cLogin timeout! You took too long to log in."
+  timeout_bossbar: "&cPlease log in or register within %d seconds!"
+  timeout_actionbar: "&cPlease log in (%d)! Command: &e/login <password>"
   max_tries: "&cYou have exceeded the maximum number of login attempts!"
   fallback_warning: "&ePrimary database connection failed. Logged in with backup database. Please contact an administrator promptly."
 
 register:
   success: "&aSuccessfully registered and logged in! Enjoy your game."
   already_registered: "&cThis account is already registered! Please use &e/login <password>&c."
-  disabled: "&cIn-game registration is disabled!"
-  password_mismatch: "&cPasswords do not match!"
   password_too_short: "&cPassword is too short! Minimum length is %d characters."
   password_too_long: "&cPassword is too long! Maximum length is %d characters."
-  register_prompt: "&cPlease register with: &e/register <password> <confirmPassword>"
+  register_prompt: "&cPlease register with: &e/register <password> <confirm>"
+  timeout_actionbar: "&cPlease register (%d)! Command: &e/register <password> <confirm>"
 
 changepassword:
   success: "&aPassword changed successfully! Please remember your new password."

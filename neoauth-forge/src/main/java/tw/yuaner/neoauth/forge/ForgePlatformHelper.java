@@ -26,6 +26,9 @@ import java.util.List;
  */
 public class ForgePlatformHelper implements IPlatformHelper {
 
+    private final java.util.Map<java.util.UUID, net.minecraft.server.level.ServerBossEvent> bossBars = new java.util.concurrent.ConcurrentHashMap<>();
+
+
     @Override
     public IAuthConfig getConfig() {
         return ConfigManager.getInstance().getConfig();
@@ -185,5 +188,61 @@ public class ForgePlatformHelper implements IPlatformHelper {
         if (obj instanceof CommandSourceStack css) return css.getServer();
         if (obj instanceof ServerPlayer sp) return sp.getServer();
         return null;
+    }
+
+    @Override
+    public void updateTimeoutDisplay(Object playerObj, int remainingSeconds, int totalSeconds) {
+        if (playerObj instanceof ServerPlayer player) {
+            String displayType = getConfig().getTimeoutDisplay();
+            if ("BOSS_BAR".equals(displayType)) {
+                net.minecraft.server.level.ServerBossEvent bossEvent = bossBars.computeIfAbsent(player.getUUID(), uuid -> {
+                    net.minecraft.server.level.ServerBossEvent event = new net.minecraft.server.level.ServerBossEvent(
+                            Component.empty(),
+                            net.minecraft.world.BossEvent.BossBarColor.RED,
+                            net.minecraft.world.BossEvent.BossBarOverlay.PROGRESS
+                    );
+                    event.addPlayer(player);
+                    return event;
+                });
+                String msg = tw.yuaner.neoauth.config.ConfigManager.getInstance().getMessagesManager().get("login.timeout_bossbar");
+                if (msg.contains("{time}")) {
+                    msg = msg.replace("{time}", String.valueOf(remainingSeconds));
+                } else {
+                    msg = tw.yuaner.neoauth.config.ConfigManager.getInstance().getMessagesManager().get("login.timeout_bossbar", remainingSeconds);
+                }
+                bossEvent.setName(Component.literal(msg));
+                if (totalSeconds > 0) {
+                    bossEvent.setProgress((float) remainingSeconds / totalSeconds);
+                }
+            } else if ("ACTION_BAR".equals(displayType)) {
+                boolean registered = tw.yuaner.neoauth.DatabaseManager.isRegistered(player.getGameProfile().getName());
+                boolean hasPassword = tw.yuaner.neoauth.DatabaseManager.hasPassword(player.getGameProfile().getName());
+                String key = (registered && hasPassword) ? "login.timeout_actionbar" : "register.timeout_actionbar";
+                String msg = tw.yuaner.neoauth.config.ConfigManager.getInstance().getMessagesManager().get(key);
+                if (msg.contains("{time}")) {
+                    msg = msg.replace("{time}", String.valueOf(remainingSeconds));
+                } else {
+                    msg = tw.yuaner.neoauth.config.ConfigManager.getInstance().getMessagesManager().get(key, remainingSeconds);
+                }
+                sendActionBar(player, msg);
+            }
+        }
+    }
+
+    @Override
+    public void clearTimeoutDisplay(Object playerObj) {
+        if (playerObj instanceof ServerPlayer player) {
+            net.minecraft.server.level.ServerBossEvent bossEvent = bossBars.remove(player.getUUID());
+            if (bossEvent != null) {
+                bossEvent.removePlayer(player);
+            }
+        }
+    }
+
+    @Override
+    public void kickPlayer(Object playerObj, String reason) {
+        if (playerObj instanceof ServerPlayer player) {
+            player.connection.disconnect(Component.literal(reason));
+        }
     }
 }

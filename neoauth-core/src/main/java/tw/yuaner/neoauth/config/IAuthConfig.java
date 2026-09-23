@@ -296,6 +296,13 @@ public interface IAuthConfig {
     int getTimeout();
 
     /**
+     * 取得登入超時的剩餘時間顯示形式 (ACTION_BAR, BOSS_BAR, NONE)。
+     *
+     * @return 顯示形式字串
+     */
+    String getTimeoutDisplay();
+
+    /**
      * 是否在輸入錯誤密碼時直接踢出玩家
      *
      * @return true 若踢出

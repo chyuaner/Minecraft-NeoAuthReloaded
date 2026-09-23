@@ -64,6 +64,7 @@ public class NeoAuthConfig implements IAuthConfig {
     private int doubleMD5SaltLength = 6;
 
     private int timeout = 90;
+    private String timeoutDisplay = "BOSS_BAR";
     private boolean kickOnWrongPassword = false;
     private int maxLoginTries = 3;
     private boolean blindness = true;
@@ -183,6 +184,7 @@ public class NeoAuthConfig implements IAuthConfig {
             Object restObj = setMap.get("restrictions");
             if (restObj instanceof Map<?, ?> restMap) {
                 if (restMap.get("timeout") instanceof Number n) config.timeout = n.intValue();
+                if (restMap.get("timeoutDisplay") instanceof String s) config.timeoutDisplay = s;
                 if (restMap.get("kickOnWrongPassword") instanceof Boolean b) config.kickOnWrongPassword = b;
                 if (restMap.get("maxLoginTries") instanceof Number n) config.maxLoginTries = n.intValue();
                 if (restMap.get("blindness") instanceof Boolean b) config.blindness = b;
@@ -502,6 +504,11 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public int getTimeout() {
         return timeout;
+    }
+
+    @Override
+    public String getTimeoutDisplay() {
+        return timeoutDisplay != null ? timeoutDisplay.toUpperCase() : "BOSS_BAR";
     }
 
     @Override

@@ -807,6 +807,7 @@ public class ForgeEvents {
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             String username = player.getGameProfile().getName();
+            Services.PLATFORM.clearTimeoutDisplay(player);
             try {
                 AuthLogic.attemptLogout(player.getUUID(), username);
             } catch (Exception e) {
@@ -937,9 +938,30 @@ public class ForgeEvents {
         if (event.phase == TickEvent.Phase.END && event.player instanceof ServerPlayer player) {
             if (!AuthManager.isLoggedIn(player.getUUID())) {
                 Services.PLATFORM.applyFreezeEffects(player);
+
+                tw.yuaner.neoauth.core.PlayerSessionData session = AuthManager.getSession(player.getUUID());
+                if (session != null) {
+                    int timeout = ConfigManager.getInstance().getConfig().getTimeout();
+                    if (timeout > 0) {
+                        long elapsedSeconds = (System.currentTimeMillis() - session.getLoginTime()) / 1000;
+                        int remainingSeconds = (int) (timeout - elapsedSeconds);
+                        if (remainingSeconds <= 0) {
+                            String msg = ConfigManager.getInstance().getMessagesManager().get("login.timeout");
+                            Services.PLATFORM.kickPlayer(player, msg);
+                        } else if (player.tickCount % 20 == 0) {
+                            Services.PLATFORM.updateTimeoutDisplay(player, remainingSeconds, timeout);
+                        }
+                    }
+                }
+
                 int interval = ConfigManager.getInstance().getConfig().getRegistrationMessageInterval();
-                if (interval > 0 && player.tickCount % (interval * 20) == 0) {
+                boolean isActionBarTimeout = "ACTION_BAR".equals(ConfigManager.getInstance().getConfig().getTimeoutDisplay()) && ConfigManager.getInstance().getConfig().getTimeout() > 0;
+                if (!isActionBarTimeout && interval > 0 && player.tickCount % (interval * 20) == 0) {
                     promptAuth(player);
+                }
+            } else {
+                if (player.tickCount % 20 == 0) {
+                    Services.PLATFORM.clearTimeoutDisplay(player);
                 }
             }
         }

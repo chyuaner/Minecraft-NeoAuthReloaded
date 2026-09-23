@@ -123,4 +123,28 @@ public interface IPlatformHelper {
      * @return 玩家名稱清單
      */
     java.util.List<String> getOnlinePlayerNames(Object serverOrSource);
+
+    /**
+     * 更新並顯示玩家的登入超時剩餘時間。
+     *
+     * @param player 伺服器玩家物件 (ServerPlayer)
+     * @param remainingSeconds 剩餘秒數
+     * @param totalSeconds 總共秒數
+     */
+    void updateTimeoutDisplay(Object player, int remainingSeconds, int totalSeconds);
+
+    /**
+     * 清除玩家畫面上與超時相關的顯示 (例如 BossBar)。
+     *
+     * @param player 伺服器玩家物件 (ServerPlayer)
+     */
+    void clearTimeoutDisplay(Object player);
+
+    /**
+     * 踢出指定的玩家。
+     *
+     * @param player 伺服器玩家物件 (ServerPlayer)
+     * @param reason 踢出理由
+     */
+    void kickPlayer(Object player, String reason);
 }

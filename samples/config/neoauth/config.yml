@@ -111,3 +111,22 @@ settings:
     # SALTED2MD5 演算法之鹽值長度 (Discuz! / Phpwind 通常為 6)
     doubleMD5SaltLength: 6
 
+  # 玩家未驗證時的行為限制
+  restrictions:
+    # 登入超時時間 (秒，0 為不限制)
+    timeout: 90
+    # 登入超時的剩餘時間顯示形式 (支援: ACTION_BAR, BOSS_BAR, NONE) (NeoAuthReloaded擴充)
+    # - ACTION_BAR: 顯示在快捷欄上方的跑馬燈文字 (預設)
+    # - BOSS_BAR: 顯示在螢幕頂部的 BOSS 血條，並隨著時間減少
+    # - NONE: 不顯示剩餘時間
+    timeoutDisplay: "BOSS_BAR"
+    # 輸入錯誤密碼時是否直接踢出
+    kickOnWrongPassword: false
+    # 最大允許密碼錯誤嘗試次數
+    maxLoginTries: 3
+    # 是否對未登入玩家施加失明效果 (原地防禦)
+    blindness: true
+    # 是否對未登入玩家施加緩速與跳躍抑制
+    slowness: true
+    # 玩家進服時是否顯示 welcome.txt 歡迎文字公告
+    displayWelcomeMessage: true

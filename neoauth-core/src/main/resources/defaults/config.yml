@@ -170,6 +170,11 @@ settings:
   restrictions:
     # 登入超時時間 (秒，0 為不限制)
     timeout: 90
+    # 登入超時的剩餘時間顯示形式 (支援: ACTION_BAR, BOSS_BAR, NONE)
+    # - ACTION_BAR: 顯示在快捷欄上方的跑馬燈文字 (預設)
+    # - BOSS_BAR: 顯示在螢幕頂部的 BOSS 血條，並隨著時間減少
+    # - NONE: 不顯示剩餘時間
+    timeoutDisplay: "BOSS_BAR"
     # 輸入錯誤密碼時是否直接踢出
     kickOnWrongPassword: false
     # 最大允許密碼錯誤嘗試次數

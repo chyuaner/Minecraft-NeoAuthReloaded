@@ -4,8 +4,8 @@ build/
 bin/
 
 # NeoForge runtime directory
-run/
-config/
+/run/
+/config/
 
 # IDE files
 .idea/

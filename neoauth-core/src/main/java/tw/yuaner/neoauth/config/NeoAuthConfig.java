@@ -92,9 +92,10 @@ public class NeoAuthConfig implements IAuthConfig {
     public NeoAuthConfig() {}
 
     @SuppressWarnings("unchecked")
-    public static NeoAuthConfig fromMap(Map<String, Object> map) {
+    public static NeoAuthConfig fromMap(Map<String, Object> map, Map<String, Object> extMap) {
         NeoAuthConfig config = new NeoAuthConfig();
-        if (map == null) return config;
+        if (map == null) map = java.util.Collections.emptyMap();
+        if (extMap == null) extMap = java.util.Collections.emptyMap();
 
         // DataSource
         Object dsObj = map.get("DataSource");
@@ -192,14 +193,18 @@ public class NeoAuthConfig implements IAuthConfig {
 
         // ExternalBoardOptions (支援 Discuz, Phpwind, Blessing Skin 等外部論壇與皮膚站設定)
         Object extObj = map.get("ExternalBoardOptions");
-        if (extObj instanceof Map<?, ?> extMap) {
-            if (extMap.get("mySQLColumnSalt") != null && config.mySQLColumnSalt.isBlank()) {
-                config.mySQLColumnSalt = String.valueOf(extMap.get("mySQLColumnSalt"));
+        if (extObj instanceof Map<?, ?> extMap2) {
+            if (extMap2.get("mySQLColumnSalt") != null && config.mySQLColumnSalt.isBlank()) {
+                config.mySQLColumnSalt = String.valueOf(extMap2.get("mySQLColumnSalt"));
             }
         }
 
         // bluemap (支援頂層 bluemap 與 settings.bluemap)
-        Object blueMapObj = map.get("bluemap");
+        // 優先讀取 extensions.yml 內的 bluemap，若無則降級讀取 config.yml 的設定
+        Object blueMapObj = extMap.get("bluemap");
+        if (blueMapObj == null) {
+            blueMapObj = map.get("bluemap");
+        }
         if (blueMapObj == null && settingsObj instanceof Map<?, ?> sMap) {
             blueMapObj = sMap.get("bluemap");
         }
@@ -231,7 +236,12 @@ public class NeoAuthConfig implements IAuthConfig {
             else if (bmMap.get("cache_ttl_minutes") instanceof Number n) config.blueMapCacheTtlMinutes = n.intValue();
         }
 
-        Object tabObj = map.get("tab");
+        // tab
+        // 優先讀取 extensions.yml 內的 tab，若無則降級讀取 config.yml 的設定
+        Object tabObj = extMap.get("tab");
+        if (tabObj == null) {
+            tabObj = map.get("tab");
+        }
         if (tabObj instanceof Map<?, ?> tabMap) {
             if (tabMap.get("enabled") instanceof Boolean b) config.tabEnabled = b;
             else if (tabMap.get("enable") instanceof Boolean b) config.tabEnabled = b;

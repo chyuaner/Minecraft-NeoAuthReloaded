@@ -61,7 +61,11 @@ public class ConfigManager {
 
             // 1. 載入並合併 config.yml
             Map<String, Object> configData = loadAndMergeYaml("config.yml", configDir.resolve("config.yml"));
-            this.config = NeoAuthConfig.fromMap(configData);
+
+            // 1.5. 載入並合併 extensions.yml
+            Map<String, Object> extensionsData = loadAndMergeYaml("extensions.yml", configDir.resolve("extensions.yml"));
+
+            this.config = NeoAuthConfig.fromMap(configData, extensionsData);
 
             // 2. 載入並合併 commands.yml
             Map<String, Object> commandsData = loadAndMergeYaml("commands.yml", configDir.resolve("commands.yml"));

@@ -1,0 +1,30 @@
+# -------------------------------------------------------------
+# TAB by NEZNAMY 範例設定檔 (僅節錄與 NeoAuthReloaded 相關部分)
+# 
+# 這裡示範了如何在 TAB 的計分板、玩家列表(Tablist) 等地方
+# 運用 NeoAuth 提供的專屬變數 (Placeholders)。
+# -------------------------------------------------------------
+
+header-footer:
+  enabled: true
+  designs:
+    default:
+      display-condition: '%world%!=disabledworld'
+      header:
+      - '&3&lYuan 測試服 (範例)'
+      - ''
+      - '&r&7線上玩家 (&f%online%):'
+      footer:
+      - ''
+      # ---------------------------------------------------------
+      # 以下為 NeoAuthReloaded 專屬變數的應用範例：
+      # %neoauth_login_type% : 顯示玩家的登入方式 (例如: 密碼登入, 離線免密, 正版驗證...等)
+      # %neoauth_ip_type%    : 顯示玩家的連線 IP 類型 (IPv4 / IPv6)
+      # %neoauth_login_time% : 顯示玩家的登入時間 (格式於 NeoAuth extensions.yml 中設定)
+      # %neoauth_email%      : 顯示玩家綁定的信箱 (若未設定則顯示對應提示)
+      # %neoauth_player%     : 顯示玩家名稱
+      # ---------------------------------------------------------
+      - '&7狀態: %neoauth_login_type% &7[%neoauth_ip_type%] &7| &7登入時間: &e%neoauth_login_time%'
+      - '&7UUID: &e%uuid% &7'
+      - '&7帳號信箱: &f%neoauth_email% &7'
+      - ''

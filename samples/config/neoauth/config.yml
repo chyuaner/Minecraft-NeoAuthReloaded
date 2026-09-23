@@ -39,7 +39,7 @@ DataSource:
   # 連線最大存活時間 (秒)
   maxLifetime: 1800
 
-  # 是否啟用本地 SQLite 備援，當主資料庫 (如 MySQL) 異常時提供最基本的登入功能
+  # 是否啟用本地 SQLite 備援，當主資料庫 (如 MySQL) 異常時提供最基本的登入功能 (NeoAuthReloaded擴充)
   fallbackToSqLite: false
 
 # 外部系統 / 論壇 / 皮膚站整合選項 (External Board Options)
@@ -54,40 +54,40 @@ settings:
   # 是否允許離線（非官方）玩家在線上模式伺服器進入
   allowOfflinePlayers: true
 
-  # 是否強制保持離線版 UUID (v3) 相容模式 (預設: false)
+  # 是否強制保持離線版 UUID (v3) 相容模式 (預設: false) (NeoAuthReloaded擴充)
   # - false: 通過 Mojang 驗證的正版玩家將使用 Mojang 原生 UUID (v4)
   # - true: 所有玩家（包含正版玩家）在伺服器端一律使用固定的離線 UUID (v3) 儲存存檔與插件資料
   #         正版玩家的官方 Skin 造型仍會完整保留，並享有免密碼自動登入功能。
   #         此設定可徹底避免玩家更換啟動器或 Mojang 伺服器異常時存檔被重設或分裂的問題。
   keepOfflineUuidCompatibility: false
 
-  # 是否在離線模式 (online-mode: false) 下啟用動態正版驗證 (預設: true)
+  # 是否在離線模式 (online-mode: false) 下啟用動態正版驗證 (預設: true) (NeoAuthReloaded擴充)
   # - true: 伺服器維持離線模式（所有人使用固定離線 UUID v3，存檔不重設、皮膚 100% 正常相容 SkinRestorer），
   #         但進服時會動態向正版客戶端發起 Mojang 密鑰握手驗證，正版驗證成功後直接享有「免密碼自動登入」！
   # - false: 關閉動態正版驗證，所有玩家一律視為離線玩家要求密碼登入。
   dynamicPremiumVerification: true
 
-  # 動態正版握手超時時間（秒，預設: 7）
+  # 動態正版握手超時時間（秒，預設: 7） (NeoAuthReloaded擴充)
   # - 若正版客戶端或 Mojang 伺服器在設定時間內未回應，將自動先放行進入遊戲並提示密碼登入（避免連線卡死）。
   # - 若隨後 Mojang 正版驗證在背景非同步完成通過，且玩家尚未手動登入，系統將即時自動將玩家晉升為「已登入」狀態並解除限制！
   dynamicVerificationTimeout: 7
 
-  # 外部驗證伺服器連線失敗重試次數 (預設: 2)
+  # 外部驗證伺服器連線失敗重試次數 (預設: 2) (NeoAuthReloaded擴充)
   # - 當向 Mojang 或第三方 Yggdrasil 伺服器請求驗證發生異常時，將進行重試。
   #   連續失敗達此次數後，才判定為本次連線失敗，並啟動對應的例外或熔斷保護機制。
   retry: 2
 
-  # 是否啟用 Mojang 驗證伺服器熔斷保護 (預設: true)
+  # 是否啟用 Mojang 驗證伺服器熔斷保護 (預設: true) (NeoAuthReloaded擴充)
   # - 當伺服器與 Mojang 驗證連線失敗/異常，或客戶端因 Mojang 故障而在握手階段斷線時，
   #   系統將自動開啟熔斷保護，在設定秒數內暫時跳過正版動態握手，改由傳統密碼方式放行進服，
   #   徹底杜絕正版玩家在 Mojang 全球當機時被客戶端拋出「目前無法連線到驗證伺服器」而無法進服的問題！
   circuitBreakerEnabled: true
 
-  # Mojang 驗證伺服器熔斷冷卻時間（秒，預設: 180）
+  # Mojang 驗證伺服器熔斷冷卻時間（秒，預設: 180） (NeoAuthReloaded擴充)
   # - 當熔斷保護啟動後，在此秒數內所有正版客戶端連線將直接走傳統密碼放行，倒數結束後自動恢復正常正版動態握手。
   circuitBreakerDurationSeconds: 180
 
-  # 自訂第三方 Yggdrasil 外置驗證伺服器 API 網址 (預設: 空字串 "")
+  # 自訂第三方 Yggdrasil 外置驗證伺服器 API 網址 (預設: 空字串 "") (NeoAuthReloaded擴充)
   # - 例如: "https://mc8.yuaner.tw/api/yggdrasil" (Blessing Skin, LittleSkin 等自建皮膚站/驗證站)
   # - 若設定此項，NeoAuth 將原生支援「雙向雙驗證」：
   #   優先向 Mojang 官方驗證正版，若非 Mojang 帳號則自動向此外置站查詢 Session 進行認證，
@@ -110,35 +110,4 @@ settings:
 
     # SALTED2MD5 演算法之鹽值長度 (Discuz! / Phpwind 通常為 6)
     doubleMD5SaltLength: 6
-
-# ==============================================================================
-# BlueMap 網頁地圖整合 (BlueMap Integration)
-# ==============================================================================
-bluemap:
-  # 是否自動為通過正版或外置站驗證的玩家生成並同步 BlueMap 頭像 (預設: true)
-  # 啟用後，當正版或外置皮膚站玩家連線進服時，NeoAuth 將非同步從頭像 API 下載頭像並寫入
-  # bluemap/web/maps/<mapId>/assets/playerheads/<offlineUuid>.png，
-  # 完美解決 online-mode: false 下因離線 UUID 斷層導致 BlueMap 網頁玩家頭像回退為史蒂夫的問題。
-  enabled: true
-
-  # 是否自動讀取並連動 SkinRestorer 模組設定 (預設: true)
-  # - true: 若伺服器安裝了 SkinRestorer (如 config/skinrestorer/config.json)，
-  #         NeoAuth 將自動讀取其自架皮膚站 (custom authlib-injector) 與服務優先順序，無需手動重複設定！
-  #         (若未檢測到 SkinRestorer 相關設定，將自動回退使用下列獨立設定)
-  # - false: 不連動 SkinRestorer，一律使用下列獨立設定。
-  useSkinRestorerConfig: true
-
-  # 獨立模式下的來源優先順序 (預設: OFFICIAL_FIRST)
-  # - OFFICIAL_FIRST: 優先向官方正版頭像 API 請求，失敗時回退至自架第三方頭像站 (推薦)
-  # - CUSTOM_FIRST: 優先向自架第三方皮膚站請求，失敗時回退至官方正版頭像 API
-  priority: "OFFICIAL_FIRST"
-
-  # 官方正版頭像下載來源 API 網址範本 (支援 {username}、{uuid} 與 {size} 佔位符)
-  # 預設: "https://mc-heads.net/avatar/{username}/64"
-  avatarUrl: "https://mc-heads.net/avatar/{username}/64"
-
-  # 自架第三方皮膚站 / Blessing Skin 外置頭像來源 API 範本 (可為空字串 "")
-  # - 例如 Blessing Skin 站點: "https://mc8.yuaner.tw/avatar/player/{username}?size=64" 或 "https://mc8.yuaner.tw/avatar/{username}/64"
-  # - 當連動 SkinRestorer 且成功讀取時，此項將由 SkinRestorer 設定自動覆蓋。
-  customAvatarUrl: ""
 

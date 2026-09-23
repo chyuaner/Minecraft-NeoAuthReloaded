@@ -128,9 +128,13 @@ public class MojangCircuitBreaker {
             RECENT_DISCONNECTIONS.poll();
         }
 
-        if (RECENT_DISCONNECTIONS.size() >= 2) {
+        int threshold = (cfg != null && cfg.getRetry() > 0)
+                ? cfg.getRetry()
+                : 2;
+
+        if (RECENT_DISCONNECTIONS.size() >= threshold) {
             RECENT_DISCONNECTIONS.clear();
-            recordFailure("60 秒內連續 2 次客戶端於正版握手階段中斷連線 (" + username + " 等，疑似 Mojang Session 伺服器不可用)");
+            recordFailure("60 秒內連續 " + threshold + " 次客戶端於正版握手階段中斷連線 (" + username + " 等，疑似 Mojang Session 伺服器不可用)");
         }
     }
 

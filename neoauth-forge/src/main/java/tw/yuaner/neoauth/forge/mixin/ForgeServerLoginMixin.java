@@ -249,15 +249,29 @@ public abstract class ForgeServerLoginMixin {
                     boolean isCustomAuth = false;
 
                     // 1. 優先向 Mojang 官方 Session 伺服器查詢 (傳入 null 避免 IPv4/IPv6 雙棧網路不匹配問題)
-                    GameProfile profile = server.getSessionService().hasJoinedServer(new GameProfile(null, username), digest, null);
-                    if (profile != null) {
-                        verified = true;
-                        if (profile.getProperties() != null && profile.getProperties().containsKey("textures")) {
-                            for (com.mojang.authlib.properties.Property prop : profile.getProperties().get("textures")) {
-                                texturesValue = prop.getValue();
-                                texturesSignature = prop.getSignature();
-                                break;
+                    int maxRetries = Services.PLATFORM.getConfig().getRetry();
+                    if (maxRetries < 1) maxRetries = 1;
+                    int attempts = 0;
+
+                    while (attempts < maxRetries && !verified) {
+                        attempts++;
+                        try {
+                            GameProfile profile = server.getSessionService().hasJoinedServer(new GameProfile(null, username), digest, null);
+                            if (profile != null) {
+                                verified = true;
+                                if (profile.getProperties() != null && profile.getProperties().containsKey("textures")) {
+                                    for (com.mojang.authlib.properties.Property prop : profile.getProperties().get("textures")) {
+                                        texturesValue = prop.getValue();
+                                        texturesSignature = prop.getSignature();
+                                        break;
+                                    }
+                                }
                             }
+                        } catch (Exception e) {
+                            if (attempts >= maxRetries) {
+                                throw e;
+                            }
+                            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
                         }
                     }
 

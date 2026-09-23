@@ -231,16 +231,30 @@ public abstract class NeoForgeServerLoginMixin {
                     boolean isCustomAuth = false;
 
                     // 1. 優先向 Mojang 官方 Session 伺服器查詢 (傳入 null 避免 IPv4/IPv6 雙棧網路不匹配問題)
-                    ProfileResult profileResult = this.server.getSessionService().hasJoinedServer(username, digest, null);
-                    if (profileResult != null && profileResult.profile() != null) {
-                        verified = true;
-                        GameProfile mojangProfile = profileResult.profile();
-                        if (mojangProfile.getProperties() != null && mojangProfile.getProperties().containsKey("textures")) {
-                            for (com.mojang.authlib.properties.Property prop : mojangProfile.getProperties().get("textures")) {
-                                texturesValue = prop.value();
-                                texturesSignature = prop.signature();
-                                break;
+                    int maxRetries = Services.PLATFORM.getConfig().getRetry();
+                    if (maxRetries < 1) maxRetries = 1;
+                    int attempts = 0;
+
+                    while (attempts < maxRetries && !verified) {
+                        attempts++;
+                        try {
+                            ProfileResult profileResult = this.server.getSessionService().hasJoinedServer(username, digest, null);
+                            if (profileResult != null && profileResult.profile() != null) {
+                                verified = true;
+                                GameProfile mojangProfile = profileResult.profile();
+                                if (mojangProfile.getProperties() != null && mojangProfile.getProperties().containsKey("textures")) {
+                                    for (com.mojang.authlib.properties.Property prop : mojangProfile.getProperties().get("textures")) {
+                                        texturesValue = prop.value();
+                                        texturesSignature = prop.signature();
+                                        break;
+                                    }
+                                }
                             }
+                        } catch (Exception e) {
+                            if (attempts >= maxRetries) {
+                                throw e;
+                            }
+                            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
                         }
                     }
 

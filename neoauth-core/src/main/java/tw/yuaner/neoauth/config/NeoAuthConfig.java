@@ -55,6 +55,7 @@ public class NeoAuthConfig implements IAuthConfig {
     private int dynamicVerificationTimeout = 7;
     private boolean circuitBreakerEnabled = true;
     private int circuitBreakerDurationSeconds = 180;
+    private int retry = 2;
     private String customYggdrasilUrl = "";
 
     private String passwordHash = "SHA256";
@@ -154,6 +155,7 @@ public class NeoAuthConfig implements IAuthConfig {
             if (setMap.get("dynamicVerificationTimeout") instanceof Number n) config.dynamicVerificationTimeout = n.intValue();
             if (setMap.get("circuitBreakerEnabled") instanceof Boolean b) config.circuitBreakerEnabled = b;
             if (setMap.get("circuitBreakerDurationSeconds") instanceof Number n) config.circuitBreakerDurationSeconds = n.intValue();
+            if (setMap.get("retry") instanceof Number n) config.retry = n.intValue();
             if (setMap.get("customYggdrasilUrl") != null) config.customYggdrasilUrl = String.valueOf(setMap.get("customYggdrasilUrl"));
             // registration (AuthMeReloaded 相容結構)
             Object regObj = setMap.get("registration");
@@ -450,6 +452,11 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public int getCircuitBreakerDurationSeconds() {
         return circuitBreakerDurationSeconds;
+    }
+
+    @Override
+    public int getRetry() {
+        return retry > 0 ? retry : 2;
     }
 
     @Override

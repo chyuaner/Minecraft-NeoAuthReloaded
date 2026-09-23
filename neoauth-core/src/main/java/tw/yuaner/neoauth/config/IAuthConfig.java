@@ -242,6 +242,11 @@ public interface IAuthConfig {
     int getCircuitBreakerDurationSeconds();
 
     /**
+     * 取得外部驗證伺服器連線失敗重試次數 (預設: 2)
+     */
+    int getRetry();
+
+    /**
      * 取得自訂第三方 Yggdrasil 外置驗證伺服器網址 (例如: "https://mc8.yuaner.tw/api/yggdrasil")
      *
      * @return Yggdrasil 根網址，若未設定則為空字串

@@ -65,68 +65,91 @@ public class YggdrasilService {
             return YggdrasilAuthResult.failure();
         }
 
-        try {
-            String baseUrl = yggdrasilUrl.trim();
-            while (baseUrl.endsWith("/")) {
-                baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
-            }
+        int maxRetries = 2;
+        tw.yuaner.neoauth.config.IAuthConfig cfg = tw.yuaner.neoauth.config.ConfigManager.getInstance().getConfig();
+        if (cfg != null && cfg.getRetry() > 0) {
+            maxRetries = cfg.getRetry();
+        }
 
-            StringBuilder urlBuilder = new StringBuilder();
-            urlBuilder.append(baseUrl);
-            if (!baseUrl.contains("/sessionserver")) {
-                urlBuilder.append("/sessionserver");
-            }
-            if (!baseUrl.endsWith("/hasJoined")) {
-                urlBuilder.append("/session/minecraft/hasJoined");
-            }
-            urlBuilder.append("?username=").append(URLEncoder.encode(username, StandardCharsets.UTF_8));
-            urlBuilder.append("&serverId=").append(URLEncoder.encode(serverId, StandardCharsets.UTF_8));
-            if (ip != null && !ip.isBlank()) {
-                urlBuilder.append("&ip=").append(URLEncoder.encode(ip, StandardCharsets.UTF_8));
-            }
+        int attempts = 0;
+        Exception lastException = null;
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(urlBuilder.toString()))
-                    .timeout(Duration.ofSeconds(6))
-                    .header("User-Agent", "NeoAuth-MultiAuth/1.0.0")
-                    .GET()
-                    .build();
+        while (attempts < maxRetries) {
+            attempts++;
+            try {
+                String baseUrl = yggdrasilUrl.trim();
+                while (baseUrl.endsWith("/")) {
+                    baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+                }
 
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200) {
-                String body = response.body();
-                if (body != null && !body.isBlank()) {
-                    JsonObject root = JsonParser.parseString(body).getAsJsonObject();
-                    String id = root.has("id") && !root.get("id").isJsonNull() ? root.get("id").getAsString() : null;
-                    String name = root.has("name") && !root.get("name").isJsonNull() ? root.get("name").getAsString() : username;
-                    String texturesValue = null;
-                    String texturesSignature = null;
+                StringBuilder urlBuilder = new StringBuilder();
+                urlBuilder.append(baseUrl);
+                if (!baseUrl.contains("/sessionserver")) {
+                    urlBuilder.append("/sessionserver");
+                }
+                if (!baseUrl.endsWith("/hasJoined")) {
+                    urlBuilder.append("/session/minecraft/hasJoined");
+                }
+                urlBuilder.append("?username=").append(URLEncoder.encode(username, StandardCharsets.UTF_8));
+                urlBuilder.append("&serverId=").append(URLEncoder.encode(serverId, StandardCharsets.UTF_8));
+                if (ip != null && !ip.isBlank()) {
+                    urlBuilder.append("&ip=").append(URLEncoder.encode(ip, StandardCharsets.UTF_8));
+                }
 
-                    if (root.has("properties") && root.get("properties").isJsonArray()) {
-                        JsonArray props = root.getAsJsonArray("properties");
-                        for (JsonElement elem : props) {
-                            if (elem.isJsonObject()) {
-                                JsonObject propObj = elem.getAsJsonObject();
-                                if (propObj.has("name") && "textures".equals(propObj.get("name").getAsString())) {
-                                    if (propObj.has("value") && !propObj.get("value").isJsonNull()) {
-                                        texturesValue = propObj.get("value").getAsString();
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(urlBuilder.toString()))
+                        .timeout(Duration.ofSeconds(6))
+                        .header("User-Agent", "NeoAuth-MultiAuth/1.0.0")
+                        .GET()
+                        .build();
+
+                HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() == 200) {
+                    String body = response.body();
+                    if (body != null && !body.isBlank()) {
+                        JsonObject root = JsonParser.parseString(body).getAsJsonObject();
+                        String id = root.has("id") && !root.get("id").isJsonNull() ? root.get("id").getAsString() : null;
+                        String name = root.has("name") && !root.get("name").isJsonNull() ? root.get("name").getAsString() : username;
+                        String texturesValue = null;
+                        String texturesSignature = null;
+
+                        if (root.has("properties") && root.get("properties").isJsonArray()) {
+                            JsonArray props = root.getAsJsonArray("properties");
+                            for (JsonElement elem : props) {
+                                if (elem.isJsonObject()) {
+                                    JsonObject propObj = elem.getAsJsonObject();
+                                    if (propObj.has("name") && "textures".equals(propObj.get("name").getAsString())) {
+                                        if (propObj.has("value") && !propObj.get("value").isJsonNull()) {
+                                            texturesValue = propObj.get("value").getAsString();
+                                        }
+                                        if (propObj.has("signature") && !propObj.get("signature").isJsonNull()) {
+                                            texturesSignature = propObj.get("signature").getAsString();
+                                        }
+                                        break;
                                     }
-                                    if (propObj.has("signature") && !propObj.get("signature").isJsonNull()) {
-                                        texturesSignature = propObj.get("signature").getAsString();
-                                    }
-                                    break;
                                 }
                             }
                         }
-                    }
 
-                    return new YggdrasilAuthResult(true, id, name, texturesValue, texturesSignature);
+                        return new YggdrasilAuthResult(true, id, name, texturesValue, texturesSignature);
+                    }
+                } else if (response.statusCode() != 204 && response.statusCode() != 404) {
+                    LOGGER.debug("Yggdrasil 驗證伺服器回應狀態碼: {}", response.statusCode());
                 }
-            } else if (response.statusCode() != 204 && response.statusCode() != 404) {
-                LOGGER.debug("Yggdrasil 驗證伺服器回應狀態碼: {}", response.statusCode());
+                
+                // If it's a valid HTTP response (like 204 or 404 or others), it's not a connection error.
+                // We should break and return failure instead of retrying connection.
+                break;
+            } catch (Exception e) {
+                lastException = e;
+                if (attempts < maxRetries) {
+                    try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+                }
             }
-        } catch (Exception e) {
-            LOGGER.warn("連線至自訂 Yggdrasil 驗證伺服器失敗 ({}): {}", yggdrasilUrl, e.getMessage());
+        }
+
+        if (lastException != null) {
+            LOGGER.warn("連線至自訂 Yggdrasil 驗證伺服器失敗 ({}): {}", yggdrasilUrl, lastException.getMessage());
         }
         return YggdrasilAuthResult.failure();
     }

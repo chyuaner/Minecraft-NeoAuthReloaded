@@ -3,9 +3,10 @@
 build/
 bin/
 
-# NeoForge runtime directory
+# NeoForge and Test runtime directories
 /run/
 /config/
+neoauth-core/config/
 
 # IDE files
 .idea/

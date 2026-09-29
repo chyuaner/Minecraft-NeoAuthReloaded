@@ -1,12 +1,12 @@
 # ==============================================================================
-# NeoAuth 登入日誌設定檔 (Login Logs Configuration)
+# NeoAuth 登入日誌設定檔 (login_logs.yml)
 # ==============================================================================
 # 此設定檔用於控制「登入日誌 (login_logs)」功能的行為。
 # 當啟用時，系統會自動在資料庫中記錄每位玩家的登入與登出審計日誌。
 
 login_logs:
   # 是否啟用登入日誌記錄功能 (預設: false，需管理員手動開啟)
-  # - true: 啟用記錄，玩家登入登出時寫入資料庫 login_logs 表
+  # - true: 啟用記錄，玩家登入登出時寫入資料庫
   # - false: 停用日誌記錄
   enabled: false
 
@@ -17,10 +17,46 @@ login_logs:
   # 1. "AUTO" (推薦，預設值)：
   #    - 完全無需手動設定！系統會自動依序嘗試：
   #      a. 讀取 JVM 參數 (-Dneoauth.server.name=xxx) 或環境變數 ($NEOAUTH_SERVER_NAME / $SERVER_NAME)
-  #      b. 自動組合「資料夾名稱:連接埠」(例如伺服器資料夾為 lobby，埠號為 25565，則自動識別為 "lobby:25565")
+  #      b. 自動判斷啟動器環境 (若為 PrismLauncher / MultiMC 等，會自動提取實例名稱 INST_NAME 或上一層資料夾名稱)
+  #      c. 自動組合「資料夾名稱:連接埠」(例如伺服器資料夾為 lobby，埠號為 25565，則自動識別為 "lobby:25565")
   # 2. 佔位符自訂模式：
   #    - 支援佔位符：{dir} (當前目錄名)、{port} (伺服器通訊埠)、{host} (主機名稱)
   #    - 例如："{dir}-{port}" 或 "mc-{dir}"
   # 3. 手動固定名稱：
   #    - 直接填入字串，例如 "Lobby-1"、"Survival-Main"
   server_name: "AUTO"
+
+  # ==============================================================================
+  # 自訂資料庫資料表與欄位名稱對應 (比照 AuthMeReloaded 規範)
+  # 若管理員使用既有資料表或有特殊整合需求，可於此自訂對應名稱
+  # ==============================================================================
+  # 日誌資料表名稱 (Table for storing login logs)
+  mySQLTablename: "login_logs"
+
+  # 自訂資料庫欄位名稱 (自訂資料表對應，比照 AuthMeReloaded 規範)
+  # 主鍵 ID 欄位 (Column of IDs to sort data / Auto-increment)
+  mySQLColumnId: "id"
+  # 伺服器識別名稱欄位 (Column for storing server identifier name)
+  mySQLColumnServerName: "server_name"
+  # 玩家帳號名稱欄位 (Column for storing players nickname)
+  mySQLColumnName: "username"
+  # 登入時間戳記欄位 (Column for storing login timestamp)
+  mySQLColumnLoginTime: "login_time"
+  # 登出時間戳記欄位 (Column for storing logout timestamp)
+  mySQLColumnLogoutTime: "logout_time"
+  # 玩家登入客戶端 IP 欄位 (Column for storing player's client IP)
+  mySQLColumnIp: "ip"
+  # 登入驗證方式欄位 (Column for storing login method, e.g. Password, Premium, Register)
+  mySQLColumnLoginMethod: "login_method"
+  # 連線通道方式欄位 (Column for storing connection channel, e.g. TCP, WebSocket, TCP+zstd, WebSocket+zstd)
+  mySQLColumnConnectionChannel: "connection_channel"
+  # 玩家 UUID 欄位 (Column for storing players uuid)
+  mySQLColumnUuid: "uuid"
+  # 伺服器端連線 IP 欄位 (Column for storing server's local/listening IP, useful for floating IP & IPv4/IPv6 dual-stack)
+  mySQLColumnServerIp: "server_ip"
+  # 伺服器端連線 Port 欄位 (Column for storing server's local/listening Port)
+  mySQLColumnServerPort: "server_port"
+  # 登入時最高 OP 權限等級欄位 (Column for storing highest OP level at login)
+  mySQLColumnLoginOpLevel: "login_op_level"
+  # 登出時最高 OP 權限等級欄位 (Column for storing highest OP level at logout)
+  mySQLColumnLogoutOpLevel: "logout_op_level"

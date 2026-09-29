@@ -274,6 +274,10 @@ public class ConfigManager {
         return loginLogsConfig;
     }
 
+    public void setLoginLogsConfig(LoginLogsConfig loginLogsConfig) {
+        this.loginLogsConfig = loginLogsConfig;
+    }
+
     public String getWelcomeMessage() {
         return welcomeMessage;
     }

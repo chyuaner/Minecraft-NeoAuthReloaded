@@ -254,13 +254,15 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
                 String username = player.getGameProfile().getName();
                 String uuidStr = player.getUUID().toString();
                 String ip = player.getIpAddress();
+                String serverIp = resolveServerIp(player);
+                int serverPort = resolveServerPort(player);
+                String connectionChannel = resolveConnectionChannel(player);
                 net.minecraft.server.MinecraftServer server = player.getServer();
-                int port = server != null ? server.getPort() : 25565;
-                String serverName = tw.yuaner.neoauth.util.ServerIdentifier.resolve(logCfg.getServerName(), port);
-                String world = player.serverLevel().dimension().location().toString();
+                int fallbackPort = server != null ? server.getPort() : 25565;
+                String serverName = tw.yuaner.neoauth.util.ServerIdentifier.resolve(logCfg.getServerName(), serverPort > 0 ? serverPort : fallbackPort);
                 int loginOpLevel = calculatePlayerOpLevel(player);
                 
-                long logId = tw.yuaner.neoauth.DatabaseManager.insertLoginLog(username, uuidStr, ip, loginMethod, serverName, world, loginOpLevel);
+                long logId = tw.yuaner.neoauth.DatabaseManager.insertLoginLog(username, uuidStr, ip, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
                 tw.yuaner.neoauth.core.PlayerSessionData session = tw.yuaner.neoauth.AuthManager.getSession(player.getUUID());
                 if (session != null) {
                     session.setLoginLogId(logId);
@@ -301,5 +303,101 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
             }
         }
         return maxLevel;
+    }
+
+    private String resolveServerIp(ServerPlayer player) {
+        try {
+            if (player.connection != null && player.connection.getConnection() != null) {
+                io.netty.channel.Channel channel = player.connection.getConnection().channel();
+                if (channel != null) {
+                    java.net.SocketAddress localAddr = channel.localAddress();
+                    if (localAddr instanceof java.net.InetSocketAddress inetAddr) {
+                        java.net.InetAddress addr = inetAddr.getAddress();
+                        if (addr != null) {
+                            return addr.getHostAddress();
+                        }
+                        return inetAddr.getHostString();
+                    }
+                }
+            }
+            if (player.getServer() != null && player.getServer().getLocalIp() != null && !player.getServer().getLocalIp().isBlank()) {
+                return player.getServer().getLocalIp();
+            }
+            return java.net.InetAddress.getLocalHost().getHostAddress();
+        } catch (Throwable e) {
+            return "127.0.0.1";
+        }
+    }
+
+    private int resolveServerPort(ServerPlayer player) {
+        try {
+            if (player.connection != null && player.connection.getConnection() != null) {
+                io.netty.channel.Channel channel = player.connection.getConnection().channel();
+                if (channel != null) {
+                    java.net.SocketAddress localAddr = channel.localAddress();
+                    if (localAddr instanceof java.net.InetSocketAddress inetAddr) {
+                        int port = inetAddr.getPort();
+                        if (port > 0) {
+                            return port;
+                        }
+                    }
+                }
+            }
+            if (player.getServer() != null) {
+                return player.getServer().getPort();
+            }
+        } catch (Throwable ignored) {
+        }
+        return 25565;
+    }
+
+    private String resolveConnectionChannel(ServerPlayer player) {
+        try {
+            if (player.connection != null && player.connection.getConnection() != null) {
+                io.netty.channel.Channel channel = player.connection.getConnection().channel();
+                if (channel != null) {
+                    io.netty.channel.ChannelPipeline pipeline = channel.pipeline();
+                    boolean isWebSocket = false;
+                    boolean isZstd = false;
+
+                    for (String name : pipeline.names()) {
+                        String lowerName = name.toLowerCase();
+                        if (lowerName.contains("websocket") || lowerName.contains("ws") || lowerName.contains("http")) {
+                            isWebSocket = true;
+                        }
+                        if (lowerName.contains("zstd")) {
+                            isZstd = true;
+                        }
+                        io.netty.channel.ChannelHandler handler = pipeline.get(name);
+                        if (handler != null) {
+                            String className = handler.getClass().getName().toLowerCase();
+                            if (className.contains("websocket") || className.contains("http")) {
+                                isWebSocket = true;
+                            }
+                            if (className.contains("zstd")) {
+                                isZstd = true;
+                            }
+                        }
+                    }
+
+                    String chClass = channel.getClass().getSimpleName().toLowerCase();
+                    if (chClass.contains("websocket")) {
+                        isWebSocket = true;
+                    }
+
+                    if (isWebSocket && isZstd) {
+                        return "WebSocket+zstd";
+                    } else if (isWebSocket) {
+                        return "WebSocket";
+                    } else if (isZstd) {
+                        return "TCP+zstd";
+                    } else {
+                        return "TCP";
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return "TCP";
     }
 }

@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tw.yuaner.neoauth.PasswordManager;
+import tw.yuaner.neoauth.config.ConfigManager;
 import tw.yuaner.neoauth.config.IAuthConfig;
 import tw.yuaner.neoauth.platform.Services;
 
@@ -128,12 +129,13 @@ public abstract class AbstractSqlDataSource implements IDataSource {
      */
     protected void createLoginLogsTableIfNotExists() {
         if (dataSource == null) return;
-        String table = "login_logs";
+        tw.yuaner.neoauth.config.LoginLogsConfig logCfg = ConfigManager.getInstance().getLoginLogsConfig();
+        String table = logCfg != null ? logCfg.getTableName() : "login_logs";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement checkStmt = conn.prepareStatement("SELECT 1 FROM " + table + " LIMIT 1")) {
             checkStmt.executeQuery();
             LOGGER.info("NeoAuth: 資料表 {} 已存在且可正常存取。", table);
-            migrateLoginLogsTable(conn);
+            migrateLoginLogsTable(conn, logCfg);
             return;
         } catch (SQLException checkEx) {
             LOGGER.debug("NeoAuth: 資料表 {} 尚未存在或無法直接查詢，嘗試自動建立...", table);
@@ -149,7 +151,7 @@ public abstract class AbstractSqlDataSource implements IDataSource {
                  PreparedStatement checkStmt = conn.prepareStatement("SELECT 1 FROM " + table + " LIMIT 1")) {
                 checkStmt.executeQuery();
                 LOGGER.warn("NeoAuth: 無法執行建立資料表指令 (可能缺乏 CREATE 權限)，但資料表 {} 已存在，繼續使用既有資料表。", table);
-                migrateLoginLogsTable(conn);
+                migrateLoginLogsTable(conn, logCfg);
                 return;
             } catch (SQLException ignored) {
             }
@@ -158,35 +160,71 @@ public abstract class AbstractSqlDataSource implements IDataSource {
         }
     }
 
-    private void migrateLoginLogsTable(Connection conn) {
+    private void migrateLoginLogsTable(Connection conn, tw.yuaner.neoauth.config.LoginLogsConfig logCfg) {
+        if (logCfg == null) return;
+        String table = logCfg.getTableName();
+        String colServerIp = logCfg.getColumnServerIp();
+        String colServerPort = logCfg.getColumnServerPort();
+        String colConnChannel = logCfg.getColumnConnectionChannel();
+        String colLoginOp = logCfg.getColumnLoginOpLevel();
+        String colLogoutOp = logCfg.getColumnLogoutOpLevel();
+
         try {
+            boolean hasServerIp = false;
+            boolean hasServerPort = false;
+            boolean hasConnChannel = false;
             boolean hasLoginOpLevel = false;
             boolean hasLogoutOpLevel = false;
+
             java.sql.DatabaseMetaData meta = conn.getMetaData();
-            try (ResultSet rs = meta.getColumns(null, null, "login_logs", null)) {
+            try (ResultSet rs = meta.getColumns(null, null, table, null)) {
                 while (rs.next()) {
                     String col = rs.getString("COLUMN_NAME");
-                    if ("login_op_level".equalsIgnoreCase(col)) {
+                    if (colServerIp.equalsIgnoreCase(col)) {
+                        hasServerIp = true;
+                    } else if (colServerPort.equalsIgnoreCase(col)) {
+                        hasServerPort = true;
+                    } else if (colConnChannel.equalsIgnoreCase(col)) {
+                        hasConnChannel = true;
+                    } else if (colLoginOp.equalsIgnoreCase(col)) {
                         hasLoginOpLevel = true;
-                    } else if ("logout_op_level".equalsIgnoreCase(col)) {
+                    } else if (colLogoutOp.equalsIgnoreCase(col)) {
                         hasLogoutOpLevel = true;
                     }
                 }
             }
-            if (!hasLoginOpLevel) {
-                try (PreparedStatement alter = conn.prepareStatement("ALTER TABLE login_logs ADD COLUMN login_op_level INT DEFAULT 0")) {
+            if (!hasServerIp) {
+                try (PreparedStatement alter = conn.prepareStatement("ALTER TABLE " + table + " ADD COLUMN " + colServerIp + " VARCHAR(45)")) {
                     alter.execute();
-                    LOGGER.info("NeoAuth: login_logs 資料表已自動擴充 login_op_level 欄位。");
+                    LOGGER.info("NeoAuth: {} 資料表已自動擴充 {} 欄位。", table, colServerIp);
+                }
+            }
+            if (!hasServerPort) {
+                try (PreparedStatement alter = conn.prepareStatement("ALTER TABLE " + table + " ADD COLUMN " + colServerPort + " INT")) {
+                    alter.execute();
+                    LOGGER.info("NeoAuth: {} 資料表已自動擴充 {} 欄位。", table, colServerPort);
+                }
+            }
+            if (!hasConnChannel) {
+                try (PreparedStatement alter = conn.prepareStatement("ALTER TABLE " + table + " ADD COLUMN " + colConnChannel + " VARCHAR(50)")) {
+                    alter.execute();
+                    LOGGER.info("NeoAuth: {} 資料表已自動擴充 {} 欄位。", table, colConnChannel);
+                }
+            }
+            if (!hasLoginOpLevel) {
+                try (PreparedStatement alter = conn.prepareStatement("ALTER TABLE " + table + " ADD COLUMN " + colLoginOp + " INT DEFAULT 0")) {
+                    alter.execute();
+                    LOGGER.info("NeoAuth: {} 資料表已自動擴充 {} 欄位。", table, colLoginOp);
                 }
             }
             if (!hasLogoutOpLevel) {
-                try (PreparedStatement alter = conn.prepareStatement("ALTER TABLE login_logs ADD COLUMN logout_op_level INT DEFAULT NULL")) {
+                try (PreparedStatement alter = conn.prepareStatement("ALTER TABLE " + table + " ADD COLUMN " + colLogoutOp + " INT DEFAULT NULL")) {
                     alter.execute();
-                    LOGGER.info("NeoAuth: login_logs 資料表已自動擴充 logout_op_level 欄位。");
+                    LOGGER.info("NeoAuth: {} 資料表已自動擴充 {} 欄位。", table, colLogoutOp);
                 }
             }
         } catch (SQLException e) {
-            LOGGER.warn("NeoAuth: 檢查或遷移 login_logs 資料表欄位時出現警告 (可忽略): {}", e.getMessage());
+            LOGGER.warn("NeoAuth: 檢查或遷移 {} 資料表欄位時出現警告 (可忽略): {}", table, e.getMessage());
         }
     }
 
@@ -610,19 +648,44 @@ public abstract class AbstractSqlDataSource implements IDataSource {
     }
 
     @Override
-    public long insertLoginLog(String username, String uuid, String ip, String loginMethod, String serverName, String world, int loginOpLevel) {
+    public long insertLoginLog(String username, String uuid, String ip, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
         if (!isConnected()) return -1;
-        String sql = "INSERT INTO login_logs (username, uuid, login_time, ip, login_method, server_name, world, login_op_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        tw.yuaner.neoauth.config.LoginLogsConfig logCfg = ConfigManager.getInstance().getLoginLogsConfig();
+        String table = logCfg != null ? logCfg.getTableName() : "login_logs";
+        String colName = logCfg != null ? logCfg.getColumnName() : "username";
+        String colUuid = logCfg != null ? logCfg.getColumnUuid() : "uuid";
+        String colLoginTime = logCfg != null ? logCfg.getColumnLoginTime() : "login_time";
+        String colIp = logCfg != null ? logCfg.getColumnIp() : "ip";
+        String colServerIp = logCfg != null ? logCfg.getColumnServerIp() : "server_ip";
+        String colServerPort = logCfg != null ? logCfg.getColumnServerPort() : "server_port";
+        String colLoginMethod = logCfg != null ? logCfg.getColumnLoginMethod() : "login_method";
+        String colConnChannel = logCfg != null ? logCfg.getColumnConnectionChannel() : "connection_channel";
+        String colServerName = logCfg != null ? logCfg.getColumnServerName() : "server_name";
+        String colLoginOp = logCfg != null ? logCfg.getColumnLoginOpLevel() : "login_op_level";
+
+        String sql = "INSERT INTO " + table + " (" +
+                colServerName + ", " +
+                colName + ", " +
+                colLoginTime + ", " +
+                colIp + ", " +
+                colLoginMethod + ", " +
+                colConnChannel + ", " +
+                colUuid + ", " +
+                colServerIp + ", " +
+                colServerPort + ", " +
+                colLoginOp + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
-            stmt.setString(1, username);
-            stmt.setString(2, uuid);
+            stmt.setString(1, serverName);
+            stmt.setString(2, username);
             stmt.setLong(3, System.currentTimeMillis());
             stmt.setString(4, ip);
             stmt.setString(5, loginMethod);
-            stmt.setString(6, serverName);
-            stmt.setString(7, world);
-            stmt.setInt(8, loginOpLevel);
+            stmt.setString(6, connectionChannel);
+            stmt.setString(7, uuid);
+            stmt.setString(8, serverIp);
+            stmt.setInt(9, serverPort);
+            stmt.setInt(10, loginOpLevel);
             stmt.executeUpdate();
             
             try (ResultSet rs = stmt.getGeneratedKeys()) {
@@ -639,7 +702,13 @@ public abstract class AbstractSqlDataSource implements IDataSource {
     @Override
     public void updateLoginLogLogout(long logId, int logoutOpLevel) {
         if (!isConnected() || logId <= 0) return;
-        String sql = "UPDATE login_logs SET logout_time = ?, logout_op_level = ? WHERE id = ?";
+        tw.yuaner.neoauth.config.LoginLogsConfig logCfg = ConfigManager.getInstance().getLoginLogsConfig();
+        String table = logCfg != null ? logCfg.getTableName() : "login_logs";
+        String colId = logCfg != null ? logCfg.getColumnId() : "id";
+        String colLogoutTime = logCfg != null ? logCfg.getColumnLogoutTime() : "logout_time";
+        String colLogoutOp = logCfg != null ? logCfg.getColumnLogoutOpLevel() : "logout_op_level";
+
+        String sql = "UPDATE " + table + " SET " + colLogoutTime + " = ?, " + colLogoutOp + " = ? WHERE " + colId + " = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, System.currentTimeMillis());

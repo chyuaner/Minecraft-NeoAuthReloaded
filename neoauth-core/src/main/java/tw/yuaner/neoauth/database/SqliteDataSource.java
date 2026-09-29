@@ -2,6 +2,7 @@ package tw.yuaner.neoauth.database;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import tw.yuaner.neoauth.config.ConfigManager;
 import tw.yuaner.neoauth.config.IAuthConfig;
 
 import java.nio.file.Files;
@@ -124,18 +125,36 @@ public class SqliteDataSource extends AbstractSqlDataSource {
 
     @Override
     protected String getCreateLoginLogsTableSql() {
-        return "CREATE TABLE IF NOT EXISTS login_logs (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "username VARCHAR(255) NOT NULL, " +
-                "uuid VARCHAR(36), " +
-                "login_time BIGINT NOT NULL, " +
-                "logout_time BIGINT, " +
-                "ip VARCHAR(40), " +
-                "login_method VARCHAR(50), " +
-                "server_name VARCHAR(50), " +
-                "world VARCHAR(255), " +
-                "login_op_level INTEGER DEFAULT 0, " +
-                "logout_op_level INTEGER DEFAULT NULL" +
+        tw.yuaner.neoauth.config.LoginLogsConfig logCfg = ConfigManager.getInstance().getLoginLogsConfig();
+        String table = logCfg != null ? logCfg.getTableName() : "login_logs";
+        String colId = logCfg != null ? logCfg.getColumnId() : "id";
+        String colServerName = logCfg != null ? logCfg.getColumnServerName() : "server_name";
+        String colName = logCfg != null ? logCfg.getColumnName() : "username";
+        String colLoginTime = logCfg != null ? logCfg.getColumnLoginTime() : "login_time";
+        String colLogoutTime = logCfg != null ? logCfg.getColumnLogoutTime() : "logout_time";
+        String colIp = logCfg != null ? logCfg.getColumnIp() : "ip";
+        String colLoginMethod = logCfg != null ? logCfg.getColumnLoginMethod() : "login_method";
+        String colConnChannel = logCfg != null ? logCfg.getColumnConnectionChannel() : "connection_channel";
+        String colUuid = logCfg != null ? logCfg.getColumnUuid() : "uuid";
+        String colServerIp = logCfg != null ? logCfg.getColumnServerIp() : "server_ip";
+        String colServerPort = logCfg != null ? logCfg.getColumnServerPort() : "server_port";
+        String colLoginOp = logCfg != null ? logCfg.getColumnLoginOpLevel() : "login_op_level";
+        String colLogoutOp = logCfg != null ? logCfg.getColumnLogoutOpLevel() : "logout_op_level";
+
+        return "CREATE TABLE IF NOT EXISTS " + table + " (" +
+                colId + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                colServerName + " VARCHAR(50), " +
+                colName + " VARCHAR(255) NOT NULL, " +
+                colLoginTime + " BIGINT NOT NULL, " +
+                colLogoutTime + " BIGINT, " +
+                colIp + " VARCHAR(45), " +
+                colLoginMethod + " VARCHAR(50), " +
+                colConnChannel + " VARCHAR(50), " +
+                colUuid + " VARCHAR(36), " +
+                colServerIp + " VARCHAR(45), " +
+                colServerPort + " INTEGER, " +
+                colLoginOp + " INTEGER DEFAULT 0, " +
+                colLogoutOp + " INTEGER DEFAULT NULL" +
                 ");";
     }
 }

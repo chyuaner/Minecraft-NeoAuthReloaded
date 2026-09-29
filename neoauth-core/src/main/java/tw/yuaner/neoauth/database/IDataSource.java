@@ -156,16 +156,18 @@ public interface IDataSource {
     /**
      * 新增一筆登入日誌。
      *
-     * @param username     玩家名稱
-     * @param uuid         玩家 UUID
-     * @param ip           登入 IP
-     * @param loginMethod  登入方式 (例如: Password, Premium)
-     * @param serverName   伺服器名稱
-     * @param world        所在世界
-     * @param loginOpLevel 登入時之最高 OP 等級
+     * @param username          玩家名稱
+     * @param uuid              玩家 UUID
+     * @param ip                玩家客戶端 IP
+     * @param serverIp          伺服器端連線 IP
+     * @param serverPort        伺服器端連線 Port
+     * @param loginMethod       登入驗證方式 (例如: Password, Premium)
+     * @param connectionChannel 連線通道方式 (例如: TCP, WebSocket, TCP+zstd)
+     * @param serverName        伺服器名稱
+     * @param loginOpLevel      登入時之最高 OP 等級
      * @return 該筆日誌在資料庫的 id (流水號)，若失敗則傳回 -1
      */
-    default long insertLoginLog(String username, String uuid, String ip, String loginMethod, String serverName, String world, int loginOpLevel) {
+    default long insertLoginLog(String username, String uuid, String ip, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
         return -1;
     }
 

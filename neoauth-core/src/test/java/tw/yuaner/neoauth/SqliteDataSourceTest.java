@@ -465,4 +465,50 @@ public class SqliteDataSourceTest {
         primaryDs.close();
         fallbackDs.close();
     }
+
+    @Test
+    public void testLoginLogsInsertAndUpdate() throws Exception {
+        Map<String, Object> logMap = new HashMap<>();
+        logMap.put("enabled", true);
+        logMap.put("server_name", "AUTO");
+        logMap.put("mySQLTablename", "custom_login_logs");
+        logMap.put("mySQLColumnServerIp", "srv_ip");
+        logMap.put("mySQLColumnServerPort", "srv_port");
+        logMap.put("mySQLColumnConnectionChannel", "conn_channel");
+        logMap.put("mySQLColumnLoginOpLevel", "login_op");
+        logMap.put("mySQLColumnLogoutOpLevel", "logout_op");
+
+        Map<String, Object> rootMap = new HashMap<>();
+        rootMap.put("login_logs", logMap);
+        tw.yuaner.neoauth.config.LoginLogsConfig logCfg = tw.yuaner.neoauth.config.LoginLogsConfig.fromMap(rootMap);
+        ConfigManager.getInstance().setLoginLogsConfig(logCfg);
+
+        // 初始化資料庫連線 (自動建立自訂名稱之 login_logs 資料表)
+        dataSource.connect(ConfigManager.getInstance().getConfig());
+
+        String uuid = UUID.randomUUID().toString();
+        long logId = DatabaseManager.insertLoginLog("testplayer", uuid, "127.0.0.1", "192.168.1.1", 25565, "Password", "WebSocket+zstd", "test-server", 1);
+        assertTrue(logId > 0, "登入日誌新增應成功並取得流水號 ID");
+
+        // 更新登出資訊
+        DatabaseManager.updateLoginLogLogout(logId, 3);
+
+        // 驗證寫入資料表之欄位值
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbFile.toString());
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM custom_login_logs WHERE id = " + logId)) {
+            assertTrue(rs.next(), "日誌紀錄應存在於 custom_login_logs 資料表中");
+            assertEquals("testplayer", rs.getString("username"));
+            assertEquals(uuid, rs.getString("uuid"));
+            assertEquals("127.0.0.1", rs.getString("ip"));
+            assertEquals("192.168.1.1", rs.getString("srv_ip"));
+            assertEquals(25565, rs.getInt("srv_port"));
+            assertEquals("Password", rs.getString("login_method"));
+            assertEquals("WebSocket+zstd", rs.getString("conn_channel"));
+            assertEquals("test-server", rs.getString("server_name"));
+            assertEquals(1, rs.getInt("login_op"));
+            assertEquals(3, rs.getInt("logout_op"));
+            assertTrue(rs.getLong("logout_time") > 0, "登出時間應被更新");
+        }
+    }
 }

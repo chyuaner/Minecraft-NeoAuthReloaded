@@ -63,7 +63,27 @@ public class ServerIdentifier {
 
     private static String getDirectoryName() {
         try {
-            return Paths.get("").toAbsolutePath().getFileName().toString();
+            // 1. 若處於 PrismLauncher / MultiMC 等啟動器環境，優先讀取 INST_NAME 環境變數
+            String instName = System.getenv("INST_NAME");
+            if (instName != null && !instName.isBlank()) {
+                return instName.trim();
+            }
+
+            java.nio.file.Path current = Paths.get("").toAbsolutePath();
+            String dirName = current.getFileName() != null ? current.getFileName().toString() : "minecraft";
+
+            // 2. 若當前資料夾名稱為通用名稱 (如 "minecraft" 或 ".minecraft")，嘗試取上一層目錄名稱 (例如 PrismLauncher 實例名稱)
+            if ("minecraft".equalsIgnoreCase(dirName) || ".minecraft".equalsIgnoreCase(dirName)) {
+                java.nio.file.Path parent = current.getParent();
+                if (parent != null && parent.getFileName() != null) {
+                    String parentName = parent.getFileName().toString();
+                    if (!parentName.isBlank() && !"instances".equalsIgnoreCase(parentName)) {
+                        return parentName;
+                    }
+                }
+            }
+
+            return dirName;
         } catch (Exception e) {
             return "minecraft";
         }

@@ -147,4 +147,19 @@ public interface IPlatformHelper {
      * @param reason 踢出理由
      */
     void kickPlayer(Object player, String reason);
+
+    /**
+     * 記錄玩家登入日誌。
+     *
+     * @param player      伺服器玩家物件
+     * @param loginMethod 登入方式
+     */
+    void logPlayerLogin(Object player, String loginMethod);
+
+    /**
+     * 記錄玩家登出日誌。
+     *
+     * @param player 伺服器玩家物件
+     */
+    void logPlayerLogout(Object player);
 }

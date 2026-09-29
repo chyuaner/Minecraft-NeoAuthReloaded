@@ -230,4 +230,27 @@ public class DatabaseManager {
     public static List<PlayerAuthData> getRecentPlayers(int limit) {
         return activeDataSource != null ? activeDataSource.getRecentPlayers(limit) : Collections.emptyList();
     }
+
+    /**
+     * 新增一筆登入日誌。
+     */
+    public static long insertLoginLog(String username, String uuid, String ip, String loginMethod, String serverName, String world, int loginOpLevel) {
+        return activeDataSource != null ? activeDataSource.insertLoginLog(username, uuid, ip, loginMethod, serverName, world, loginOpLevel) : -1;
+    }
+
+    /**
+     * 更新登入日誌的登出資訊 (登出時間與登出時最高 OP 等級)。
+     */
+    public static void updateLoginLogLogout(long logId, int logoutOpLevel) {
+        if (activeDataSource != null) {
+            activeDataSource.updateLoginLogLogout(logId, logoutOpLevel);
+        }
+    }
+
+    /**
+     * 更新登入日誌的登出時間 (相容舊方法)。
+     */
+    public static void updateLoginLogLogoutTime(long logId) {
+        updateLoginLogLogout(logId, 0);
+    }
 }

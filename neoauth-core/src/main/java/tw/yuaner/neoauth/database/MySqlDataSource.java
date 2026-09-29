@@ -116,4 +116,21 @@ public class MySqlDataSource extends AbstractSqlDataSource {
 
         return sb.toString();
     }
+
+    @Override
+    protected String getCreateLoginLogsTableSql() {
+        return "CREATE TABLE IF NOT EXISTS login_logs (" +
+                "id INTEGER AUTO_INCREMENT PRIMARY KEY, " +
+                "username VARCHAR(255) NOT NULL, " +
+                "uuid VARCHAR(36), " +
+                "login_time BIGINT NOT NULL, " +
+                "logout_time BIGINT, " +
+                "ip VARCHAR(40), " +
+                "login_method VARCHAR(50), " +
+                "server_name VARCHAR(50), " +
+                "world VARCHAR(255), " +
+                "login_op_level INT DEFAULT 0, " +
+                "logout_op_level INT DEFAULT NULL" +
+                ");";
+    }
 }

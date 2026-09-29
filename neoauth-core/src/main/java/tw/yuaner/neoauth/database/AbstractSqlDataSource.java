@@ -43,6 +43,13 @@ public abstract class AbstractSqlDataSource implements IDataSource {
      */
     protected abstract String getCreateTableSql(IAuthConfig config);
 
+    /**
+     * 取得建立登入日誌資料表 (login_logs) SQL 語法 (DDL)。
+     *
+     * @return CREATE TABLE 語法字串
+     */
+    protected abstract String getCreateLoginLogsTableSql();
+
     @Override
     public synchronized void connect() throws Exception {
         connect(Services.PLATFORM.getConfig());
@@ -54,6 +61,7 @@ public abstract class AbstractSqlDataSource implements IDataSource {
         this.config = config != null ? config : Services.PLATFORM.getConfig();
         this.dataSource = createDataSource(this.config);
         createTableIfNotExists(this.config);
+        createLoginLogsTableIfNotExists();
     }
 
     protected IAuthConfig getConfig() {
@@ -112,6 +120,73 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             }
             LOGGER.error("NeoAuth: 建立資料表 {} 失敗", config.getDbTable(), e);
             throw new DatabaseConnectionException("NeoAuth: 建立資料表失敗", e);
+        }
+    }
+
+    /**
+     * 檢查並自動建立 login_logs 資料表。
+     */
+    protected void createLoginLogsTableIfNotExists() {
+        if (dataSource == null) return;
+        String table = "login_logs";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement checkStmt = conn.prepareStatement("SELECT 1 FROM " + table + " LIMIT 1")) {
+            checkStmt.executeQuery();
+            LOGGER.info("NeoAuth: 資料表 {} 已存在且可正常存取。", table);
+            migrateLoginLogsTable(conn);
+            return;
+        } catch (SQLException checkEx) {
+            LOGGER.debug("NeoAuth: 資料表 {} 尚未存在或無法直接查詢，嘗試自動建立...", table);
+        }
+
+        String sql = getCreateLoginLogsTableSql();
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.execute();
+            LOGGER.info("NeoAuth: 成功建立資料表 {}。", table);
+        } catch (SQLException e) {
+            try (Connection conn = dataSource.getConnection();
+                 PreparedStatement checkStmt = conn.prepareStatement("SELECT 1 FROM " + table + " LIMIT 1")) {
+                checkStmt.executeQuery();
+                LOGGER.warn("NeoAuth: 無法執行建立資料表指令 (可能缺乏 CREATE 權限)，但資料表 {} 已存在，繼續使用既有資料表。", table);
+                migrateLoginLogsTable(conn);
+                return;
+            } catch (SQLException ignored) {
+            }
+            LOGGER.error("NeoAuth: 建立資料表 {} 失敗", table, e);
+            // Non-critical, do not throw exception, just log it.
+        }
+    }
+
+    private void migrateLoginLogsTable(Connection conn) {
+        try {
+            boolean hasLoginOpLevel = false;
+            boolean hasLogoutOpLevel = false;
+            java.sql.DatabaseMetaData meta = conn.getMetaData();
+            try (ResultSet rs = meta.getColumns(null, null, "login_logs", null)) {
+                while (rs.next()) {
+                    String col = rs.getString("COLUMN_NAME");
+                    if ("login_op_level".equalsIgnoreCase(col)) {
+                        hasLoginOpLevel = true;
+                    } else if ("logout_op_level".equalsIgnoreCase(col)) {
+                        hasLogoutOpLevel = true;
+                    }
+                }
+            }
+            if (!hasLoginOpLevel) {
+                try (PreparedStatement alter = conn.prepareStatement("ALTER TABLE login_logs ADD COLUMN login_op_level INT DEFAULT 0")) {
+                    alter.execute();
+                    LOGGER.info("NeoAuth: login_logs 資料表已自動擴充 login_op_level 欄位。");
+                }
+            }
+            if (!hasLogoutOpLevel) {
+                try (PreparedStatement alter = conn.prepareStatement("ALTER TABLE login_logs ADD COLUMN logout_op_level INT DEFAULT NULL")) {
+                    alter.execute();
+                    LOGGER.info("NeoAuth: login_logs 資料表已自動擴充 logout_op_level 欄位。");
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.warn("NeoAuth: 檢查或遷移 login_logs 資料表欄位時出現警告 (可忽略): {}", e.getMessage());
         }
     }
 
@@ -532,5 +607,52 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             throw new DatabaseConnectionException("NeoAuth: 查詢最近登入玩家時發生資料庫錯誤", e);
         }
         return list;
+    }
+
+    @Override
+    public long insertLoginLog(String username, String uuid, String ip, String loginMethod, String serverName, String world, int loginOpLevel) {
+        if (!isConnected()) return -1;
+        String sql = "INSERT INTO login_logs (username, uuid, login_time, ip, login_method, server_name, world, login_op_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setString(1, username);
+            stmt.setString(2, uuid);
+            stmt.setLong(3, System.currentTimeMillis());
+            stmt.setString(4, ip);
+            stmt.setString(5, loginMethod);
+            stmt.setString(6, serverName);
+            stmt.setString(7, world);
+            stmt.setInt(8, loginOpLevel);
+            stmt.executeUpdate();
+            
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.error("NeoAuth: 新增登入日誌時發生資料庫錯誤", e);
+        }
+        return -1;
+    }
+
+    @Override
+    public void updateLoginLogLogout(long logId, int logoutOpLevel) {
+        if (!isConnected() || logId <= 0) return;
+        String sql = "UPDATE login_logs SET logout_time = ?, logout_op_level = ? WHERE id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, System.currentTimeMillis());
+            stmt.setInt(2, logoutOpLevel);
+            stmt.setLong(3, logId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.error("NeoAuth: 更新登入日誌登出資訊時發生資料庫錯誤", e);
+        }
+    }
+
+    @Override
+    public void updateLoginLogLogoutTime(long logId) {
+        updateLoginLogLogout(logId, 0);
     }
 }

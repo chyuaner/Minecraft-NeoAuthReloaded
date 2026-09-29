@@ -245,4 +245,61 @@ public class ForgePlatformHelper implements IPlatformHelper {
             player.connection.disconnect(Component.literal(reason));
         }
     }
+
+    @Override
+    public void logPlayerLogin(Object playerObj, String loginMethod) {
+        if (playerObj instanceof ServerPlayer player) {
+            tw.yuaner.neoauth.config.LoginLogsConfig logCfg = ConfigManager.getInstance().getLoginLogsConfig();
+            if (logCfg != null && logCfg.isEnabled()) {
+                String username = player.getGameProfile().getName();
+                String uuidStr = player.getUUID().toString();
+                String ip = player.getIpAddress();
+                MinecraftServer server = player.getServer();
+                int port = server != null ? server.getPort() : 25565;
+                String serverName = tw.yuaner.neoauth.util.ServerIdentifier.resolve(logCfg.getServerName(), port);
+                String world = player.serverLevel().dimension().location().toString();
+                int loginOpLevel = calculatePlayerOpLevel(player);
+                
+                long logId = tw.yuaner.neoauth.DatabaseManager.insertLoginLog(username, uuidStr, ip, loginMethod, serverName, world, loginOpLevel);
+                tw.yuaner.neoauth.core.PlayerSessionData session = tw.yuaner.neoauth.AuthManager.getSession(player.getUUID());
+                if (session != null) {
+                    session.setLoginLogId(logId);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void logPlayerLogout(Object playerObj) {
+        if (playerObj instanceof ServerPlayer player) {
+            tw.yuaner.neoauth.config.LoginLogsConfig logCfg = ConfigManager.getInstance().getLoginLogsConfig();
+            if (logCfg != null && logCfg.isEnabled()) {
+                tw.yuaner.neoauth.core.PlayerSessionData session = tw.yuaner.neoauth.AuthManager.getSession(player.getUUID());
+                if (session != null && session.getLoginLogId() > 0) {
+                    int logoutOpLevel = calculatePlayerOpLevel(player);
+                    tw.yuaner.neoauth.DatabaseManager.updateLoginLogLogout(session.getLoginLogId(), logoutOpLevel);
+                }
+            }
+        }
+    }
+
+    private int calculatePlayerOpLevel(ServerPlayer player) {
+        int maxLevel = 0;
+        // 1. 檢驗玩家指令權限 (測試 4 至 1 級，支援權限插件如 LuckPerms)
+        for (int lvl = 4; lvl >= 1; lvl--) {
+            if (player.hasPermissions(lvl)) {
+                maxLevel = lvl;
+                break;
+            }
+        }
+        // 2. 檢驗伺服器管理員清單 (ops.json)
+        MinecraftServer server = player.getServer();
+        if (server != null) {
+            int profileLevel = server.getProfilePermissions(player.getGameProfile());
+            if (profileLevel > maxLevel) {
+                maxLevel = profileLevel;
+            }
+        }
+        return maxLevel;
+    }
 }

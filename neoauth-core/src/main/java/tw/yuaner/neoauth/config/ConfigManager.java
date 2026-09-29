@@ -32,6 +32,7 @@ public class ConfigManager {
     private NeoAuthConfig config = new NeoAuthConfig();
     private CommandsConfig commandsConfig = new CommandsConfig();
     private MessagesManager messagesManager = new MessagesManager();
+    private LoginLogsConfig loginLogsConfig = new LoginLogsConfig();
     private String welcomeMessage = "";
 
     private ConfigManager() {}
@@ -74,6 +75,10 @@ public class ConfigManager {
             // 2. 載入並合併 commands.yml
             Map<String, Object> commandsData = loadAndMergeYaml("commands.yml", configDir.resolve("commands.yml"));
             this.commandsConfig = CommandsConfig.fromMap(commandsData);
+
+            // 2.5. 載入並合併 login_logs.yml
+            Map<String, Object> loginLogsData = loadAndMergeYaml("login_logs.yml", configDir.resolve("login_logs.yml"));
+            this.loginLogsConfig = LoginLogsConfig.fromMap(loginLogsData);
 
             // 3. 載入 welcome.txt
             Path welcomePath = configDir.resolve("welcome.txt");
@@ -263,6 +268,10 @@ public class ConfigManager {
 
     public MessagesManager getMessagesManager() {
         return messagesManager;
+    }
+
+    public LoginLogsConfig getLoginLogsConfig() {
+        return loginLogsConfig;
     }
 
     public String getWelcomeMessage() {

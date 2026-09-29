@@ -244,6 +244,7 @@ public class ForgeEvents {
 
         if (result.getResult() == AuthLogic.LoginResult.SUCCESS) {
             Services.PLATFORM.removeFreezeEffects(player);
+            Services.PLATFORM.logPlayerLogin(player, "Password");
             source.sendSuccess(() -> Component.literal(result.getResult().getMessage()), false);
             
             // 處理 Vanish 隱形狀態與加入遊戲通知廣播
@@ -284,6 +285,7 @@ public class ForgeEvents {
                 return 1;
             }
             Services.PLATFORM.removeFreezeEffects(player);
+            Services.PLATFORM.logPlayerLogin(player, "Register");
             source.sendSuccess(() -> Component.literal(result.getMessage()), false);
             
             // 註冊成功即視為正式進入遊戲，解除由 NeoAuth 強制附加的隱身並補發加入通知
@@ -331,6 +333,7 @@ public class ForgeEvents {
         }
 
         String username = player.getGameProfile().getName();
+        Services.PLATFORM.logPlayerLogout(player);
         AuthLogic.attemptLogout(uuid, username);
         Services.PLATFORM.applyFreezeEffects(player);
         source.sendSuccess(() -> Component.literal(msgMgr.get("logout.success")), false);
@@ -490,6 +493,7 @@ public class ForgeEvents {
             AuthManager.setLoggedIn(target.getUUID());
             AuthManager.createSession(target.getUUID(), target.getGameProfile().getName(), target.getIpAddress(), AuthManager.isPremiumVerified(target.getUUID()));
             Services.PLATFORM.removeFreezeEffects(target);
+            Services.PLATFORM.logPlayerLogin(target, "ForceLogin");
             target.sendSystemMessage(Component.literal(msgMgr.get("login.success")));
             handlePostAuthVanishAndJoinMessage(target, false, false);
             source.sendSuccess(() -> Component.literal(msgMgr.get("admin.forcelogin_success", target.getGameProfile().getName())), true);
@@ -509,6 +513,7 @@ public class ForgeEvents {
             AuthManager.setLoggedIn(player.getUUID());
             AuthManager.createSession(player.getUUID(), player.getGameProfile().getName(), player.getIpAddress(), AuthManager.isPremiumVerified(player.getUUID()));
             Services.PLATFORM.removeFreezeEffects(player);
+            Services.PLATFORM.logPlayerLogin(player, "ForceLogin");
             handlePostAuthVanishAndJoinMessage(player, false, false);
             source.sendSuccess(() -> Component.literal(msgMgr.get("admin.forcelogin_self_success")), true);
             AuthLogic.executeHooks(source.getServer(), player, player.getGameProfile().getName(),
@@ -848,6 +853,7 @@ public class ForgeEvents {
             if (autoLoggedIn) {
                 // 已註冊之正版驗證玩家 或 非強制註冊模式下的訪客玩家：放行並登入
                 Services.PLATFORM.removeFreezeEffects(player);
+                Services.PLATFORM.logPlayerLogin(player, isPremium ? "Premium" : "Guest");
                 if (DatabaseManager.isRegistered(username)) {
                     String msg = ConfigManager.getInstance().getMessagesManager().get("general.welcome_premium", username);
                     Services.PLATFORM.sendMessage(player, msg);
@@ -905,6 +911,7 @@ public class ForgeEvents {
             // 而我們的 onPlayerLoggedInHighest 與 LOWEST 會負責壓制訊息並在登入後正確解除隱形！
             
             try {
+                Services.PLATFORM.logPlayerLogout(player);
                 AuthLogic.attemptLogout(player.getUUID(), username);
             } catch (Exception e) {
                 LOGGER.warn("NeoAuth: 處理玩家登出事件時發生異常: {}", username, e);

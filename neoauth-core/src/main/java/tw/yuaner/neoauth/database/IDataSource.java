@@ -152,4 +152,38 @@ public interface IDataSource {
      * @return 玩家驗證資料清單
      */
     List<PlayerAuthData> getRecentPlayers(int limit);
+
+    /**
+     * 新增一筆登入日誌。
+     *
+     * @param username     玩家名稱
+     * @param uuid         玩家 UUID
+     * @param ip           登入 IP
+     * @param loginMethod  登入方式 (例如: Password, Premium)
+     * @param serverName   伺服器名稱
+     * @param world        所在世界
+     * @param loginOpLevel 登入時之最高 OP 等級
+     * @return 該筆日誌在資料庫的 id (流水號)，若失敗則傳回 -1
+     */
+    default long insertLoginLog(String username, String uuid, String ip, String loginMethod, String serverName, String world, int loginOpLevel) {
+        return -1;
+    }
+
+    /**
+     * 更新登入日誌的登出資訊 (登出時間與登出時最高 OP 等級)。
+     *
+     * @param logId         日誌的流水號 (id)
+     * @param logoutOpLevel 登出時之最高 OP 等級
+     */
+    default void updateLoginLogLogout(long logId, int logoutOpLevel) {
+    }
+
+    /**
+     * 更新登入日誌的登出時間 (相容方法)。
+     *
+     * @param logId 日誌的流水號 (id)
+     */
+    default void updateLoginLogLogoutTime(long logId) {
+        updateLoginLogLogout(logId, 0);
+    }
 }

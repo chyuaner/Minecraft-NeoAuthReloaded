@@ -366,6 +366,11 @@ public class SqliteDataSourceTest {
             protected String getCreateTableSql(tw.yuaner.neoauth.config.IAuthConfig config) {
                 return "";
             }
+
+            @Override
+            protected String getCreateLoginLogsTableSql() {
+                return "";
+            }
         };
 
         // 建立 FallbackDataSource

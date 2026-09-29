@@ -253,4 +253,13 @@ public class DatabaseManager {
     public static void updateLoginLogLogoutTime(long logId) {
         updateLoginLogLogout(logId, 0);
     }
+
+    /**
+     * 手動或定時觸發將本地 SQLite 備援庫中未同步之登入日誌回補至主資料庫。
+     */
+    public static void syncLoginLogs() {
+        if (activeDataSource != null) {
+            activeDataSource.syncLoginLogs();
+        }
+    }
 }

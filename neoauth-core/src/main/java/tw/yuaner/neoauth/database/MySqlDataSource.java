@@ -137,7 +137,7 @@ public class MySqlDataSource extends AbstractSqlDataSource {
         String colLogoutOp = logCfg != null ? logCfg.getColumnLogoutOpLevel() : "logout_op_level";
 
         return "CREATE TABLE IF NOT EXISTS " + table + " (" +
-                colId + " INTEGER AUTO_INCREMENT PRIMARY KEY, " +
+                colId + " BIGINT PRIMARY KEY, " +
                 colServerName + " VARCHAR(50), " +
                 colName + " VARCHAR(255) NOT NULL, " +
                 colLoginTime + " BIGINT NOT NULL, " +

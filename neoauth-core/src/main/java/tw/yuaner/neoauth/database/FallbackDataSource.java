@@ -35,14 +35,27 @@ public class FallbackDataSource implements IDataSource {
         this.fallback = fallback;
     }
 
+    private IAuthConfig resolveConfig() {
+        if (this.config != null) return this.config;
+        try {
+            if (tw.yuaner.neoauth.config.ConfigManager.getInstance().getConfig() != null) {
+                return tw.yuaner.neoauth.config.ConfigManager.getInstance().getConfig();
+            }
+        } catch (Throwable ignored) {}
+        try {
+            return Services.PLATFORM.getConfig();
+        } catch (Throwable ignored) {}
+        return null;
+    }
+
     @Override
     public void connect() throws Exception {
-        connect(Services.PLATFORM.getConfig());
+        connect(resolveConfig());
     }
 
     @Override
     public void connect(IAuthConfig config) throws Exception {
-        this.config = config != null ? config : Services.PLATFORM.getConfig();
+        this.config = config != null ? config : resolveConfig();
 
         boolean fallbackOk = false;
         try {
@@ -61,6 +74,7 @@ public class FallbackDataSource implements IDataSource {
 
             if (fallbackOk && primary instanceof AbstractSqlDataSource pSql && fallback instanceof AbstractSqlDataSource fSql) {
                 syncData(pSql, fSql, this.config);
+                syncLoginLogs(pSql, fSql);
             }
         } catch (Exception e) {
             markPrimaryFailure();
@@ -156,11 +170,12 @@ public class FallbackDataSource implements IDataSource {
         if (primary.isConnected()) return true;
         try {
             LOGGER.info("NeoAuth: 正在嘗試重新連線至主資料庫...");
-            primary.connect(this.config);
+            primary.connect(resolveConfig());
             markPrimarySuccess();
             LOGGER.info("NeoAuth: 主資料庫重新連線成功！");
             if (primary instanceof AbstractSqlDataSource pSql && fallback instanceof AbstractSqlDataSource fSql) {
                 syncData(pSql, fSql, this.config);
+                syncLoginLogs(pSql, fSql);
             }
             return true;
         } catch (Exception e) {
@@ -469,5 +484,149 @@ public class FallbackDataSource implements IDataSource {
             }
         }
         return fallback.getRecentPlayers(limit);
+    }
+
+    @Override
+    public long insertLoginLog(String username, String uuid, String ip, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
+        if (isPrimaryHealthy()) {
+            try {
+                long logId = primary.insertLoginLog(username, uuid, ip, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
+                markPrimarySuccess();
+                return logId;
+            } catch (Exception e) {
+                markPrimaryFailure();
+                LOGGER.warn("NeoAuth: 主資料庫連線異常，將登入日誌降級寫入本地 SQLite 備援資料庫: {}", username);
+                return fallback.insertLoginLog(username, uuid, ip, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
+            }
+        }
+        return fallback.insertLoginLog(username, uuid, ip, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
+    }
+
+    @Override
+    public void updateLoginLogLogout(long logId, int logoutOpLevel) {
+        if (logId <= 0) return;
+        if (isPrimaryHealthy()) {
+            try {
+                primary.updateLoginLogLogout(logId, logoutOpLevel);
+                markPrimarySuccess();
+                try {
+                    fallback.updateLoginLogLogout(logId, logoutOpLevel);
+                } catch (Exception ignored) {}
+                return;
+            } catch (Exception e) {
+                markPrimaryFailure();
+                LOGGER.warn("NeoAuth: 主資料庫連線異常，略過主庫登出日誌更新 (logId: {})", logId);
+            }
+        }
+        try {
+            fallback.updateLoginLogLogout(logId, logoutOpLevel);
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    public void syncLoginLogs() {
+        if (primary instanceof AbstractSqlDataSource pSql && fallback instanceof AbstractSqlDataSource fSql) {
+            syncLoginLogs(pSql, fSql);
+        }
+    }
+
+    private void syncLoginLogs(AbstractSqlDataSource primary, AbstractSqlDataSource fallback) {
+        if (primary == null || fallback == null || primary.dataSource == null || fallback.dataSource == null) return;
+        tw.yuaner.neoauth.config.LoginLogsConfig logCfg = tw.yuaner.neoauth.config.ConfigManager.getInstance().getLoginLogsConfig();
+        if (logCfg == null || !logCfg.isEnabled()) return;
+
+        String table = logCfg.getTableName();
+        String colId = logCfg.getColumnId();
+        String colServerName = logCfg.getColumnServerName();
+        String colName = logCfg.getColumnName();
+        String colLoginTime = logCfg.getColumnLoginTime();
+        String colLogoutTime = logCfg.getColumnLogoutTime();
+        String colIp = logCfg.getColumnIp();
+        String colLoginMethod = logCfg.getColumnLoginMethod();
+        String colConnChannel = logCfg.getColumnConnectionChannel();
+        String colUuid = logCfg.getColumnUuid();
+        String colServerIp = logCfg.getColumnServerIp();
+        String colServerPort = logCfg.getColumnServerPort();
+        String colLoginOp = logCfg.getColumnLoginOpLevel();
+        String colLogoutOp = logCfg.getColumnLogoutOpLevel();
+
+        String selectSql = "SELECT " + colId + ", " + colServerName + ", " + colName + ", " + colLoginTime + ", "
+                + colLogoutTime + ", " + colIp + ", " + colLoginMethod + ", " + colConnChannel + ", " + colUuid + ", "
+                + colServerIp + ", " + colServerPort + ", " + colLoginOp + ", " + colLogoutOp + " FROM " + table;
+
+        boolean isPrimarySqlite = primary instanceof SqliteDataSource;
+        String insertSql;
+        if (isPrimarySqlite) {
+            insertSql = "INSERT OR REPLACE INTO " + table + " ("
+                    + colId + ", " + colServerName + ", " + colName + ", " + colLoginTime + ", "
+                    + colLogoutTime + ", " + colIp + ", " + colLoginMethod + ", " + colConnChannel + ", " + colUuid + ", "
+                    + colServerIp + ", " + colServerPort + ", " + colLoginOp + ", " + colLogoutOp + ") "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        } else {
+            insertSql = "INSERT INTO " + table + " ("
+                    + colId + ", " + colServerName + ", " + colName + ", " + colLoginTime + ", "
+                    + colLogoutTime + ", " + colIp + ", " + colLoginMethod + ", " + colConnChannel + ", " + colUuid + ", "
+                    + colServerIp + ", " + colServerPort + ", " + colLoginOp + ", " + colLogoutOp + ") "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                    + "ON DUPLICATE KEY UPDATE " + colLogoutTime + " = VALUES(" + colLogoutTime + "), "
+                    + colLogoutOp + " = VALUES(" + colLogoutOp + ")";
+        }
+
+        try (Connection fConn = fallback.dataSource.getConnection();
+             PreparedStatement fStmt = fConn.prepareStatement(selectSql);
+             ResultSet rs = fStmt.executeQuery()) {
+
+            List<Long> syncedIds = new ArrayList<>();
+            try (Connection pConn = primary.dataSource.getConnection();
+                 PreparedStatement pStmt = pConn.prepareStatement(insertSql)) {
+
+                while (rs.next()) {
+                    long id = rs.getLong(1);
+                    pStmt.setLong(1, id);
+                    pStmt.setString(2, rs.getString(2));
+                    pStmt.setString(3, rs.getString(3));
+                    pStmt.setLong(4, rs.getLong(4));
+                    long logoutTime = rs.getLong(5);
+                    if (rs.wasNull()) {
+                        pStmt.setNull(5, java.sql.Types.BIGINT);
+                    } else {
+                        pStmt.setLong(5, logoutTime);
+                    }
+                    pStmt.setString(6, rs.getString(6));
+                    pStmt.setString(7, rs.getString(7));
+                    pStmt.setString(8, rs.getString(8));
+                    pStmt.setString(9, rs.getString(9));
+                    pStmt.setString(10, rs.getString(10));
+                    pStmt.setInt(11, rs.getInt(11));
+                    pStmt.setInt(12, rs.getInt(12));
+                    int logoutOp = rs.getInt(13);
+                    if (rs.wasNull()) {
+                        pStmt.setNull(13, java.sql.Types.INTEGER);
+                    } else {
+                        pStmt.setInt(13, logoutOp);
+                    }
+
+                    pStmt.addBatch();
+                    syncedIds.add(id);
+                }
+
+                if (!syncedIds.isEmpty()) {
+                    pStmt.executeBatch();
+                    LOGGER.info("NeoAuth: 成功將本地 SQLite 備援庫中 {} 筆登入日誌回補同步至主資料庫！", syncedIds.size());
+
+                    // 從 SQLite 刪除已同步回主庫的紀錄
+                    String deleteSql = "DELETE FROM " + table + " WHERE " + colId + " = ?";
+                    try (PreparedStatement delStmt = fConn.prepareStatement(deleteSql)) {
+                        for (Long syncedId : syncedIds) {
+                            delStmt.setLong(1, syncedId);
+                            delStmt.addBatch();
+                        }
+                        delStmt.executeBatch();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.warn("NeoAuth: 回補登入日誌至主資料庫時發生異常 (稍後將自動重試)", e);
+        }
     }
 }

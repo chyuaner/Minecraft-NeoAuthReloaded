@@ -511,4 +511,61 @@ public class SqliteDataSourceTest {
             assertTrue(rs.getLong("logout_time") > 0, "登出時間應被更新");
         }
     }
+
+    @Test
+    public void testFallbackDataSourceLoginLogs() throws Exception {
+        Path primaryDbFile = tempDir.resolve("mock_primary.db");
+        Path fallbackDbFile = tempDir.resolve("mock_fallback.db");
+
+        String primaryYaml = "DataSource:\n  backend: 'SQLITE'\n  sqLiteFile: '" + primaryDbFile.toString() + "'\n";
+        IAuthConfig primaryCfg = NeoAuthConfig.fromMap(new org.yaml.snakeyaml.Yaml().load(primaryYaml));
+
+        String fallbackYaml = "DataSource:\n  backend: 'SQLITE'\n  sqLiteFile: '" + fallbackDbFile.toString() + "'\n";
+        IAuthConfig fallbackCfg = NeoAuthConfig.fromMap(new org.yaml.snakeyaml.Yaml().load(fallbackYaml));
+
+        Map<String, Object> logMap = new HashMap<>();
+        logMap.put("enabled", true);
+        logMap.put("server_name", "AUTO");
+        logMap.put("mySQLTablename", "login_logs");
+        ConfigManager.getInstance().setLoginLogsConfig(tw.yuaner.neoauth.config.LoginLogsConfig.fromMap(Map.of("login_logs", logMap)));
+
+        SqliteDataSource primaryDs = new SqliteDataSource();
+        SqliteDataSource fallbackDs = new SqliteDataSource();
+        fallbackDs.connect(fallbackCfg);
+
+        FallbackDataSource proxyDs = new FallbackDataSource(primaryDs, fallbackDs);
+        proxyDs.connect(fallbackCfg);
+
+        // 1. 主庫未連線時，寫入應自動降級至 fallback SQLite
+        String uuid = UUID.randomUUID().toString();
+        long logId = proxyDs.insertLoginLog("fallback_player", uuid, "127.0.0.1", "127.0.0.1", 25565, "Password", "TCP", "srv", 0);
+        assertTrue(logId > 0, "降級至 SQLite 時仍應成功寫入登入日誌並取得 Snowflake ID");
+
+        proxyDs.updateLoginLogLogout(logId, 2);
+
+        // 2. 模擬主庫連線恢復
+        primaryDs.connect(primaryCfg);
+
+        // 3. 觸發回補同步
+        proxyDs.syncLoginLogs();
+
+        // 4. 驗證日誌已成功同步進 Primary
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + primaryDbFile.toString());
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM login_logs WHERE id = " + logId)) {
+            assertTrue(rs.next(), "日誌應成功回補至 Primary 資料庫");
+            assertEquals("fallback_player", rs.getString("username"));
+            assertEquals(uuid, rs.getString("uuid"));
+            assertEquals(2, rs.getInt("logout_op_level"));
+        }
+
+        // 5. 驗證本地 SQLite 備援庫已清除該筆已同步日誌
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + fallbackDbFile.toString());
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM login_logs WHERE id = " + logId)) {
+            assertFalse(rs.next(), "本地 SQLite 備援庫中的已同步日誌應已被清理");
+        }
+
+        proxyDs.close();
+    }
 }

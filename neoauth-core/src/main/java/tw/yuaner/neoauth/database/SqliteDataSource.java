@@ -142,7 +142,7 @@ public class SqliteDataSource extends AbstractSqlDataSource {
         String colLogoutOp = logCfg != null ? logCfg.getColumnLogoutOpLevel() : "logout_op_level";
 
         return "CREATE TABLE IF NOT EXISTS " + table + " (" +
-                colId + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                colId + " BIGINT PRIMARY KEY, " +
                 colServerName + " VARCHAR(50), " +
                 colName + " VARCHAR(255) NOT NULL, " +
                 colLoginTime + " BIGINT NOT NULL, " +

@@ -652,6 +652,7 @@ public abstract class AbstractSqlDataSource implements IDataSource {
         if (!isConnected()) return -1;
         tw.yuaner.neoauth.config.LoginLogsConfig logCfg = ConfigManager.getInstance().getLoginLogsConfig();
         String table = logCfg != null ? logCfg.getTableName() : "login_logs";
+        String colId = logCfg != null ? logCfg.getColumnId() : "id";
         String colName = logCfg != null ? logCfg.getColumnName() : "username";
         String colUuid = logCfg != null ? logCfg.getColumnUuid() : "uuid";
         String colLoginTime = logCfg != null ? logCfg.getColumnLoginTime() : "login_time";
@@ -663,7 +664,9 @@ public abstract class AbstractSqlDataSource implements IDataSource {
         String colServerName = logCfg != null ? logCfg.getColumnServerName() : "server_name";
         String colLoginOp = logCfg != null ? logCfg.getColumnLoginOpLevel() : "login_op_level";
 
+        long id = tw.yuaner.neoauth.util.SnowflakeIdGenerator.getInstance().nextId();
         String sql = "INSERT INTO " + table + " (" +
+                colId + ", " +
                 colServerName + ", " +
                 colName + ", " +
                 colLoginTime + ", " +
@@ -673,26 +676,22 @@ public abstract class AbstractSqlDataSource implements IDataSource {
                 colUuid + ", " +
                 colServerIp + ", " +
                 colServerPort + ", " +
-                colLoginOp + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                colLoginOp + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
-            stmt.setString(1, serverName);
-            stmt.setString(2, username);
-            stmt.setLong(3, System.currentTimeMillis());
-            stmt.setString(4, ip);
-            stmt.setString(5, loginMethod);
-            stmt.setString(6, connectionChannel);
-            stmt.setString(7, uuid);
-            stmt.setString(8, serverIp);
-            stmt.setInt(9, serverPort);
-            stmt.setInt(10, loginOpLevel);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, id);
+            stmt.setString(2, serverName);
+            stmt.setString(3, username);
+            stmt.setLong(4, System.currentTimeMillis());
+            stmt.setString(5, ip);
+            stmt.setString(6, loginMethod);
+            stmt.setString(7, connectionChannel);
+            stmt.setString(8, uuid);
+            stmt.setString(9, serverIp);
+            stmt.setInt(10, serverPort);
+            stmt.setInt(11, loginOpLevel);
             stmt.executeUpdate();
-            
-            try (ResultSet rs = stmt.getGeneratedKeys()) {
-                if (rs.next()) {
-                    return rs.getLong(1);
-                }
-            }
+            return id;
         } catch (SQLException e) {
             LOGGER.error("NeoAuth: 新增登入日誌時發生資料庫錯誤", e);
         }

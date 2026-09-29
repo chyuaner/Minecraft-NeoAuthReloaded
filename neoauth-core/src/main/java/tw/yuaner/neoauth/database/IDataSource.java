@@ -188,4 +188,10 @@ public interface IDataSource {
     default void updateLoginLogLogoutTime(long logId) {
         updateLoginLogLogout(logId, 0);
     }
+
+    /**
+     * 將離線/備援期間產生的登入日誌回補同步至主資料庫。
+     */
+    default void syncLoginLogs() {
+    }
 }

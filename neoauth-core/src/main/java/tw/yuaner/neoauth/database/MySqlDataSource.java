@@ -119,6 +119,14 @@ public class MySqlDataSource extends AbstractSqlDataSource {
     }
 
     @Override
+    protected String getAddColumnSql(String table, String colName, String colType, String afterCol) {
+        if (afterCol != null && !afterCol.isBlank()) {
+            return "ALTER TABLE " + table + " ADD COLUMN " + colName + " " + colType + " AFTER " + afterCol;
+        }
+        return super.getAddColumnSql(table, colName, colType, afterCol);
+    }
+
+    @Override
     protected String getCreateLoginLogsTableSql() {
         tw.yuaner.neoauth.config.LoginLogsConfig logCfg = ConfigManager.getInstance().getLoginLogsConfig();
         String table = logCfg != null ? logCfg.getTableName() : "login_logs";
@@ -131,6 +139,7 @@ public class MySqlDataSource extends AbstractSqlDataSource {
         String colLoginMethod = logCfg != null ? logCfg.getColumnLoginMethod() : "login_method";
         String colConnChannel = logCfg != null ? logCfg.getColumnConnectionChannel() : "connection_channel";
         String colUuid = logCfg != null ? logCfg.getColumnUuid() : "uuid";
+        String colServerHost = logCfg != null ? logCfg.getColumnServerHost() : "server_host";
         String colServerIp = logCfg != null ? logCfg.getColumnServerIp() : "server_ip";
         String colServerPort = logCfg != null ? logCfg.getColumnServerPort() : "server_port";
         String colLoginOp = logCfg != null ? logCfg.getColumnLoginOpLevel() : "login_op_level";
@@ -146,6 +155,7 @@ public class MySqlDataSource extends AbstractSqlDataSource {
                 colLoginMethod + " VARCHAR(50), " +
                 colConnChannel + " VARCHAR(50), " +
                 colUuid + " VARCHAR(36), " +
+                colServerHost + " VARCHAR(255), " +
                 colServerIp + " VARCHAR(45), " +
                 colServerPort + " INT, " +
                 colLoginOp + " INT DEFAULT 0, " +

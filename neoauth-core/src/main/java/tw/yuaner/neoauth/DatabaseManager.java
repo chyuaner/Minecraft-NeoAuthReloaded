@@ -234,8 +234,15 @@ public class DatabaseManager {
     /**
      * 新增一筆登入日誌。
      */
+    public static long insertLoginLog(String username, String uuid, String ip, String serverHost, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
+        return activeDataSource != null ? activeDataSource.insertLoginLog(username, uuid, ip, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel) : -1;
+    }
+
+    /**
+     * 新增一筆登入日誌 (舊版相容方法)。
+     */
     public static long insertLoginLog(String username, String uuid, String ip, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
-        return activeDataSource != null ? activeDataSource.insertLoginLog(username, uuid, ip, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel) : -1;
+        return insertLoginLog(username, uuid, ip, serverIp, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
     }
 
     /**

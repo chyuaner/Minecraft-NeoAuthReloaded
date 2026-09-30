@@ -263,6 +263,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
                 String username = player.getGameProfile().getName();
                 String uuidStr = player.getUUID().toString();
                 String ip = getPlayerIp(player);
+                String serverHost = getServerHost(player);
                 String serverIp = resolveServerIp(player);
                 int serverPort = resolveServerPort(player);
                 String connectionChannel = resolveConnectionChannel(player);
@@ -271,7 +272,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
                 String serverName = tw.yuaner.neoauth.util.ServerIdentifier.resolve(logCfg.getServerName(), serverPort > 0 ? serverPort : fallbackPort);
                 int loginOpLevel = calculatePlayerOpLevel(player);
                 
-                long logId = tw.yuaner.neoauth.DatabaseManager.insertLoginLog(username, uuidStr, ip, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
+                long logId = tw.yuaner.neoauth.DatabaseManager.insertLoginLog(username, uuidStr, ip, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
                 tw.yuaner.neoauth.core.PlayerSessionData session = tw.yuaner.neoauth.AuthManager.getSession(player.getUUID());
                 if (session != null) {
                     session.setLoginLogId(logId);

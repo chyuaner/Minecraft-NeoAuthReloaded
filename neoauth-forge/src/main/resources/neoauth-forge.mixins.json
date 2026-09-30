@@ -8,7 +8,8 @@
     "ForgeServerLoginMixin",
     "ForgeServerGamePacketListenerMixin",
     "ForgePlayerListMixin",
-    "ForgeServerCommonPacketListenerMixin"
+    "ForgeServerCommonPacketListenerMixin",
+    "ForgeServerHandshakePacketListenerMixin"
   ],
   "client": [],
   "server": [],

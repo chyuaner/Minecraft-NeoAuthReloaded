@@ -177,4 +177,14 @@ public interface IPlatformHelper {
     default String getPlayerIp(Object player) {
         return tw.yuaner.neoauth.util.WebSocketIpResolver.resolvePlayerIp(player);
     }
+
+    /**
+     * 取得伺服器端連線網址或主機名稱 (Server Host)。
+     *
+     * @param player 伺服器玩家物件 (ServerPlayer)
+     * @return 玩家連線進服時所使用的網址或主機名稱 (例如 "mc8.yuaner.tw" 或 "wss://mc8-ws.yuaner.tw")
+     */
+    default String getServerHost(Object player) {
+        return tw.yuaner.neoauth.util.ServerHostResolver.resolveServerHost(player);
+    }
 }

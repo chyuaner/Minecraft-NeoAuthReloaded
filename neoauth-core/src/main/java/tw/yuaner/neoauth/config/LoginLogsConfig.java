@@ -19,6 +19,7 @@ public class LoginLogsConfig {
     private String columnLoginTime = "login_time";
     private String columnLogoutTime = "logout_time";
     private String columnIp = "ip";
+    private String columnServerHost = "server_host";
     private String columnServerIp = "server_ip";
     private String columnServerPort = "server_port";
     private String columnLoginMethod = "login_method";
@@ -69,6 +70,7 @@ public class LoginLogsConfig {
             config.columnLoginTime = getColumn(root, colMap, config.columnLoginTime, "mySQLColumnLoginTime", "login_time", "loginTime");
             config.columnLogoutTime = getColumn(root, colMap, config.columnLogoutTime, "mySQLColumnLogoutTime", "logout_time", "logoutTime");
             config.columnIp = getColumn(root, colMap, config.columnIp, "mySQLColumnIp", "ip");
+            config.columnServerHost = getColumn(root, colMap, config.columnServerHost, "mySQLColumnServerHost", "server_host", "serverHost", "host");
             config.columnServerIp = getColumn(root, colMap, config.columnServerIp, "mySQLColumnServerIp", "server_ip", "serverIp");
             config.columnServerPort = getColumn(root, colMap, config.columnServerPort, "mySQLColumnServerPort", "server_port", "serverPort", "port");
             config.columnLoginMethod = getColumn(root, colMap, config.columnLoginMethod, "mySQLColumnLoginMethod", "login_method", "loginMethod");
@@ -180,6 +182,14 @@ public class LoginLogsConfig {
 
     public void setColumnIp(String columnIp) {
         this.columnIp = columnIp;
+    }
+
+    public String getColumnServerHost() {
+        return columnServerHost;
+    }
+
+    public void setColumnServerHost(String columnServerHost) {
+        this.columnServerHost = columnServerHost;
     }
 
     public String getColumnServerIp() {

@@ -298,7 +298,7 @@ public abstract class ForgeServerLoginMixin {
                         server.execute(() -> {
                             ServerPlayer player = server.getPlayerList().getPlayer(offlineUuid);
                             if (player != null && !AuthManager.isLoggedIn(offlineUuid)) {
-                                boolean autoLoggedIn = AuthLogic.handlePlayerJoin(offlineUuid, username, player.getIpAddress(), true);
+                                boolean autoLoggedIn = AuthLogic.handlePlayerJoin(offlineUuid, username, Services.PLATFORM.getPlayerIp(player), true);
                                 if (autoLoggedIn) {
                                     Services.PLATFORM.removeFreezeEffects(player);
                                     if (DatabaseManager.isRegistered(username)) {

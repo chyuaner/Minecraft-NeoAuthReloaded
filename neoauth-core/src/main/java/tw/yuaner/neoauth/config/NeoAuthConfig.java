@@ -95,6 +95,9 @@ public class NeoAuthConfig implements IAuthConfig {
     private boolean vanishCharEnabled = true;
     private char vanishChar = '-';
 
+    // wsmc (WSMC 模組連動)
+    private boolean wsmcEnabled = true;
+
     public NeoAuthConfig() {}
 
     @SuppressWarnings("unchecked")
@@ -281,6 +284,17 @@ public class NeoAuthConfig implements IAuthConfig {
                 String s = String.valueOf(vcObj);
                 if (!s.isEmpty()) config.vanishChar = s.charAt(0);
             }
+        }
+
+        // wsmc
+        // 優先讀取 extensions.yml 內的 wsmc，若無則降級讀取 config.yml 的設定
+        Object wsmcObj = extMap.get("wsmc");
+        if (wsmcObj == null) {
+            wsmcObj = map.get("wsmc");
+        }
+        if (wsmcObj instanceof Map<?, ?> wsmcMap) {
+            if (wsmcMap.get("enabled") instanceof Boolean b) config.wsmcEnabled = b;
+            else if (wsmcMap.get("enable") instanceof Boolean b) config.wsmcEnabled = b;
         }
 
         return config;
@@ -648,5 +662,10 @@ public class NeoAuthConfig implements IAuthConfig {
     @Override
     public char getVanishLoginChar() {
         return vanishChar;
+    }
+
+    @Override
+    public boolean isWsmcIntegrationEnabled() {
+        return wsmcEnabled;
     }
 }

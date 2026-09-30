@@ -420,6 +420,13 @@ public interface IAuthConfig {
      * 取得隱形登入的判定字元 (預設: '-')
      */
     char getVanishLoginChar();
+
+    /**
+     * 是否啟用與 WSMC (WebSocket Minecraft) 模組連動與真實 IP 解析 (對應 wsmc.enabled，預設: true)
+     */
+    default boolean isWsmcIntegrationEnabled() {
+        return true;
+    }
 }
 
 

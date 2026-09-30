@@ -59,3 +59,15 @@ vanish:
   
   # 隱身登入觸發字元，當密碼首字元相符且具有權限時將保持隱身 (預設: "-")
   vanishchar: "-"
+
+# -------------------------------------------------------------
+# WSMC (WebSocket for Minecraft) by rikka0w0 模組連動設定
+# -------------------------------------------------------------
+wsmc:
+  # 是否啟用 WSMC 模組連動與 WebSocket 真實 IP 解析功能 (預設: true)
+  # - true: 自動從 WebSocket 握手標頭 (如 CF-Connecting-IP, True-Client-IP, X-Real-IP, X-Forwarded-For)
+  #         解析玩家真實 IP 並同步更新 SocketAddress。
+  # - false: 徹底停用 WSMC 握手資訊反射與連動，一律回退使用底層原生連線位址。
+  #         (若未來安裝不同版本或魔改的 WSMC 導致相容性問題時，可將此項設為 false 手動關閉)
+  enabled: true
+

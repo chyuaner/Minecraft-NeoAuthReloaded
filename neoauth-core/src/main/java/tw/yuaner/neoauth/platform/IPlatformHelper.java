@@ -162,4 +162,19 @@ public interface IPlatformHelper {
      * @param player 伺服器玩家物件
      */
     void logPlayerLogout(Object player);
+
+    /**
+     * 取得玩家的實際連線 IP 位址。
+     * <p>
+     * 針對 WebSocket 反向代理 (如 WSMC 模組搭配 Nginx / Cloudflare CDN)，
+     * 會自動從 WebSocket Handshake Request 的 HTTP Headers
+     * (例如 CF-Connecting-IP, True-Client-IP, X-Real-IP, X-Forwarded-For) 解析真實客戶端 IP；
+     * 若為一般 TCP 連線或無反向代理標頭，則回退至原生 Socket 位址。
+     *
+     * @param player 伺服器玩家物件 (ServerPlayer)
+     * @return 玩家真實 IP 位址字串
+     */
+    default String getPlayerIp(Object player) {
+        return tw.yuaner.neoauth.util.WebSocketIpResolver.resolvePlayerIp(player);
+    }
 }

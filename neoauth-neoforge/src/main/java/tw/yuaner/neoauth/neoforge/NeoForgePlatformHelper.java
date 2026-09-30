@@ -247,13 +247,22 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
     }
 
     @Override
+    public String getPlayerIp(Object playerObj) {
+        if (playerObj instanceof ServerPlayer player) {
+            Object connection = player.connection != null ? player.connection.getConnection() : null;
+            return tw.yuaner.neoauth.util.WebSocketIpResolver.resolveIp(connection, player.getIpAddress());
+        }
+        return "127.0.0.1";
+    }
+
+    @Override
     public void logPlayerLogin(Object playerObj, String loginMethod) {
         if (playerObj instanceof ServerPlayer player) {
             tw.yuaner.neoauth.config.LoginLogsConfig logCfg = tw.yuaner.neoauth.config.ConfigManager.getInstance().getLoginLogsConfig();
             if (logCfg != null && logCfg.isEnabled()) {
                 String username = player.getGameProfile().getName();
                 String uuidStr = player.getUUID().toString();
-                String ip = player.getIpAddress();
+                String ip = getPlayerIp(player);
                 String serverIp = resolveServerIp(player);
                 int serverPort = resolveServerPort(player);
                 String connectionChannel = resolveConnectionChannel(player);
@@ -313,17 +322,20 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
                     java.net.SocketAddress localAddr = channel.localAddress();
                     if (localAddr instanceof java.net.InetSocketAddress inetAddr) {
                         java.net.InetAddress addr = inetAddr.getAddress();
-                        if (addr != null) {
+                        if (addr != null && !addr.isLoopbackAddress() && !addr.isAnyLocalAddress()) {
                             return addr.getHostAddress();
                         }
-                        return inetAddr.getHostString();
                     }
                 }
             }
             if (player.getServer() != null && player.getServer().getLocalIp() != null && !player.getServer().getLocalIp().isBlank()) {
                 return player.getServer().getLocalIp();
             }
-            return java.net.InetAddress.getLocalHost().getHostAddress();
+            java.net.InetAddress localHost = java.net.InetAddress.getLocalHost();
+            if (localHost != null && !localHost.isLoopbackAddress()) {
+                return localHost.getHostAddress();
+            }
+            return "127.0.0.1";
         } catch (Throwable e) {
             return "127.0.0.1";
         }
@@ -360,9 +372,12 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
                     boolean isWebSocket = false;
                     boolean isZstd = false;
 
+                    tw.yuaner.neoauth.config.IAuthConfig config = tw.yuaner.neoauth.config.ConfigManager.getInstance().getConfig();
+                    boolean wsmcAllowed = config == null || config.isWsmcIntegrationEnabled();
+
                     for (String name : pipeline.names()) {
                         String lowerName = name.toLowerCase();
-                        if (lowerName.contains("websocket") || lowerName.contains("ws") || lowerName.contains("http")) {
+                        if (wsmcAllowed && (lowerName.contains("websocket") || lowerName.contains("ws") || lowerName.contains("http"))) {
                             isWebSocket = true;
                         }
                         if (lowerName.contains("zstd")) {
@@ -371,7 +386,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
                         io.netty.channel.ChannelHandler handler = pipeline.get(name);
                         if (handler != null) {
                             String className = handler.getClass().getName().toLowerCase();
-                            if (className.contains("websocket") || className.contains("http")) {
+                            if (wsmcAllowed && (className.contains("websocket") || className.contains("http"))) {
                                 isWebSocket = true;
                             }
                             if (className.contains("zstd")) {
@@ -381,7 +396,7 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
                     }
 
                     String chClass = channel.getClass().getSimpleName().toLowerCase();
-                    if (chClass.contains("websocket")) {
+                    if (wsmcAllowed && chClass.contains("websocket")) {
                         isWebSocket = true;
                     }
 

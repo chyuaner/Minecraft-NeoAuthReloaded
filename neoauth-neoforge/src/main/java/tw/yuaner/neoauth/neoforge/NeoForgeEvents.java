@@ -239,7 +239,7 @@ public class NeoForgeEvents {
         }
 
         String username = player.getGameProfile().getName();
-        String ip = player.getIpAddress();
+        String ip = Services.PLATFORM.getPlayerIp(player);
         AuthLogic.LoginAttemptResult result = AuthLogic.attemptLogin(player.getUUID(), username, ip, password);
 
         if (result.getResult() == AuthLogic.LoginResult.SUCCESS) {
@@ -270,7 +270,7 @@ public class NeoForgeEvents {
         }
 
         String username = player.getGameProfile().getName();
-        String ip = player.getIpAddress();
+        String ip = Services.PLATFORM.getPlayerIp(player);
         AuthLogic.RegisterResult result = AuthLogic.attemptRegister(player.getUUID(), username, ip, password, confirm);
 
         if (result == AuthLogic.RegisterResult.SUCCESS) {
@@ -384,7 +384,7 @@ public class NeoForgeEvents {
             return 0;
         }
 
-        String ip = player.getIpAddress();
+        String ip = Services.PLATFORM.getPlayerIp(player);
         if (ip == null || ip.isBlank()) {
             ip = DatabaseManager.getIp(player.getGameProfile().getName());
         }
@@ -491,7 +491,7 @@ public class NeoForgeEvents {
         Object targetObj = Services.PLATFORM.getOnlinePlayer(source, targetPlayerName);
         if (targetObj instanceof ServerPlayer target) {
             AuthManager.setLoggedIn(target.getUUID());
-            AuthManager.createSession(target.getUUID(), target.getGameProfile().getName(), target.getIpAddress(), AuthManager.isPremiumVerified(target.getUUID()));
+            AuthManager.createSession(target.getUUID(), target.getGameProfile().getName(), Services.PLATFORM.getPlayerIp(target), AuthManager.isPremiumVerified(target.getUUID()));
             Services.PLATFORM.removeFreezeEffects(target);
             Services.PLATFORM.logPlayerLogin(target, "ForceLogin");
             target.sendSystemMessage(Component.literal(msgMgr.get("login.success")));
@@ -511,7 +511,7 @@ public class NeoForgeEvents {
         MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
         if (source.getEntity() instanceof ServerPlayer player) {
             AuthManager.setLoggedIn(player.getUUID());
-            AuthManager.createSession(player.getUUID(), player.getGameProfile().getName(), player.getIpAddress(), AuthManager.isPremiumVerified(player.getUUID()));
+            AuthManager.createSession(player.getUUID(), player.getGameProfile().getName(), Services.PLATFORM.getPlayerIp(player), AuthManager.isPremiumVerified(player.getUUID()));
             Services.PLATFORM.removeFreezeEffects(player);
             Services.PLATFORM.logPlayerLogin(player, "ForceLogin");
             handlePostAuthVanishAndJoinMessage(player, false, false);
@@ -636,7 +636,7 @@ public class NeoForgeEvents {
         Object targetObj = Services.PLATFORM.getOnlinePlayer(source, targetPlayer);
         String ip = null;
         if (targetObj instanceof ServerPlayer target) {
-            ip = target.getIpAddress();
+            ip = Services.PLATFORM.getPlayerIp(target);
         } else {
             ip = DatabaseManager.getIp(targetPlayer);
         }
@@ -849,7 +849,7 @@ public class NeoForgeEvents {
                 AuthManager.clearMojangFallback(uuid);
             }
 
-            boolean autoLoggedIn = AuthLogic.handlePlayerJoin(uuid, username, player.getIpAddress(), isPremium);
+            boolean autoLoggedIn = AuthLogic.handlePlayerJoin(uuid, username, Services.PLATFORM.getPlayerIp(player), isPremium);
             if (autoLoggedIn) {
                 // 已註冊之正版驗證玩家 或 非強制註冊模式下的訪客玩家：放行並登入
                 Services.PLATFORM.removeFreezeEffects(player);

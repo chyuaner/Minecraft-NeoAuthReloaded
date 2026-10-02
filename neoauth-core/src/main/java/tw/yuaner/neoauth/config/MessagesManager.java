@@ -136,6 +136,10 @@ public class MessagesManager {
             case "tab.conn_channel_tcp" -> "§aTCP";
             case "tab.conn_channel_ws" -> "§bWebSocket";
             case "tab.conn_channel_ws_cdn" -> "§6WebSocket+CDN";
+            case "admin.setenableregister_failed" -> "§c設定儲存失敗，請檢查伺服器日誌！";
+            case "admin.circuitbreaker_manual_reason" -> "管理員指令手動觸發";
+            case "general.enabled" -> "啟用";
+            case "general.disabled" -> "關閉";
             default -> "§7[" + key + "]";
         };
     }

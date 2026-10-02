@@ -32,6 +32,7 @@ public class ConfigManager {
     private NeoAuthConfig config = new NeoAuthConfig();
     private CommandsConfig commandsConfig = new CommandsConfig();
     private MessagesManager messagesManager = new MessagesManager();
+    private HelpManager helpManager = new HelpManager();
     private LoginLogsConfig loginLogsConfig = new LoginLogsConfig();
     private String welcomeMessage = "";
 
@@ -91,30 +92,94 @@ public class ConfigManager {
                 this.welcomeMessage = "";
             }
 
-            // 5. 確保語言檔範本存在並自動合併
-            loadAndMergeYaml("messages/messages_zhtw.yml", messagesDir.resolve("messages_zhtw.yml"));
-            loadAndMergeYaml("messages/messages_en.yml", messagesDir.resolve("messages_en.yml"));
-            loadAndMergeYaml("messages/help_zhtw.yml", messagesDir.resolve("help_zhtw.yml"));
-            loadAndMergeYaml("messages/help_en.yml", messagesDir.resolve("help_en.yml"));
-
-            // 6. 載入當前語言訊息檔
-            String lang = config.getMessagesLanguage() != null ? config.getMessagesLanguage().toLowerCase() : "zhtw";
-            File msgFile = messagesDir.resolve("messages_" + lang + ".yml").toFile();
-            if (!msgFile.exists()) {
-                msgFile = messagesDir.resolve("messages_en.yml").toFile();
-            }
-
+            // 5. 載入語言訊息與指令幫助檔
             MessagesManager newMsgMgr = new MessagesManager();
-            if (msgFile.exists()) {
-                Yaml yaml = new Yaml();
-                try (InputStream in = new FileInputStream(msgFile)) {
-                    Map<String, Object> data = yaml.load(in);
-                    newMsgMgr.loadMessages(data);
-                }
-            }
-            this.messagesManager = newMsgMgr;
+            HelpManager newHelpMgr = new HelpManager();
 
-            LOGGER.info("NeoAuth: 成功載入設定檔 (語言模式: {})", lang);
+            String lang = config.getMessagesLanguage();
+            if (lang != null && !lang.isBlank()) {
+                // === 多國語系相容模式 (settings.messagesLanguage 存在) ===
+                String cleanLang = lang.trim().toLowerCase();
+                LOGGER.info("NeoAuth: 檢測到 settings.messagesLanguage: {}，使用多國語言相容模式", cleanLang);
+
+                // 確保對應的 messages_<lang>.yml 與 help_<lang>.yml 範本合併
+                String resMsgName = "messages/messages_" + cleanLang + ".yml";
+                if (getClass().getResourceAsStream("/defaults/" + resMsgName) == null) {
+                    resMsgName = "messages/messages_en.yml";
+                }
+                loadAndMergeYaml(resMsgName, messagesDir.resolve("messages_" + cleanLang + ".yml"));
+
+                String resHelpName = "messages/help_" + cleanLang + ".yml";
+                if (getClass().getResourceAsStream("/defaults/" + resHelpName) == null) {
+                    resHelpName = "messages/help_en.yml";
+                }
+                loadAndMergeYaml(resHelpName, messagesDir.resolve("help_" + cleanLang + ".yml"));
+
+                // 載入訊息檔
+                File msgFile = messagesDir.resolve("messages_" + cleanLang + ".yml").toFile();
+                if (!msgFile.exists()) {
+                    msgFile = messagesDir.resolve("messages_en.yml").toFile();
+                }
+                if (msgFile.exists()) {
+                    Yaml yaml = new Yaml();
+                    try (InputStream in = new FileInputStream(msgFile)) {
+                        Map<String, Object> data = yaml.load(in);
+                        newMsgMgr.loadMessages(data);
+                    }
+                }
+
+                // 載入幫助檔
+                File helpFile = messagesDir.resolve("help_" + cleanLang + ".yml").toFile();
+                if (!helpFile.exists()) {
+                    helpFile = messagesDir.resolve("help_en.yml").toFile();
+                }
+                if (helpFile.exists()) {
+                    Yaml yaml = new Yaml();
+                    try (InputStream in = new FileInputStream(helpFile)) {
+                        Map<String, Object> data = yaml.load(in);
+                        newHelpMgr.loadHelp(data);
+                    }
+                }
+
+                LOGGER.info("NeoAuth: 成功載入設定檔 (相容多語系模式: {})", cleanLang);
+            } else {
+                // === 標準模式 (settings.messagesLanguage 不存在，使用 messages.yml 與 help.yml) ===
+                LOGGER.info("NeoAuth: 未設定 settings.messagesLanguage，使用標準 messages.yml 與 help.yml");
+
+                // 決定 messages.yml 與 help.yml 磁碟路徑 (支援 configDir 或 messagesDir)
+                Path diskMsgPath = Files.exists(configDir.resolve("messages.yml"))
+                        ? configDir.resolve("messages.yml")
+                        : messagesDir.resolve("messages.yml");
+                loadAndMergeYaml("messages/messages.yml", diskMsgPath);
+
+                Path diskHelpPath = Files.exists(configDir.resolve("help.yml"))
+                        ? configDir.resolve("help.yml")
+                        : messagesDir.resolve("help.yml");
+                loadAndMergeYaml("messages/help.yml", diskHelpPath);
+
+                // 載入 messages.yml
+                if (Files.exists(diskMsgPath)) {
+                    Yaml yaml = new Yaml();
+                    try (InputStream in = new FileInputStream(diskMsgPath.toFile())) {
+                        Map<String, Object> data = yaml.load(in);
+                        newMsgMgr.loadMessages(data);
+                    }
+                }
+
+                // 載入 help.yml
+                if (Files.exists(diskHelpPath)) {
+                    Yaml yaml = new Yaml();
+                    try (InputStream in = new FileInputStream(diskHelpPath.toFile())) {
+                        Map<String, Object> data = yaml.load(in);
+                        newHelpMgr.loadHelp(data);
+                    }
+                }
+
+                LOGGER.info("NeoAuth: 成功載入設定檔 (標準模式: messages.yml & help.yml)");
+            }
+
+            this.messagesManager = newMsgMgr;
+            this.helpManager = newHelpMgr;
         } catch (Exception e) {
             LOGGER.error("NeoAuth: 載入設定檔時發生錯誤！", e);
         }
@@ -268,6 +333,10 @@ public class ConfigManager {
 
     public MessagesManager getMessagesManager() {
         return messagesManager;
+    }
+
+    public HelpManager getHelpManager() {
+        return helpManager;
     }
 
     public LoginLogsConfig getLoginLogsConfig() {

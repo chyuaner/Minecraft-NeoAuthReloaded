@@ -55,9 +55,11 @@ public class YamlCommentPreserver {
 
             int indent = line.length() - line.stripLeading().length();
 
-            // 若縮排回退，彈出較深層的 section
+            // 若縮排回退，彈出較深層的 section 並補回該 section 內使用者自訂但範本未包含的子鍵
             while (!sectionStack.isEmpty() && sectionStack.get(sectionStack.size() - 1).indent >= indent) {
-                sectionStack.remove(sectionStack.size() - 1);
+                SectionEntry popped = sectionStack.remove(sectionStack.size() - 1);
+                String fullPath = getSectionFullPath(sectionStack, popped.name);
+                flushUnprocessedSectionKeys(fullPath, popped.indent, flatDiskMap, processedKeys, result);
             }
 
             // 檢查是否為 key-value 行 (例如 "mySQLHost: '127.0.0.1'" 或 "settings:")
@@ -125,10 +127,17 @@ public class YamlCommentPreserver {
             i++;
         }
 
-        // 檢查是否有使用者自訂但範本沒有的額外鍵值
+        // 彈出並補回最後殘留於 stack 中的 section 未匹配鍵值
+        while (!sectionStack.isEmpty()) {
+            SectionEntry popped = sectionStack.remove(sectionStack.size() - 1);
+            String fullPath = getSectionFullPath(sectionStack, popped.name);
+            flushUnprocessedSectionKeys(fullPath, popped.indent, flatDiskMap, processedKeys, result);
+        }
+
+        // 檢查是否有使用者自訂但範本沒有的額外頂層鍵值
         Map<String, Object> extraKeys = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : diskMap.entrySet()) {
-            if (!templateText.contains(entry.getKey() + ":")) {
+            if (!templateText.contains(entry.getKey() + ":") && !processedKeys.contains(entry.getKey())) {
                 extraKeys.put(entry.getKey(), entry.getValue());
             }
         }
@@ -141,6 +150,37 @@ public class YamlCommentPreserver {
         }
 
         return result.toString();
+    }
+
+    private static String getSectionFullPath(List<SectionEntry> stack, String sectionName) {
+        if (stack.isEmpty()) return sectionName;
+        StringBuilder sb = new StringBuilder();
+        for (SectionEntry entry : stack) {
+            sb.append(entry.name).append(".");
+        }
+        sb.append(sectionName);
+        return sb.toString();
+    }
+
+    private static void flushUnprocessedSectionKeys(String sectionPath, int sectionIndent,
+                                                    Map<String, Object> flatDiskMap,
+                                                    Set<String> processedKeys,
+                                                    StringBuilder result) {
+        String prefix = sectionPath + ".";
+        for (Map.Entry<String, Object> entry : flatDiskMap.entrySet()) {
+            String fullKey = entry.getKey();
+            if (fullKey.startsWith(prefix) && !processedKeys.contains(fullKey)) {
+                String remaining = fullKey.substring(prefix.length());
+                if (!remaining.contains(".")) {
+                    processedKeys.add(fullKey);
+                    result.append(" ".repeat(sectionIndent + 2))
+                          .append(remaining)
+                          .append(": ")
+                          .append(formatScalar(entry.getValue()))
+                          .append("\n");
+                }
+            }
+        }
     }
 
     private static boolean isListItem(String line, int parentIndent) {

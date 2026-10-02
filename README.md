@@ -275,20 +275,19 @@ NeoAuthReloaded 支援兩種運作模式：
 ```
 config/neoauth/
  ├── commands.yml          # 指令白名單與登入/註冊/登出時自動執行之指令掛鉤
- ├── config.yml            # 主設定檔 (資料庫連線、密碼規則、防護限制、語言切換等)
+ ├── config.yml            # 主設定檔 (資料庫連線、密碼規則、防護限制等)
  ├── welcome.txt           # 玩家進服顯示之彩色歡迎公告 (支援 {PLAYER} 變數與顏色代碼)
- └── messages/             # 多國語言訊息與幫助指南目錄
-     ├── help_en.yml       # 英文幫助說明
-     ├── help_zhtw.yml     # 正體中文幫助說明
-     ├── messages_en.yml   # 英文系統提示訊息
-     └── messages_zhtw.yml # 正體中文系統提示訊息
+ └── messages/             # 訊息與幫助指南目錄
+     ├── help.yml          # 指令幫助指南說明 (服主可直接自訂修改)
+     └── messages.yml      # 系統提示訊息 (服主可直接自訂修改)
+     # (若有 settings.messagesLanguage 亦相容 messages_<lang>.yml 與 help_<lang>.yml)
 ```
 
 ### `config.yml` 重點設定一覽：
 - `DataSource.backend`：資料庫後端類型，預設 `SQLITE`（開箱即用），亦可設定為 `MARIADB` 或 `MYSQL`。
 - `DataSource.sqLiteFile`：SQLite 資料庫檔案路徑，預設 `config/neoauth/neoauth.db`，支援相對路徑（如 `../plugins/AuthMe/authme.db`）與絕對路徑。
 - `DataSource`：配置 MariaDB / MySQL 連線主機、埠號、資料庫帳密、資料表名稱與連線池參數。
-- `settings.messagesLanguage`：設定提示訊息語言，預設 `zhtw` (正體中文)，可設為 `en` (英文)。
+- `settings.messagesLanguage`：(可選，向後相容 AuthMe) 若設定此項則載入 `messages_<lang>.yml` 與 `help_<lang>.yml`；未設定時預設直接使用極簡單檔 `messages.yml` 與 `help.yml`。
 - `settings.allowOfflinePlayers`：是否允許離線（非官方）玩家在線上模式伺服器進入並進行帳密驗證（預設 `true`）。
 - `settings.dynamicPremiumVerification`：是否在離線模式 (`online-mode: false`) 下啟用動態正版驗證（預設 `true`）。開啟時，正版玩家將自動經由握手享有免密碼自動登入。
 - `settings.customYggdrasilUrl`：自訂第三方 Yggdrasil 外置驗證伺服器 API 網址（例如 `"https://mc8.yuaner.tw/api/yggdrasil"`）。設定後 NeoAuth 原生支援「雙向雙驗證」：優先驗證 Mojang 官方正版，若非 Mojang 帳號則自動向此外置站驗證 Session，無論是官方正版或外置正版皆享有免密自動登入，伺服端無需掛載任何 JavaAgent！
@@ -363,9 +362,9 @@ scoreboard:
         - "&7-----------------"
 ```
 
-### 🎨 自訂顯示文案 (`messages_zhtw.yml` / `messages_en.yml`)
+### 🎨 自訂顯示文案 (`messages.yml`)
 
-各變數的渲染文字與色彩代碼可於 `config/neoauth/messages/messages_*.yml` 的 `tab:` 區塊自由設定，並支援熱重載（執行 `/neoauth reload` 或 `/tab reload` 皆可自動生效）。
+各變數的渲染文字與色彩代碼可於 `config/neoauth/messages/messages.yml` (或多語系模式下的 `messages_*.yml`) 的 `tab:` 區塊自由設定，並支援熱重載（執行 `/neoauth reload` 或 `/tab reload` 皆可自動生效）。
 
 ---
 

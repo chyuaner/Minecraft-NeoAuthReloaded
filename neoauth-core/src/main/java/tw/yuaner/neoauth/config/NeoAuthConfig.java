@@ -49,7 +49,7 @@ public class NeoAuthConfig implements IAuthConfig {
     private String mySQLLastLocPitch = "pitch";
     private String mySQLPlayerUUID = "playerUUID";
 
-    private String messagesLanguage = "zhtw";
+    private String messagesLanguage = null;
     private boolean allowOfflinePlayers = true;
     private boolean dynamicPremiumVerification = true;
     private int dynamicVerificationTimeout = 7;

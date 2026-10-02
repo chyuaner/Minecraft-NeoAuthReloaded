@@ -33,7 +33,6 @@ public class YamlCommentPreserverTest {
                   mySQLTablename: "custom_auth"
                 
                 settings:
-                  messagesLanguage: "en"
                   allowOfflinePlayers: false
                   security:
                     passwordHash: "SHA256"
@@ -56,7 +55,6 @@ public class YamlCommentPreserverTest {
         assertTrue(mergedYaml.contains("mySQLUsername: \"custom_user\""));
         assertTrue(mergedYaml.contains("mySQLPassword: \"my_secret_password\""));
         assertTrue(mergedYaml.contains("mySQLTablename: \"custom_auth\""));
-        assertTrue(mergedYaml.contains("messagesLanguage: \"en\""));
         assertTrue(mergedYaml.contains("allowOfflinePlayers: false"));
 
         // 3. 驗證範本中缺失的區塊與預設值被自動補齊 (包含 SSL 與自訂欄位名稱)
@@ -85,7 +83,7 @@ public class YamlCommentPreserverTest {
         assertEquals("192.168.1.100", config.getDbHost());
         assertEquals("custom_db", config.getDbName());
         assertEquals("my_secret_password", config.getDbPassword());
-        assertEquals("en", config.getMessagesLanguage());
+        assertNull(config.getMessagesLanguage());
         assertFalse(config.isAllowOfflinePlayers());
         assertEquals("SHA256", config.getPasswordHash());
         assertEquals(90, config.getTimeout());

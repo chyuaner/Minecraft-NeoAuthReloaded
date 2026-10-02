@@ -48,9 +48,6 @@ ExternalBoardOptions:
   mySQLColumnSalt: ""
 
 settings:
-  # 預設提示語言 (支援: zhtw, en，對應 messages/messages_<lang>.yml)
-  messagesLanguage: "zhtw"
-  
   # 是否允許離線（非官方）玩家在線上模式伺服器進入
   allowOfflinePlayers: true
 

@@ -4,6 +4,8 @@
 
 help:
   title: "&6--- NeoAuthReloaded Help Guide ---"
+  admin_header: "&6===== &eNeoAuth Admin Commands &6====="
+  not_found: "&cNo help information found for command \"&e%s&c\"! Type &e/neoauth help &cto view list."
   commands:
     login:
       usage: "/login <password>"
@@ -71,3 +73,12 @@ help:
     neoauth_setenableregister:
       usage: "/neoauth setenableregister <true|false>"
       description: "Enable or disable in-game registration and save to config file (Admin)."
+    neoauth_cb_status:
+      usage: "/neoauth cb [status]"
+      description: "Check Mojang circuit breaker status (Admin)."
+    neoauth_cb_reset:
+      usage: "/neoauth cb reset"
+      description: "Reset circuit breaker manually (Admin)."
+    neoauth_cb_trip:
+      usage: "/neoauth cb trip [seconds]"
+      description: "Trip circuit breaker manually (Admin)."

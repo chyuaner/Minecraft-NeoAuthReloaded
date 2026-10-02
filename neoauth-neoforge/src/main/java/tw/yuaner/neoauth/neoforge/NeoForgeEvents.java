@@ -678,23 +678,16 @@ public class NeoForgeEvents {
     }
 
     private static int executeAdminHelp(CommandSourceStack source, String query) {
-        source.sendSuccess(() -> Component.literal("§6===== §eNeoAuth Admin Commands §6====="), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth register <player> <pwd> §7- Register account"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth forcelogin [player] §7- Force login player"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth password <player> <pwd> §7- Change player password"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth lastlogin [player] §7- View last login info"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth accounts [player/IP] §7- View associated accounts"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth email [player] §7- View player email"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth email set <player> <email> §7- Set player email"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth setemail <player> <email> §7- Set player email"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth getip <player> §7- Get player IP"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth reload §7- Reload configs and messages"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth version §7- Show version info"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth recent §7- Show recent logged in players"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth setenableregister <true|false> §7- Enable/disable registration"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth cb [status] §7- Check circuit breaker status"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth cb reset §7- Reset circuit breaker"), false);
-        source.sendSuccess(() -> Component.literal("§e/neoauth cb trip [seconds] §7- Trip circuit breaker manually"), false);
+        tw.yuaner.neoauth.config.HelpManager helpMgr = ConfigManager.getInstance().getHelpManager();
+        if (query == null || query.isBlank()) {
+            for (String line : helpMgr.getAdminHelpLines()) {
+                source.sendSuccess(() -> Component.literal(line), false);
+            }
+        } else {
+            for (String line : helpMgr.getCommandHelpLines(query)) {
+                source.sendSuccess(() -> Component.literal(line), false);
+            }
+        }
         return 1;
     }
 
@@ -709,7 +702,8 @@ public class NeoForgeEvents {
             boolean enabled = ConfigManager.getInstance().getConfig().isCircuitBreakerEnabled();
             int duration = ConfigManager.getInstance().getConfig().getCircuitBreakerDurationSeconds();
             String reason = tw.yuaner.neoauth.util.MojangCircuitBreaker.getLastFailureReason();
-            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.circuitbreaker_status_closed", enabled ? "啟用" : "關閉", duration, reason)), false);
+            String enabledStr = enabled ? msgMgr.get("general.enabled") : msgMgr.get("general.disabled");
+            source.sendSuccess(() -> Component.literal(msgMgr.get("admin.circuitbreaker_status_closed", enabledStr, duration, reason)), false);
         }
         return 1;
     }
@@ -723,8 +717,8 @@ public class NeoForgeEvents {
 
     private static int executeCircuitBreakerTrip(CommandSourceStack source, int seconds) {
         int duration = seconds > 0 ? seconds : ConfigManager.getInstance().getConfig().getCircuitBreakerDurationSeconds();
-        tw.yuaner.neoauth.util.MojangCircuitBreaker.tripManually(duration, "管理員指令手動觸發");
         MessagesManager msgMgr = ConfigManager.getInstance().getMessagesManager();
+        tw.yuaner.neoauth.util.MojangCircuitBreaker.tripManually(duration, msgMgr.get("admin.circuitbreaker_manual_reason"));
         source.sendSuccess(() -> Component.literal(msgMgr.get("admin.circuitbreaker_trip_success", duration)), true);
         return 1;
     }
@@ -736,7 +730,7 @@ public class NeoForgeEvents {
             source.sendSuccess(() -> Component.literal(msgMgr.get("admin.setenableregister_success", String.valueOf(enabled))), true);
             return 1;
         } else {
-            source.sendFailure(Component.literal("§c設定儲存失敗，請檢查伺服器日誌！"));
+            source.sendFailure(Component.literal(msgMgr.get("admin.setenableregister_failed")));
             return 0;
         }
     }

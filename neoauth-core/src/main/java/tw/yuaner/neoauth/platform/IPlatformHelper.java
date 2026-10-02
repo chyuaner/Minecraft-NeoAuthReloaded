@@ -187,4 +187,24 @@ public interface IPlatformHelper {
     default String getServerHost(Object player) {
         return tw.yuaner.neoauth.util.ServerHostResolver.resolveServerHost(player);
     }
+
+    /**
+     * 取得玩家的連線通道方式 (例如: "TCP", "WebSocket", "WebSocket+CDN")。
+     *
+     * @param player 伺服器玩家物件 (ServerPlayer)
+     * @return 連線通道字串
+     */
+    default String getConnectionChannel(Object player) {
+        return "TCP";
+    }
+
+    /**
+     * 取得玩家連線經由之 CDN 邊緣節點代碼 (例如 "TPE", "HKG")。
+     *
+     * @param player 伺服器玩家物件 (ServerPlayer)
+     * @return CDN 機房代碼，直連時為 null
+     */
+    default String getCdnPop(Object player) {
+        return null;
+    }
 }

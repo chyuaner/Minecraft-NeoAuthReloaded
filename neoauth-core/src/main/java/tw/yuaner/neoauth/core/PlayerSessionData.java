@@ -20,6 +20,8 @@ public class PlayerSessionData {
     private volatile boolean neoauthVanished;
     private volatile boolean joinMessageBroadcasted;
     private volatile long loginLogId = -1;
+    private volatile String connectionChannel = "TCP";
+    private volatile String cdnPop = "";
 
     public PlayerSessionData(UUID uuid, String username, String ip, boolean isPremium, long loginTime, String email) {
         this.uuid = uuid;
@@ -98,5 +100,21 @@ public class PlayerSessionData {
 
     public void setLoginLogId(long loginLogId) {
         this.loginLogId = loginLogId;
+    }
+
+    public String getConnectionChannel() {
+        return connectionChannel != null ? connectionChannel : "TCP";
+    }
+
+    public void setConnectionChannel(String connectionChannel) {
+        this.connectionChannel = connectionChannel != null ? connectionChannel : "TCP";
+    }
+
+    public String getCdnPop() {
+        return cdnPop != null ? cdnPop : "";
+    }
+
+    public void setCdnPop(String cdnPop) {
+        this.cdnPop = cdnPop != null ? cdnPop : "";
     }
 }

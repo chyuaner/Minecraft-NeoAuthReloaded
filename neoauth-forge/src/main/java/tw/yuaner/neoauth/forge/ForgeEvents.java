@@ -850,6 +850,11 @@ public class ForgeEvents {
             }
 
             boolean autoLoggedIn = AuthLogic.handlePlayerJoin(uuid, username, Services.PLATFORM.getPlayerIp(player), isPremium);
+            tw.yuaner.neoauth.core.PlayerSessionData joinSession = AuthManager.getSession(uuid);
+            if (joinSession != null) {
+                joinSession.setConnectionChannel(Services.PLATFORM.getConnectionChannel(player));
+                joinSession.setCdnPop(Services.PLATFORM.getCdnPop(player));
+            }
             if (autoLoggedIn) {
                 // 已註冊之正版驗證玩家 或 非強制註冊模式下的訪客玩家：放行並登入
                 Services.PLATFORM.removeFreezeEffects(player);

@@ -18,13 +18,15 @@ header-footer:
       - ''
       # ---------------------------------------------------------
       # 以下為 NeoAuthReloaded 專屬變數的應用範例：
-      # %neoauth_login_type% : 顯示玩家的登入方式 (例如: 密碼登入, 離線免密, 正版驗證...等)
-      # %neoauth_ip_type%    : 顯示玩家的連線 IP 類型 (IPv4 / IPv6)
-      # %neoauth_login_time% : 顯示玩家的登入時間 (格式於 NeoAuth extensions.yml 中設定)
-      # %neoauth_email%      : 顯示玩家綁定的信箱 (若未設定則顯示對應提示)
-      # %neoauth_player%     : 顯示玩家名稱
+      # %neoauth_login_type%         : 顯示玩家的登入方式 (例如: 密碼登入, 離線免密, 正版驗證...等)
+      # %neoauth_connection_channel% : 顯示當前連線方式 (例如: TCP, WebSocket, WebSocket+CDN)
+      # %neoauth_cdn_pop%            : 顯示經由之 Cloudflare 邊緣機房代碼 (例如: TPE, HKG，直連則為空)
+      # %neoauth_ip_type%            : 顯示玩家的連線 IP 類型 (IPv4 / IPv6)
+      # %neoauth_login_time%         : 顯示玩家的登入時間 (格式於 NeoAuth extensions.yml 中設定)
+      # %neoauth_email%              : 顯示玩家綁定的信箱 (若未設定則顯示對應提示)
+      # %neoauth_player%             : 顯示玩家名稱
       # ---------------------------------------------------------
-      - '&7狀態: %neoauth_login_type% &7[%neoauth_ip_type%] &7| &7登入時間: &e%neoauth_login_time%'
+      - '&7%neoauth_login_type% &7[%neoauth_connection_channel%][%neoauth_ip_type%] &7| &7登入時間: &e%neoauth_login_time%'
       - '&7UUID: &e%uuid% &7'
       - '&7帳號信箱: &f%neoauth_email% &7'
       - ''

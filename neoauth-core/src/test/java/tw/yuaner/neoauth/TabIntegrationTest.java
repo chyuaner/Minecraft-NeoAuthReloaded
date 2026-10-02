@@ -143,6 +143,31 @@ public class TabIntegrationTest {
     }
 
     @Test
+    @DisplayName("測試 TabIntegration 連線通道與 CDN 機房變數計算 (%neoauth_connection_channel%, %neoauth_cdn_pop%)")
+    public void testTabIntegrationConnectionChannelAndCdnPop() {
+        // 預設為 TCP, cdn_pop 為空
+        PlayerSessionData session = AuthManager.createSession(testUuid, testUsername, "127.0.0.1", false);
+        assertEquals("TCP", TabIntegration.getConnectionChannel(testUuid));
+        assertEquals("", TabIntegration.getCdnPop(testUuid));
+
+        // 設定為 WebSocket 直連
+        session.setConnectionChannel("WebSocket");
+        session.setCdnPop(null);
+        assertEquals("WebSocket", TabIntegration.getConnectionChannel(testUuid));
+        assertEquals("", TabIntegration.getCdnPop(testUuid));
+
+        // 設定為 WebSocket+CDN (TPE)
+        session.setConnectionChannel("WebSocket+CDN");
+        session.setCdnPop("TPE");
+        assertEquals("WebSocket+CDN", TabIntegration.getConnectionChannel(testUuid));
+        assertEquals("TPE", TabIntegration.getCdnPop(testUuid));
+
+        // null UUID 容錯
+        assertEquals("TCP", TabIntegration.getConnectionChannel(null));
+        assertEquals("", TabIntegration.getCdnPop(null));
+    }
+
+    @Test
     @DisplayName("測試 NeoAuthConfig 解析 tab 設定 (enabled 與 dateFormat)")
     public void testNeoAuthConfigTabSettings() {
         Map<String, Object> map = new HashMap<>();

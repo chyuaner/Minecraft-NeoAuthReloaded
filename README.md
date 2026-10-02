@@ -336,6 +336,8 @@ NeoAuthReloaded 支援直接向 **[TAB by NEZNAMY](https://github.com/NEZNAMY/TA
 | 變數名稱 | 類型 | 說明 | 範例輸出 |
 | :--- | :--- | :--- | :--- |
 | `%neoauth_login_type%` | 玩家 | 顯示玩家目前的登入方式 | `§aMojang 正版`、`§e密碼登入`、`§7未登入` |
+| `%neoauth_connection_channel%` | 玩家 | 顯示玩家當前的連線協定通道與是否有走 CDN | `TCP`、`WebSocket`、`WebSocket+CDN`（含 zstd 為 `+zstd`） |
+| `%neoauth_cdn_pop%` | 玩家 | 顯示經由之 Cloudflare 邊緣節點機房代碼 | `TPE`、`HKG`、`NRT`（原生直連時為空字串） |
 | `%neoauth_ip_type%` | 玩家 | 顯示玩家目前連線之網路協定版本 | `§dIPv6`、`§7IPv4`、`§7未知` |
 | `%neoauth_login_time%` | 玩家 | 顯示玩家當前登入伺服器的時間戳 | `2026-09-17 16:30:00`（未登入為 `-`） |
 | `%neoauth_email%` | 玩家 | 顯示玩家綁定之電子信箱 | `player@example.com`（未綁定為 `§7未綁定`） |

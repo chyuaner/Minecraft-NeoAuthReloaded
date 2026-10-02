@@ -104,7 +104,15 @@ public class TabIntegration {
             registerPlayerPlaceholder.invoke(placeholderManager, "%neoauth_ip_type%", 1000,
                     (Function<Object, Object>) tabPlayer -> getIpType(extractPlayerUuid(tabPlayer)));
 
-            // 3. %neoauth_login_time% (每 1000ms 刷新)
+            // 3. %neoauth_connection_channel% (每 1000ms 刷新)
+            registerPlayerPlaceholder.invoke(placeholderManager, "%neoauth_connection_channel%", 1000,
+                    (Function<Object, Object>) tabPlayer -> getConnectionChannel(extractPlayerUuid(tabPlayer)));
+
+            // 4. %neoauth_cdn_pop% (每 1000ms 刷新)
+            registerPlayerPlaceholder.invoke(placeholderManager, "%neoauth_cdn_pop%", 1000,
+                    (Function<Object, Object>) tabPlayer -> getCdnPop(extractPlayerUuid(tabPlayer)));
+
+            // 5. %neoauth_login_time% (每 1000ms 刷新)
             registerPlayerPlaceholder.invoke(placeholderManager, "%neoauth_login_time%", 1000,
                     (Function<Object, Object>) tabPlayer -> getLoginTime(extractPlayerUuid(tabPlayer)));
 
@@ -271,6 +279,34 @@ public class TabIntegration {
             return msgMgr.get("tab.ip_type_unknown");
         }
         return session.isIpv6() ? msgMgr.get("tab.ip_type_ipv6") : msgMgr.get("tab.ip_type_ipv4");
+    }
+
+    /**
+     * 計算 %neoauth_connection_channel% 顯示文字 (TCP / WebSocket / WebSocket+CDN)。
+     */
+    public static String getConnectionChannel(UUID uuid) {
+        if (uuid == null) {
+            return "TCP";
+        }
+        PlayerSessionData session = AuthManager.getSession(uuid);
+        if (session != null && session.getConnectionChannel() != null && !session.getConnectionChannel().isBlank()) {
+            return session.getConnectionChannel();
+        }
+        return "TCP";
+    }
+
+    /**
+     * 計算 %neoauth_cdn_pop% 顯示文字 (例如: TPE, HKG，直連則為空字串)。
+     */
+    public static String getCdnPop(UUID uuid) {
+        if (uuid == null) {
+            return "";
+        }
+        PlayerSessionData session = AuthManager.getSession(uuid);
+        if (session != null && session.getCdnPop() != null) {
+            return session.getCdnPop();
+        }
+        return "";
     }
 
     /**

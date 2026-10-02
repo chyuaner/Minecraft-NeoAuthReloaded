@@ -278,9 +278,28 @@ public class ForgePlatformHelper implements IPlatformHelper {
                 tw.yuaner.neoauth.core.PlayerSessionData session = tw.yuaner.neoauth.AuthManager.getSession(player.getUUID());
                 if (session != null) {
                     session.setLoginLogId(logId);
+                    session.setConnectionChannel(connectionChannel);
+                    session.setCdnPop(cdnPop);
                 }
             }
         }
+    }
+
+    @Override
+    public String getConnectionChannel(Object playerObj) {
+        if (playerObj instanceof ServerPlayer player) {
+            return resolveConnectionChannel(player);
+        }
+        return "TCP";
+    }
+
+    @Override
+    public String getCdnPop(Object playerObj) {
+        if (playerObj instanceof ServerPlayer player) {
+            Object connObj = player.connection != null ? player.connection.connection : null;
+            return tw.yuaner.neoauth.util.WebSocketIpResolver.extractWsCdnPop(connObj);
+        }
+        return null;
     }
 
     @Override

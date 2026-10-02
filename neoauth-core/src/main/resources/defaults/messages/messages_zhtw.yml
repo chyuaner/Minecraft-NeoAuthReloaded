@@ -99,9 +99,9 @@ help:
 
 tab:
   login_type_premium: "&aMojang 正版"
-  login_type_password: "&e密碼登入"
+  login_type_password: "&b密碼登入"
   login_type_unlogged: "&7未登入"
-  ip_type_ipv4: "&7IPv4"
+  ip_type_ipv4: "&3IPv4"
   ip_type_ipv6: "&dIPv6"
   ip_type_unknown: "&7未知"
   email_none: "&7未綁定"

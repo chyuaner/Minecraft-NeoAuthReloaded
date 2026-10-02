@@ -99,7 +99,7 @@ tab:
   login_type_premium: "&aMojang/Premium"
   login_type_password: "&ePassword"
   login_type_unlogged: "&7Not Logged In"
-  ip_type_ipv4: "&7IPv4"
+  ip_type_ipv4: "&3IPv4"
   ip_type_ipv6: "&dIPv6"
   ip_type_unknown: "&7Unknown"
   email_none: "&7None"

@@ -105,7 +105,7 @@ public class TabIntegrationTest {
     public void testTabIntegrationIpType() {
         // IPv4
         AuthManager.createSession(testUuid, testUsername, "192.168.0.1", false);
-        assertEquals("§7IPv4", TabIntegration.getIpType(testUuid));
+        assertEquals("§3IPv4", TabIntegration.getIpType(testUuid));
 
         // IPv6
         AuthManager.createSession(testUuid, testUsername, "2400:cb00:2048:1::c629:d7a2", false);

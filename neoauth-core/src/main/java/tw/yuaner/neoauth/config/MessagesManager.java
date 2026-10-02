@@ -127,9 +127,9 @@ public class MessagesManager {
             case "general.reload_failed" -> "§c重新載入 NeoAuth 設定檔失敗：%s";
             case "general.no_permission" -> "§c您沒有權限執行此指令！";
             case "tab.login_type_premium" -> "§aMojang 正版";
-            case "tab.login_type_password" -> "§e密碼登入";
+            case "tab.login_type_password" -> "§b密碼登入";
             case "tab.login_type_unlogged" -> "§7未登入";
-            case "tab.ip_type_ipv4" -> "§7IPv4";
+            case "tab.ip_type_ipv4" -> "§3IPv4";
             case "tab.ip_type_ipv6" -> "§dIPv6";
             case "tab.ip_type_unknown" -> "§7未知";
             case "tab.email_none" -> "§7未綁定";

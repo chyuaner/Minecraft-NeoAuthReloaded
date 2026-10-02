@@ -147,23 +147,43 @@ public class TabIntegrationTest {
     public void testTabIntegrationConnectionChannelAndCdnPop() {
         // 預設為 TCP, cdn_pop 為空
         PlayerSessionData session = AuthManager.createSession(testUuid, testUsername, "127.0.0.1", false);
-        assertEquals("TCP", TabIntegration.getConnectionChannel(testUuid));
+        assertEquals("§aTCP", TabIntegration.getConnectionChannel(testUuid));
         assertEquals("", TabIntegration.getCdnPop(testUuid));
 
         // 設定為 WebSocket 直連
         session.setConnectionChannel("WebSocket");
         session.setCdnPop(null);
-        assertEquals("WebSocket", TabIntegration.getConnectionChannel(testUuid));
+        assertEquals("§bWebSocket", TabIntegration.getConnectionChannel(testUuid));
         assertEquals("", TabIntegration.getCdnPop(testUuid));
+
+        // 設定為 WebSocket+CDN (無 PoP)
+        session.setConnectionChannel("WebSocket+CDN");
+        session.setCdnPop(null);
+        assertEquals("§6WebSocket+CDN", TabIntegration.getConnectionChannel(testUuid));
 
         // 設定為 WebSocket+CDN (TPE)
         session.setConnectionChannel("WebSocket+CDN");
         session.setCdnPop("TPE");
-        assertEquals("WebSocket+CDN", TabIntegration.getConnectionChannel(testUuid));
+        assertEquals("§6WebSocket+CDN(TPE)", TabIntegration.getConnectionChannel(testUuid));
         assertEquals("TPE", TabIntegration.getCdnPop(testUuid));
 
+        // 設定為 WebSocket+CDN (TPE) 含壓縮
+        session.setConnectionChannel("WebSocket+CDN+zstd");
+        session.setCdnPop("TPE");
+        assertEquals("§6WebSocket+CDN(TPE)+zstd", TabIntegration.getConnectionChannel(testUuid));
+
+        // 設定為 TCP+zstdnet (應整組為綠色)
+        session.setConnectionChannel("TCP+zstdnet");
+        session.setCdnPop(null);
+        assertEquals("§aTCP+zstdnet", TabIntegration.getConnectionChannel(testUuid));
+
+        // 設定為完全例外情況 (應整組為灰色)
+        session.setConnectionChannel("QUIC");
+        session.setCdnPop(null);
+        assertEquals("§7QUIC", TabIntegration.getConnectionChannel(testUuid));
+
         // null UUID 容錯
-        assertEquals("TCP", TabIntegration.getConnectionChannel(null));
+        assertEquals("§aTCP", TabIntegration.getConnectionChannel(null));
         assertEquals("", TabIntegration.getCdnPop(null));
     }
 

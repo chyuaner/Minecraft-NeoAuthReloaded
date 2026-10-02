@@ -103,3 +103,6 @@ tab:
   ip_type_ipv6: "&dIPv6"
   ip_type_unknown: "&7Unknown"
   email_none: "&7None"
+  conn_channel_tcp: "&aTCP"
+  conn_channel_ws: "&bWebSocket"
+  conn_channel_ws_cdn: "&6WebSocket+CDN"

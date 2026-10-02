@@ -133,6 +133,9 @@ public class MessagesManager {
             case "tab.ip_type_ipv6" -> "§dIPv6";
             case "tab.ip_type_unknown" -> "§7未知";
             case "tab.email_none" -> "§7未綁定";
+            case "tab.conn_channel_tcp" -> "§aTCP";
+            case "tab.conn_channel_ws" -> "§bWebSocket";
+            case "tab.conn_channel_ws_cdn" -> "§6WebSocket+CDN";
             default -> "§7[" + key + "]";
         };
     }

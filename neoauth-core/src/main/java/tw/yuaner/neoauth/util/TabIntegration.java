@@ -116,11 +116,11 @@ public class TabIntegration {
             registerPlayerPlaceholder.invoke(placeholderManager, "%neoauth_login_time%", 1000,
                     (Function<Object, Object>) tabPlayer -> getLoginTime(extractPlayerUuid(tabPlayer)));
 
-            // 4. %neoauth_email% (每 1000ms 刷新)
+            // 6. %neoauth_email% (每 1000ms 刷新)
             registerPlayerPlaceholder.invoke(placeholderManager, "%neoauth_email%", 1000,
                     (Function<Object, Object>) tabPlayer -> getEmail(extractPlayerUuid(tabPlayer)));
 
-            // 5. %neoauth_player% (靜態不刷新 -1)
+            // 7. %neoauth_player% (靜態不刷新 -1)
             registerPlayerPlaceholder.invoke(placeholderManager, "%neoauth_player%", -1,
                     (Function<Object, Object>) tabPlayer -> getPlayerName(tabPlayer));
 
@@ -283,16 +283,48 @@ public class TabIntegration {
 
     /**
      * 計算 %neoauth_connection_channel% 顯示文字 (TCP / WebSocket / WebSocket+CDN)。
+     * 依優先順序賦予整組顏色：
+     * 1. 含有 CDN 字樣 -> 整組呈現金色 (§6)
+     * 2. 含有 WebSocket 字樣 -> 整組呈現水藍色 (§b)
+     * 3. 含有 TCP 字樣 (如 TCP, TCP+zstdnet 等) -> 整組呈現綠色 (§a)
+     * 4. 完全例外 -> 整組呈現灰色 (§7)
      */
     public static String getConnectionChannel(UUID uuid) {
         if (uuid == null) {
-            return "TCP";
+            return "§aTCP";
         }
         PlayerSessionData session = AuthManager.getSession(uuid);
-        if (session != null && session.getConnectionChannel() != null && !session.getConnectionChannel().isBlank()) {
-            return session.getConnectionChannel();
+        String rawChannel = (session != null && session.getConnectionChannel() != null && !session.getConnectionChannel().isBlank())
+                ? session.getConnectionChannel().trim()
+                : "TCP";
+        String pop = (session != null && session.getCdnPop() != null) ? session.getCdnPop().trim() : "";
+
+        // 依據原始 rawChannel 動態組合文字
+        String channelText;
+        if (rawChannel.contains("CDN")) {
+            if (!pop.isEmpty()) {
+                if (rawChannel.contains("+zstd")) {
+                    channelText = rawChannel.replace("+zstd", "(" + pop + ")+zstd");
+                } else {
+                    channelText = rawChannel + "(" + pop + ")";
+                }
+            } else {
+                channelText = rawChannel;
+            }
+        } else {
+            channelText = rawChannel;
         }
-        return "TCP";
+
+        // 顏色優先規則判定
+        if (channelText.contains("CDN")) {
+            return "§6" + channelText;
+        } else if (channelText.contains("WebSocket")) {
+            return "§b" + channelText;
+        } else if (channelText.contains("TCP")) {
+            return "§a" + channelText;
+        } else {
+            return "§7" + channelText;
+        }
     }
 
     /**

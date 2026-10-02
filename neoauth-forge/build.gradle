@@ -36,7 +36,13 @@ legacyForge {
     }
 }
 
+mixin {
+    add sourceSets.main, 'neoauth-forge.refmap.json'
+    config 'neoauth-forge.mixins.json'
+}
+
 dependencies {
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
     implementation project(':neoauth-core')
 
     // MariaDB JDBC 驅動

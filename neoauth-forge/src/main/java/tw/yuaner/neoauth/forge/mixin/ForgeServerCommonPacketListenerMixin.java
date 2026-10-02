@@ -28,7 +28,7 @@ public abstract class ForgeServerCommonPacketListenerMixin {
     /**
      * 抑制由 NeoAuth 靜默控制 Vanishmod 時產生的 ActionBar 訊息。
      */
-    @Inject(method = "send(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketSendListener;)V", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "send(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketSendListener;)V", at = @At("HEAD"), cancellable = true, require = 0)
     private void neoauth$suppressVanishActionBar(Packet<?> packet, PacketSendListener listener, CallbackInfo ci) {
         if (packet instanceof ClientboundSetActionBarTextPacket) {
             ServerPlayer player = neoauth$getPlayer();

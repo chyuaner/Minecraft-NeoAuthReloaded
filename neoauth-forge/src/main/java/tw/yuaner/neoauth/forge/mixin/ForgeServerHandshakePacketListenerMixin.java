@@ -21,7 +21,7 @@ public class ForgeServerHandshakePacketListenerMixin {
     @Final
     private Connection connection;
 
-    @Inject(method = "handleIntention", at = @At("HEAD"))
+    @Inject(method = "handleIntention", at = @At("HEAD"), require = 0)
     private void onHandleIntention(ClientIntentionPacket packet, CallbackInfo ci) {
         ServerHostResolver.recordHandshake(this.connection, packet);
     }

@@ -487,19 +487,24 @@ public class FallbackDataSource implements IDataSource {
     }
 
     @Override
-    public long insertLoginLog(String username, String uuid, String ip, String serverHost, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
+    public long insertLoginLog(String username, String uuid, String ip, String cdnPop, String serverHost, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
         if (isPrimaryHealthy()) {
             try {
-                long logId = primary.insertLoginLog(username, uuid, ip, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
+                long logId = primary.insertLoginLog(username, uuid, ip, cdnPop, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
                 markPrimarySuccess();
                 return logId;
             } catch (Exception e) {
                 markPrimaryFailure();
                 LOGGER.warn("NeoAuth: 主資料庫連線異常，將登入日誌降級寫入本地 SQLite 備援資料庫: {}", username);
-                return fallback.insertLoginLog(username, uuid, ip, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
+                return fallback.insertLoginLog(username, uuid, ip, cdnPop, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
             }
         }
-        return fallback.insertLoginLog(username, uuid, ip, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
+        return fallback.insertLoginLog(username, uuid, ip, cdnPop, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
+    }
+
+    @Override
+    public long insertLoginLog(String username, String uuid, String ip, String serverHost, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
+        return insertLoginLog(username, uuid, ip, null, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
     }
 
     @Override
@@ -550,6 +555,7 @@ public class FallbackDataSource implements IDataSource {
         String colLoginMethod = logCfg.getColumnLoginMethod();
         String colConnChannel = logCfg.getColumnConnectionChannel();
         String colUuid = logCfg.getColumnUuid();
+        String colCdnPop = logCfg.getColumnCdnPop();
         String colServerHost = logCfg.getColumnServerHost();
         String colServerIp = logCfg.getColumnServerIp();
         String colServerPort = logCfg.getColumnServerPort();
@@ -558,7 +564,7 @@ public class FallbackDataSource implements IDataSource {
 
         String selectSql = "SELECT " + colId + ", " + colServerName + ", " + colName + ", " + colLoginTime + ", "
                 + colLogoutTime + ", " + colIp + ", " + colLoginMethod + ", " + colConnChannel + ", " + colUuid + ", "
-                + colServerHost + ", " + colServerIp + ", " + colServerPort + ", " + colLoginOp + ", " + colLogoutOp + " FROM " + table;
+                + colCdnPop + ", " + colServerHost + ", " + colServerIp + ", " + colServerPort + ", " + colLoginOp + ", " + colLogoutOp + " FROM " + table;
 
         boolean isPrimarySqlite = primary instanceof SqliteDataSource;
         String insertSql;
@@ -566,14 +572,14 @@ public class FallbackDataSource implements IDataSource {
             insertSql = "INSERT OR REPLACE INTO " + table + " ("
                     + colId + ", " + colServerName + ", " + colName + ", " + colLoginTime + ", "
                     + colLogoutTime + ", " + colIp + ", " + colLoginMethod + ", " + colConnChannel + ", " + colUuid + ", "
-                    + colServerHost + ", " + colServerIp + ", " + colServerPort + ", " + colLoginOp + ", " + colLogoutOp + ") "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    + colCdnPop + ", " + colServerHost + ", " + colServerIp + ", " + colServerPort + ", " + colLoginOp + ", " + colLogoutOp + ") "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         } else {
             insertSql = "INSERT INTO " + table + " ("
                     + colId + ", " + colServerName + ", " + colName + ", " + colLoginTime + ", "
                     + colLogoutTime + ", " + colIp + ", " + colLoginMethod + ", " + colConnChannel + ", " + colUuid + ", "
-                    + colServerHost + ", " + colServerIp + ", " + colServerPort + ", " + colLoginOp + ", " + colLogoutOp + ") "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                    + colCdnPop + ", " + colServerHost + ", " + colServerIp + ", " + colServerPort + ", " + colLoginOp + ", " + colLogoutOp + ") "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                     + "ON DUPLICATE KEY UPDATE " + colLogoutTime + " = VALUES(" + colLogoutTime + "), "
                     + colLogoutOp + " = VALUES(" + colLogoutOp + ")";
         }
@@ -604,13 +610,14 @@ public class FallbackDataSource implements IDataSource {
                     pStmt.setString(9, rs.getString(9));
                     pStmt.setString(10, rs.getString(10));
                     pStmt.setString(11, rs.getString(11));
-                    pStmt.setInt(12, rs.getInt(12));
+                    pStmt.setString(12, rs.getString(12));
                     pStmt.setInt(13, rs.getInt(13));
-                    int logoutOp = rs.getInt(14);
+                    pStmt.setInt(14, rs.getInt(14));
+                    int logoutOp = rs.getInt(15);
                     if (rs.wasNull()) {
-                        pStmt.setNull(14, java.sql.Types.INTEGER);
+                        pStmt.setNull(15, java.sql.Types.INTEGER);
                     } else {
-                        pStmt.setInt(14, logoutOp);
+                        pStmt.setInt(15, logoutOp);
                     }
 
                     pStmt.addBatch();

@@ -167,9 +167,16 @@ public interface IDataSource {
      * @param loginOpLevel      登入時之最高 OP 等級
      * @return 該筆日誌在資料庫的 id (流水號)，若失敗則傳回 -1
      */
-     default long insertLoginLog(String username, String uuid, String ip, String serverHost, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
-         return -1;
-     }
+    default long insertLoginLog(String username, String uuid, String ip, String cdnPop, String serverHost, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
+        return insertLoginLog(username, uuid, ip, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
+    }
+
+    /**
+     * 新增一筆登入日誌。
+     */
+    default long insertLoginLog(String username, String uuid, String ip, String serverHost, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
+        return -1;
+    }
 
     /**
      * 新增一筆登入日誌 (舊版相容方法)。

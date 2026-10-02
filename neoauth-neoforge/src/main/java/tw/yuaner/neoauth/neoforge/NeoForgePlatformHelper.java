@@ -267,12 +267,14 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
                 String serverIp = resolveServerIp(player);
                 int serverPort = resolveServerPort(player);
                 String connectionChannel = resolveConnectionChannel(player);
+                Object connObj = player.connection != null ? player.connection.getConnection() : null;
+                String cdnPop = tw.yuaner.neoauth.util.WebSocketIpResolver.extractWsCdnPop(connObj);
                 net.minecraft.server.MinecraftServer server = player.getServer();
                 int fallbackPort = server != null ? server.getPort() : 25565;
                 String serverName = tw.yuaner.neoauth.util.ServerIdentifier.resolve(logCfg.getServerName(), serverPort > 0 ? serverPort : fallbackPort);
                 int loginOpLevel = calculatePlayerOpLevel(player);
                 
-                long logId = tw.yuaner.neoauth.DatabaseManager.insertLoginLog(username, uuidStr, ip, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
+                long logId = tw.yuaner.neoauth.DatabaseManager.insertLoginLog(username, uuidStr, ip, cdnPop, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
                 tw.yuaner.neoauth.core.PlayerSessionData session = tw.yuaner.neoauth.AuthManager.getSession(player.getUUID());
                 if (session != null) {
                     session.setLoginLogId(logId);
@@ -401,10 +403,15 @@ public class NeoForgePlatformHelper implements IPlatformHelper {
                         isWebSocket = true;
                     }
 
-                    if (isWebSocket && isZstd) {
-                        return "WebSocket+zstd";
+                    boolean isCdn = false;
+                    if (isWebSocket && wsmcAllowed) {
+                        isCdn = tw.yuaner.neoauth.util.WebSocketIpResolver.isWsCdn(player.connection.getConnection());
+                    }
+
+                    if (isWebSocket && isCdn) {
+                        return isZstd ? "WebSocket+CDN+zstd" : "WebSocket+CDN";
                     } else if (isWebSocket) {
-                        return "WebSocket";
+                        return isZstd ? "WebSocket+zstd" : "WebSocket";
                     } else if (isZstd) {
                         return "TCP+zstd";
                     } else {

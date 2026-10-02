@@ -136,6 +136,7 @@ public class SqliteDataSource extends AbstractSqlDataSource {
         String colLoginMethod = logCfg != null ? logCfg.getColumnLoginMethod() : "login_method";
         String colConnChannel = logCfg != null ? logCfg.getColumnConnectionChannel() : "connection_channel";
         String colUuid = logCfg != null ? logCfg.getColumnUuid() : "uuid";
+        String colCdnPop = logCfg != null ? logCfg.getColumnCdnPop() : "cdn_pop";
         String colServerHost = logCfg != null ? logCfg.getColumnServerHost() : "server_host";
         String colServerIp = logCfg != null ? logCfg.getColumnServerIp() : "server_ip";
         String colServerPort = logCfg != null ? logCfg.getColumnServerPort() : "server_port";
@@ -152,6 +153,7 @@ public class SqliteDataSource extends AbstractSqlDataSource {
                 colLoginMethod + " VARCHAR(50), " +
                 colConnChannel + " VARCHAR(50), " +
                 colUuid + " VARCHAR(36), " +
+                colCdnPop + " VARCHAR(16), " +
                 colServerHost + " VARCHAR(255), " +
                 colServerIp + " VARCHAR(45), " +
                 colServerPort + " INTEGER, " +

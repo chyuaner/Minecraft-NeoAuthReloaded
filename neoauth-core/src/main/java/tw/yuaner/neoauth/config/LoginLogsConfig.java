@@ -19,6 +19,7 @@ public class LoginLogsConfig {
     private String columnLoginTime = "login_time";
     private String columnLogoutTime = "logout_time";
     private String columnIp = "ip";
+    private String columnCdnPop = "cdn_pop";
     private String columnServerHost = "server_host";
     private String columnServerIp = "server_ip";
     private String columnServerPort = "server_port";
@@ -70,6 +71,7 @@ public class LoginLogsConfig {
             config.columnLoginTime = getColumn(root, colMap, config.columnLoginTime, "mySQLColumnLoginTime", "login_time", "loginTime");
             config.columnLogoutTime = getColumn(root, colMap, config.columnLogoutTime, "mySQLColumnLogoutTime", "logout_time", "logoutTime");
             config.columnIp = getColumn(root, colMap, config.columnIp, "mySQLColumnIp", "ip");
+            config.columnCdnPop = getColumn(root, colMap, config.columnCdnPop, "mySQLColumnCdnPop", "cdn_pop", "cdnPop");
             config.columnServerHost = getColumn(root, colMap, config.columnServerHost, "mySQLColumnServerHost", "server_host", "serverHost", "host");
             config.columnServerIp = getColumn(root, colMap, config.columnServerIp, "mySQLColumnServerIp", "server_ip", "serverIp");
             config.columnServerPort = getColumn(root, colMap, config.columnServerPort, "mySQLColumnServerPort", "server_port", "serverPort", "port");
@@ -182,6 +184,14 @@ public class LoginLogsConfig {
 
     public void setColumnIp(String columnIp) {
         this.columnIp = columnIp;
+    }
+
+    public String getColumnCdnPop() {
+        return columnCdnPop;
+    }
+
+    public void setColumnCdnPop(String columnCdnPop) {
+        this.columnCdnPop = columnCdnPop;
     }
 
     public String getColumnServerHost() {

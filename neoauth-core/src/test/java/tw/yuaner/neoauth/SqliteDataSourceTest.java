@@ -472,6 +472,7 @@ public class SqliteDataSourceTest {
         logMap.put("enabled", true);
         logMap.put("server_name", "AUTO");
         logMap.put("mySQLTablename", "custom_login_logs");
+        logMap.put("mySQLColumnCdnPop", "cdn_pop_node");
         logMap.put("mySQLColumnServerHost", "srv_host");
         logMap.put("mySQLColumnServerIp", "srv_ip");
         logMap.put("mySQLColumnServerPort", "srv_port");
@@ -488,7 +489,7 @@ public class SqliteDataSourceTest {
         dataSource.connect(ConfigManager.getInstance().getConfig());
 
         String uuid = UUID.randomUUID().toString();
-        long logId = DatabaseManager.insertLoginLog("testplayer", uuid, "127.0.0.1", "mc8.yuaner.tw", "192.168.1.1", 25565, "Password", "WebSocket+zstd", "test-server", 1);
+        long logId = DatabaseManager.insertLoginLog("testplayer", uuid, "127.0.0.1", "TPE", "mc8.yuaner.tw", "192.168.1.1", 25565, "Password", "WebSocket+CDN", "test-server", 1);
         assertTrue(logId > 0, "登入日誌新增應成功並取得流水號 ID");
 
         // 更新登出資訊
@@ -502,11 +503,12 @@ public class SqliteDataSourceTest {
             assertEquals("testplayer", rs.getString("username"));
             assertEquals(uuid, rs.getString("uuid"));
             assertEquals("127.0.0.1", rs.getString("ip"));
+            assertEquals("TPE", rs.getString("cdn_pop_node"));
             assertEquals("mc8.yuaner.tw", rs.getString("srv_host"));
             assertEquals("192.168.1.1", rs.getString("srv_ip"));
             assertEquals(25565, rs.getInt("srv_port"));
             assertEquals("Password", rs.getString("login_method"));
-            assertEquals("WebSocket+zstd", rs.getString("conn_channel"));
+            assertEquals("WebSocket+CDN", rs.getString("conn_channel"));
             assertEquals("test-server", rs.getString("server_name"));
             assertEquals(1, rs.getInt("login_op"));
             assertEquals(3, rs.getInt("logout_op"));
@@ -540,7 +542,7 @@ public class SqliteDataSourceTest {
 
         // 1. 主庫未連線時，寫入應自動降級至 fallback SQLite
         String uuid = UUID.randomUUID().toString();
-        long logId = proxyDs.insertLoginLog("fallback_player", uuid, "127.0.0.1", "wss://mc8-ws.yuaner.tw", "127.0.0.1", 25565, "Password", "TCP", "srv", 0);
+        long logId = proxyDs.insertLoginLog("fallback_player", uuid, "127.0.0.1", "HKG", "wss://mc8-ws.yuaner.tw", "127.0.0.1", 25565, "Password", "WebSocket+CDN", "srv", 0);
         assertTrue(logId > 0, "降級至 SQLite 時仍應成功寫入登入日誌並取得 Snowflake ID");
 
         proxyDs.updateLoginLogLogout(logId, 2);
@@ -558,6 +560,8 @@ public class SqliteDataSourceTest {
             assertTrue(rs.next(), "日誌應成功回補至 Primary 資料庫");
             assertEquals("fallback_player", rs.getString("username"));
             assertEquals(uuid, rs.getString("uuid"));
+            assertEquals("HKG", rs.getString("cdn_pop"));
+            assertEquals("WebSocket+CDN", rs.getString("connection_channel"));
             assertEquals("wss://mc8-ws.yuaner.tw", rs.getString("server_host"));
             assertEquals(2, rs.getInt("logout_op_level"));
         }

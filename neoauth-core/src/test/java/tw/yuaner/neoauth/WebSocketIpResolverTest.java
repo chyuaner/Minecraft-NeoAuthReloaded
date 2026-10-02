@@ -154,4 +154,32 @@ public class WebSocketIpResolverTest {
             configField.set(ConfigManager.getInstance(), original);
         }
     }
+
+    @Test
+    public void testExtractWsCdnPopAndIsWsCdn() {
+        // 1. Cloudflare 節點 (TPE)
+        FakeHttpRequest cfReq = new FakeHttpRequest();
+        cfReq.headers().set("CF-Ray", "8fa39102c918a204-TPE");
+        FakeConnection cfConn = new FakeConnection(cfReq);
+        assertEquals("TPE", WebSocketIpResolver.extractWsCdnPop(cfConn));
+        assertTrue(WebSocketIpResolver.isWsCdn(cfConn));
+
+        // 2. Cloudflare 節點 (HKG)
+        FakeHttpRequest cfHkgReq = new FakeHttpRequest();
+        cfHkgReq.headers().set("CF-Ray", "91b45281a021c321-HKG");
+        FakeConnection cfHkgConn = new FakeConnection(cfHkgReq);
+        assertEquals("HKG", WebSocketIpResolver.extractWsCdnPop(cfHkgConn));
+        assertTrue(WebSocketIpResolver.isWsCdn(cfHkgConn));
+
+        // 3. 直連 WebSocket (無 CDN 標頭)
+        FakeHttpRequest directReq = new FakeHttpRequest();
+        directReq.headers().set("User-Agent", "WSMC-Client/1.0");
+        FakeConnection directConn = new FakeConnection(directReq);
+        assertNull(WebSocketIpResolver.extractWsCdnPop(directConn));
+        assertFalse(WebSocketIpResolver.isWsCdn(directConn));
+
+        // 4. 空連線或 null
+        assertNull(WebSocketIpResolver.extractWsCdnPop(null));
+        assertFalse(WebSocketIpResolver.isWsCdn(null));
+    }
 }

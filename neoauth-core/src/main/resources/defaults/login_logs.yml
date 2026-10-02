@@ -52,6 +52,8 @@ login_logs:
   mySQLColumnConnectionChannel: "connection_channel"
   # 玩家 UUID 欄位 (Column for storing players uuid)
   mySQLColumnUuid: "uuid"
+  # CDN 邊緣機房節點代碼欄位 (Column for storing CDN edge PoP datacenter code, e.g. TPE, HKG, NRT)
+  mySQLColumnCdnPop: "cdn_pop"
   # 伺服器端連線 Host/網址 欄位 (Column for storing server host/domain name, e.g. mc8.yuaner.tw, wss://mc8-ws.yuaner.tw)
   mySQLColumnServerHost: "server_host"
   # 伺服器端連線 IP 欄位 (Column for storing server's local/listening IP, useful for floating IP & IPv4/IPv6 dual-stack)

@@ -78,12 +78,12 @@ public class WebSocketIpResolver {
     }
 
     /**
-     * 從 Connection 實例中提取 WebSocket 握手請求並解析真實客戶端 IP。
+     * 從 Connection 實例中提取 WebSocket 握手請求之 HttpHeaders 物件。
      *
      * @param connection net.minecraft.network.Connection 物件
-     * @return 解析到的真實 IP，若未找到或非 WebSocket 連線則回傳 null
+     * @return HttpHeaders 實例，若非 WebSocket 連線或未啟用整合則回傳 null
      */
-    public static String extractWsClientIp(Object connection) {
+    public static Object extractWsHeaders(Object connection) {
         if (connection == null) {
             return null;
         }
@@ -114,11 +114,26 @@ public class WebSocketIpResolver {
                 return null;
             }
 
-            Object headers = headersMethod.invoke(req);
-            if (headers == null) {
-                return null;
-            }
+            return headersMethod.invoke(req);
+        } catch (Throwable e) {
+            LOGGER.debug("NeoAuth: 從 WebSocket 握手請求提取 Headers 時發生異常: {}", e.getMessage());
+            return null;
+        }
+    }
 
+    /**
+     * 從 Connection 實例中提取 WebSocket 握手請求並解析真實客戶端 IP。
+     *
+     * @param connection net.minecraft.network.Connection 物件
+     * @return 解析到的真實 IP，若未找到或非 WebSocket 連線則回傳 null
+     */
+    public static String extractWsClientIp(Object connection) {
+        Object headers = extractWsHeaders(connection);
+        if (headers == null) {
+            return null;
+        }
+
+        try {
             // 取得 HttpHeaders.get(String) 方法
             Method getHeaderMethod = findHeaderGetMethod(headers.getClass());
             if (getHeaderMethod == null) {
@@ -151,6 +166,76 @@ public class WebSocketIpResolver {
         }
 
         return null;
+    }
+
+    /**
+     * 從 WebSocket 握手請求中解析 Cloudflare 等 CDN 的邊緣機房節點代碼 (PoP)。
+     *
+     * @param connection net.minecraft.network.Connection 物件
+     * @return 3 至 4 碼大寫機房代碼 (如 "TPE", "HKG", "NRT")，若無走 CDN 或未取得機房代號則回傳 null
+     */
+    public static String extractWsCdnPop(Object connection) {
+        Object headers = extractWsHeaders(connection);
+        if (headers == null) {
+            return null;
+        }
+
+        try {
+            Method getHeaderMethod = findHeaderGetMethod(headers.getClass());
+            if (getHeaderMethod == null) {
+                return null;
+            }
+
+            // Cloudflare CF-Ray 標頭格式範例: "8fa39102c918a204-TPE"
+            Object rayVal = getHeaderMethod.invoke(headers, "CF-Ray");
+            if (rayVal != null) {
+                String cfRay = rayVal.toString().trim();
+                int dashIndex = cfRay.lastIndexOf('-');
+                if (dashIndex != -1 && dashIndex < cfRay.length() - 1) {
+                    String pop = cfRay.substring(dashIndex + 1).trim().toUpperCase();
+                    if (pop.matches("^[A-Z0-9]{3,4}$")) {
+                        return pop;
+                    }
+                }
+            }
+        } catch (Throwable e) {
+            LOGGER.debug("NeoAuth: 從 WebSocket 握手資訊解析 CDN PoP 時發生異常: {}", e.getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * 判斷該 WebSocket 連線是否經由 CDN 反向代理轉發 (如 Cloudflare)。
+     *
+     * @param connection net.minecraft.network.Connection 物件
+     * @return 若經由 CDN 則回傳 true，否則回傳 false
+     */
+    public static boolean isWsCdn(Object connection) {
+        Object headers = extractWsHeaders(connection);
+        if (headers == null) {
+            return false;
+        }
+
+        try {
+            Method getHeaderMethod = findHeaderGetMethod(headers.getClass());
+            if (getHeaderMethod == null) {
+                return false;
+            }
+
+            if (getHeaderMethod.invoke(headers, "CF-Ray") != null) {
+                return true;
+            }
+            if (getHeaderMethod.invoke(headers, "cdn-loop") != null) {
+                return true;
+            }
+            if (getHeaderMethod.invoke(headers, "CF-Connecting-IP") != null) {
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+
+        return false;
     }
 
     /**

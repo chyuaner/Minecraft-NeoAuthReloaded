@@ -181,6 +181,7 @@ public abstract class AbstractSqlDataSource implements IDataSource {
         String colServerIp = logCfg.getColumnServerIp();
         String colServerPort = logCfg.getColumnServerPort();
         String colConnChannel = logCfg.getColumnConnectionChannel();
+        String colCdnPop = logCfg.getColumnCdnPop();
         String colLoginOp = logCfg.getColumnLoginOpLevel();
         String colLogoutOp = logCfg.getColumnLogoutOpLevel();
         
@@ -192,6 +193,7 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             boolean hasServerIp = false;
             boolean hasServerPort = false;
             boolean hasConnChannel = false;
+            boolean hasCdnPop = false;
             boolean hasLoginOpLevel = false;
             boolean hasLogoutOpLevel = false;
 
@@ -201,6 +203,8 @@ public abstract class AbstractSqlDataSource implements IDataSource {
                     String col = rs.getString("COLUMN_NAME");
                     if (colServerHost.equalsIgnoreCase(col)) {
                         hasServerHost = true;
+                    } else if (colCdnPop.equalsIgnoreCase(col)) {
+                        hasCdnPop = true;
                     } else if (colServerIp.equalsIgnoreCase(col)) {
                         hasServerIp = true;
                     } else if (colServerPort.equalsIgnoreCase(col)) {
@@ -221,8 +225,15 @@ public abstract class AbstractSqlDataSource implements IDataSource {
                     LOGGER.info("NeoAuth: {} 資料表已自動擴充 {} 欄位。", table, colConnChannel);
                 }
             }
+            if (!hasCdnPop) {
+                String sql = getAddColumnSql(table, colCdnPop, "VARCHAR(16)", colUuid);
+                try (PreparedStatement alter = conn.prepareStatement(sql)) {
+                    alter.execute();
+                    LOGGER.info("NeoAuth: {} 資料表已自動擴充 {} 欄位。", table, colCdnPop);
+                }
+            }
             if (!hasServerHost) {
-                String sql = getAddColumnSql(table, colServerHost, "VARCHAR(255)", colUuid);
+                String sql = getAddColumnSql(table, colServerHost, "VARCHAR(255)", colCdnPop);
                 try (PreparedStatement alter = conn.prepareStatement(sql)) {
                     alter.execute();
                     LOGGER.info("NeoAuth: {} 資料表已自動擴充 {} 欄位。", table, colServerHost);
@@ -681,13 +692,14 @@ public abstract class AbstractSqlDataSource implements IDataSource {
     }
 
     @Override
-    public long insertLoginLog(String username, String uuid, String ip, String serverHost, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
+    public long insertLoginLog(String username, String uuid, String ip, String cdnPop, String serverHost, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
         if (!isConnected()) return -1;
         tw.yuaner.neoauth.config.LoginLogsConfig logCfg = ConfigManager.getInstance().getLoginLogsConfig();
         String table = logCfg != null ? logCfg.getTableName() : "login_logs";
         String colId = logCfg != null ? logCfg.getColumnId() : "id";
         String colName = logCfg != null ? logCfg.getColumnName() : "username";
         String colUuid = logCfg != null ? logCfg.getColumnUuid() : "uuid";
+        String colCdnPop = logCfg != null ? logCfg.getColumnCdnPop() : "cdn_pop";
         String colLoginTime = logCfg != null ? logCfg.getColumnLoginTime() : "login_time";
         String colIp = logCfg != null ? logCfg.getColumnIp() : "ip";
         String colServerHost = logCfg != null ? logCfg.getColumnServerHost() : "server_host";
@@ -708,10 +720,11 @@ public abstract class AbstractSqlDataSource implements IDataSource {
                 colLoginMethod + ", " +
                 colConnChannel + ", " +
                 colUuid + ", " +
+                colCdnPop + ", " +
                 colServerHost + ", " +
                 colServerIp + ", " +
                 colServerPort + ", " +
-                colLoginOp + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                colLoginOp + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setLong(1, id);
@@ -722,16 +735,22 @@ public abstract class AbstractSqlDataSource implements IDataSource {
             stmt.setString(6, loginMethod);
             stmt.setString(7, connectionChannel);
             stmt.setString(8, uuid);
-            stmt.setString(9, serverHost != null && !serverHost.isBlank() ? serverHost : (serverIp != null ? serverIp : "127.0.0.1"));
-            stmt.setString(10, serverIp);
-            stmt.setInt(11, serverPort);
-            stmt.setInt(12, loginOpLevel);
+            stmt.setString(9, cdnPop);
+            stmt.setString(10, serverHost != null && !serverHost.isBlank() ? serverHost : (serverIp != null ? serverIp : "127.0.0.1"));
+            stmt.setString(11, serverIp);
+            stmt.setInt(12, serverPort);
+            stmt.setInt(13, loginOpLevel);
             stmt.executeUpdate();
             return id;
         } catch (SQLException e) {
             LOGGER.error("NeoAuth: 新增登入日誌時發生資料庫錯誤", e);
         }
         return -1;
+    }
+
+    @Override
+    public long insertLoginLog(String username, String uuid, String ip, String serverHost, String serverIp, int serverPort, String loginMethod, String connectionChannel, String serverName, int loginOpLevel) {
+        return insertLoginLog(username, uuid, ip, null, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
     }
 
     @Override

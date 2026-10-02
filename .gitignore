@@ -27,3 +27,6 @@ Thumbs.db
 *.log
 *.zip
 *.tar.gz
+
+# Local smoke test configuration
+client-smoke-test.local.json

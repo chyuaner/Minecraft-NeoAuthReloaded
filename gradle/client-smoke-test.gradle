@@ -1,0 +1,63 @@
+// ==============================================================================
+// 自備客戶端自動化冒煙測試 Gradle 整合腳本 (Client Smoke Test Integration)
+// 支援 Forge 1.20.1 與 NeoForge 1.21.1 等多版本實例的自動部署與啟動驗證
+// ==============================================================================
+
+def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
+def pythonCmd = isWindows ? 'python' : 'python3'
+def runnerScript = file("${rootProject.projectDir}/scripts/client_smoke_runner.py")
+
+// 1. 完整冒煙測試 (全部已啟用的實例)
+tasks.register('smokeTestClients', Exec) {
+    group = 'verification'
+    description = '執行所有已啟用自備客戶端的啟動冒煙測試 (會先自動建置最新 JAR)'
+    dependsOn 'collectJars'
+
+    workingDir rootProject.projectDir
+    def execArgs = [pythonCmd, runnerScript.absolutePath]
+    if (project.hasProperty('headless') && project.property('headless') == 'true') {
+        execArgs.add('--headless')
+    }
+    if (project.hasProperty('instance')) {
+        execArgs.addAll(['--instance', project.property('instance')])
+    }
+    commandLine execArgs
+}
+
+// 2. 僅測試 1.20.1 Forge 客戶端
+tasks.register('smokeTestForgeClient', Exec) {
+    group = 'verification'
+    description = '僅執行 Forge 1.20.1 客戶端啟動冒煙測試'
+    dependsOn 'collectJars'
+
+    workingDir rootProject.projectDir
+    def execArgs = [pythonCmd, runnerScript.absolutePath, '--instance', 'forge-1.20.1']
+    if (project.hasProperty('headless') && project.property('headless') == 'true') {
+        execArgs.add('--headless')
+    }
+    commandLine execArgs
+}
+
+// 3. 僅測試 1.21.1 NeoForge 客戶端
+tasks.register('smokeTestNeoForgeClient', Exec) {
+    group = 'verification'
+    description = '僅執行 NeoForge 1.21.1 客戶端啟動冒煙測試'
+    dependsOn 'collectJars'
+
+    workingDir rootProject.projectDir
+    def execArgs = [pythonCmd, runnerScript.absolutePath, '--instance', 'neoforge-1.21.1']
+    if (project.hasProperty('headless') && project.property('headless') == 'true') {
+        execArgs.add('--headless')
+    }
+    commandLine execArgs
+}
+
+// 4. 僅部署 JAR 至各客戶端 (不啟動遊戲，方便手動測試)
+tasks.register('deployClientsOnly', Exec) {
+    group = 'verification'
+    description = '僅編譯並將最新 JAR 部署覆寫至各客戶端 mods 目錄，不自動啟動遊戲'
+    dependsOn 'collectJars'
+
+    workingDir rootProject.projectDir
+    commandLine pythonCmd, runnerScript.absolutePath, '--deploy-only'
+}

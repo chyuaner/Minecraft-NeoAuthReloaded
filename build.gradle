@@ -56,3 +56,6 @@ tasks.register('collectJars', Copy) {
 }
 
 build.dependsOn 'collectJars'
+
+// 載入自備客戶端自動化冒煙測試任務 (可攜式整合)
+apply from: 'gradle/client-smoke-test.gradle'

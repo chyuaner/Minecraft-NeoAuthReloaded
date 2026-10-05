@@ -1,0 +1,17 @@
+# ----------------------------------------------------
+# NeoAuth - Blessing Skin Integration Configuration
+# ----------------------------------------------------
+# 這個設定檔用來控制是否要將正版玩家的官方皮膚，自動同步推播到你的 Blessing Skin 網站。
+# 前提：你的 Blessing Skin 必須安裝並啟用 "premium-skin-sync" 外掛。
+
+# 是否啟用自動同步皮膚到 Blessing Skin？
+# 若啟用，當玩家以正版身分登入伺服器時，NeoAuth 會將其從 Mojang 獲取到的皮膚資料傳送至網站。
+enabled: false
+
+# 你的 Blessing Skin API 端點 (包含外掛的路徑)
+# 預設路徑通常為 https://你的網址/api/premium-skin-sync
+apiUrl: "https://skin.example.com/api/premium-skin-sync"
+
+# 安全驗證金鑰
+# 必須與 Blessing Skin 網站上設定的 PREMIUM_SYNC_TOKEN 完全一致，以防止惡意偽造請求。
+token: "your-secret-token"

@@ -111,6 +111,9 @@ public class AuthManager {
             if (name != null && !name.isBlank()) {
                 NAME_TO_TEXTURES.put(name.toLowerCase(), prop);
             }
+            
+            // 觸發 Blessing Skin 同步
+            tw.yuaner.neoauth.util.BlessingSkinHook.syncSkinAsync(uuid, name, value);
         }
     }
 

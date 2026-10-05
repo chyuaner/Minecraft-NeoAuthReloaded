@@ -34,6 +34,7 @@ public class ConfigManager {
     private MessagesManager messagesManager = new MessagesManager();
     private HelpManager helpManager = new HelpManager();
     private LoginLogsConfig loginLogsConfig = new LoginLogsConfig();
+    private BsConfig bsConfig = new BsConfig();
     private String welcomeMessage = "";
 
     private ConfigManager() {}
@@ -80,6 +81,10 @@ public class ConfigManager {
             // 2.5. 載入並合併 login_logs.yml
             Map<String, Object> loginLogsData = loadAndMergeYaml("login_logs.yml", configDir.resolve("login_logs.yml"));
             this.loginLogsConfig = LoginLogsConfig.fromMap(loginLogsData);
+
+            // 2.8. 載入並合併 bs.yml
+            Map<String, Object> bsData = loadAndMergeYaml("bs.yml", configDir.resolve("bs.yml"));
+            this.bsConfig = BsConfig.fromMap(bsData);
 
             // 3. 載入 welcome.txt
             Path welcomePath = configDir.resolve("welcome.txt");
@@ -345,6 +350,10 @@ public class ConfigManager {
 
     public void setLoginLogsConfig(LoginLogsConfig loginLogsConfig) {
         this.loginLogsConfig = loginLogsConfig;
+    }
+
+    public BsConfig getBsConfig() {
+        return bsConfig;
     }
 
     public String getWelcomeMessage() {

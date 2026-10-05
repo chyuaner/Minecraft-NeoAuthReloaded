@@ -118,6 +118,30 @@ public abstract class NeoForgeServerLoginMixin {
         String username = packet.name();
         if (username == null || username.isBlank()) return;
 
+        // 【防惡意踢人 (Anti-Kick) 與幽靈連線處理】
+        tw.yuaner.neoauth.core.PlayerSessionData existingSession = AuthManager.getSessionByName(username);
+        if (existingSession != null && AuthManager.isLoggedIn(existingSession.getUuid())) {
+            if (this.connection != null) {
+                SocketAddress remoteAddress = this.connection.getRemoteAddress();
+                String incomingIp = null;
+                if (remoteAddress instanceof InetSocketAddress isa) {
+                    incomingIp = isa.getAddress().getHostAddress();
+                }
+
+                // 如果 IP 不符合，視為惡意踢人，直接阻擋
+                if (incomingIp != null && !incomingIp.equals(existingSession.getIp())) {
+                    neoauth$LOGGER.warn("NeoAuth: 阻擋來自 {} 的連線，因為玩家 {} 已經在線上且已登入 (Anti-Kick)。", incomingIp, username);
+                    net.minecraft.network.chat.Component reason = net.minecraft.network.chat.Component.literal("§c該帳號目前已經在線上遊玩中！\n§7若這是你的帳號，請稍候再試。");
+                    this.connection.send(new net.minecraft.network.protocol.login.ClientboundLoginDisconnectPacket(reason));
+                    this.connection.disconnect(reason);
+                    ci.cancel();
+                    return;
+                } else {
+                    neoauth$LOGGER.info("NeoAuth: 允許來自 {} 的連線，玩家 {} 疑似為幽靈連線重連。", incomingIp, username);
+                }
+            }
+        }
+
         UUID uuid = packet.profileId();
         UUID offlineUuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + username).getBytes(StandardCharsets.UTF_8));
 

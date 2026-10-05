@@ -862,6 +862,8 @@ public class ForgeEvents {
             String username = player.getGameProfile().getName();
             UUID uuid = player.getUUID();
 
+            LOGGER.info("NeoAuth: 玩家 {} ({}) 已進入伺服器 (Joined the game)，連線 IP: [{}]", username, uuid, Services.PLATFORM.getPlayerIp(player));
+
             // 確保玩家實體 GameProfile 注入已驗證的 Textures (防護並免除 SkinRestorer 重複抓取)
             tw.yuaner.neoauth.util.TextureProperty tex = AuthManager.getVerifiedTextures(uuid);
             if (tex == null && username != null) {

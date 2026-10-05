@@ -130,7 +130,7 @@ public abstract class NeoForgeServerLoginMixin {
 
                 // 如果 IP 不符合，視為惡意踢人，直接阻擋
                 if (incomingIp != null && !incomingIp.equals(existingSession.getIp())) {
-                    neoauth$LOGGER.warn("NeoAuth: 阻擋來自 {} 的連線，因為玩家 {} 已經在線上且已登入 (Anti-Kick)。", incomingIp, username);
+                    neoauth$LOGGER.warn("NeoAuth: 阻擋來自新 IP [{}] 的連線，因為玩家 {} (原連線 IP: [{}]) 已經在線上且已登入 (Anti-Kick)。", incomingIp, username, existingSession.getIp());
                     net.minecraft.network.chat.Component reason = net.minecraft.network.chat.Component.literal("§c該帳號目前已經在線上遊玩中！\n§7若這是你的帳號，請稍候再試。");
                     this.connection.send(new net.minecraft.network.protocol.login.ClientboundLoginDisconnectPacket(reason));
                     this.connection.disconnect(reason);

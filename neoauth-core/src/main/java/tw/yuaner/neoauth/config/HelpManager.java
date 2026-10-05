@@ -83,10 +83,15 @@ public class HelpManager {
      * 取得管理員指令幫助清單文字行（包含 header 與所有管理員指令）。
      */
     public List<String> getAdminHelpLines() {
+        boolean logsEnabled = ConfigManager.getInstance().getLoginLogsConfig() != null
+                && ConfigManager.getInstance().getLoginLogsConfig().isEnabled();
         List<String> lines = new ArrayList<>();
         lines.add(adminHeader);
         for (Map.Entry<String, CommandHelpEntry> entry : commands.entrySet()) {
             if (entry.getKey().startsWith("neoauth_") || entry.getKey().startsWith("neoauth")) {
+                if (!logsEnabled && (entry.getKey().equals("neoauth_logs") || entry.getKey().equals("neoauth_log"))) {
+                    continue;
+                }
                 lines.add(entry.getValue().formatLine());
             }
         }
@@ -157,5 +162,7 @@ public class HelpManager {
         commands.put("neoauth_cb_status", new CommandHelpEntry("/neoauth cb [status]", "檢查 Mojang 驗證熔斷狀態（管理員）。"));
         commands.put("neoauth_cb_reset", new CommandHelpEntry("/neoauth cb reset", "手動重置 Mojang 驗證熔斷狀態（管理員）。"));
         commands.put("neoauth_cb_trip", new CommandHelpEntry("/neoauth cb trip [秒數]", "手動觸發 Mojang 驗證熔斷狀態（管理員）。"));
+        commands.put("loginlogs", new CommandHelpEntry("/loginlogs [時間範圍/筆數]", "查詢自己近期登入紀錄、遊玩時間與當時 IP 位址。"));
+        commands.put("neoauth_logs", new CommandHelpEntry("/neoauth logs [玩家] [時間範圍/筆數]", "查詢指定玩家或自己的歷史登入紀錄（管理員）。"));
     }
 }

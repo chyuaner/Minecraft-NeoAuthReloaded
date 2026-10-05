@@ -514,6 +514,20 @@ public class SqliteDataSourceTest {
             assertEquals(3, rs.getInt("logout_op"));
             assertTrue(rs.getLong("logout_time") > 0, "登出時間應被更新");
         }
+
+        // 測試 getLoginLogs 查詢
+        java.util.List<tw.yuaner.neoauth.database.LoginLogRecord> queriedLogs = dataSource.getLoginLogs("testplayer", 0, 10);
+        assertFalse(queriedLogs.isEmpty(), "應能透過 getLoginLogs 查出日誌紀錄");
+        assertEquals("testplayer", queriedLogs.get(0).getUsername());
+        assertEquals("127.0.0.1", queriedLogs.get(0).getIp());
+        assertTrue(queriedLogs.get(0).hasValidLogout(), "應具有合法登出時間");
+
+        // 測試依 serverName 篩選 (匹配本伺服器 vs 篩選掉其他伺服器)
+        java.util.List<tw.yuaner.neoauth.database.LoginLogRecord> matchedLogs = dataSource.getLoginLogs("test-server", "testplayer", 0, 10);
+        assertEquals(1, matchedLogs.size(), "依 test-server 查詢應能查得 1 筆紀錄");
+
+        java.util.List<tw.yuaner.neoauth.database.LoginLogRecord> otherServerLogs = dataSource.getLoginLogs("other-server", "testplayer", 0, 10);
+        assertTrue(otherServerLogs.isEmpty(), "查詢 other-server 應查無 test-server 之紀錄 (被 WHERE 篩選掉)");
     }
 
     @Test

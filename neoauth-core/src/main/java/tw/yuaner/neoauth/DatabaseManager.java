@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import tw.yuaner.neoauth.config.IAuthConfig;
 import tw.yuaner.neoauth.database.FallbackDataSource;
 import tw.yuaner.neoauth.database.IDataSource;
+import tw.yuaner.neoauth.database.LoginLogRecord;
 import tw.yuaner.neoauth.database.MySqlDataSource;
 import tw.yuaner.neoauth.database.PlayerAuthData;
 import tw.yuaner.neoauth.database.SqliteDataSource;
@@ -275,5 +276,30 @@ public class DatabaseManager {
         if (activeDataSource != null) {
             activeDataSource.syncLoginLogs();
         }
+    }
+
+    /**
+     * 依伺服器名稱、玩家名稱與時間範圍或筆數查詢登入日誌紀錄。
+     *
+     * @param serverName     伺服器識別名稱 (若為 null 則不限制伺服器)
+     * @param username       玩家名稱 (若為 null 則查詢全部玩家)
+     * @param sinceTimestamp 起始時間戳記 (毫秒，0 表示不限時間)
+     * @param limit          最大查詢筆數
+     * @return 登入日誌紀錄清單 (依登入時間降冪排序)
+     */
+    public static List<LoginLogRecord> getLoginLogs(String serverName, String username, long sinceTimestamp, int limit) {
+        return activeDataSource != null ? activeDataSource.getLoginLogs(serverName, username, sinceTimestamp, limit) : Collections.emptyList();
+    }
+
+    /**
+     * 依玩家名稱與時間範圍或筆數查詢當前伺服器的登入日誌紀錄。
+     *
+     * @param username       玩家名稱 (若為 null 則查詢全部玩家)
+     * @param sinceTimestamp 起始時間戳記 (毫秒，0 表示不限時間)
+     * @param limit          最大查詢筆數
+     * @return 登入日誌紀錄清單 (依登入時間降冪排序)
+     */
+    public static List<LoginLogRecord> getLoginLogs(String username, long sinceTimestamp, int limit) {
+        return getLoginLogs(tw.yuaner.neoauth.util.ServerIdentifier.getCurrentServerName(), username, sinceTimestamp, limit);
     }
 }

@@ -82,3 +82,9 @@ help:
     neoauth_cb_trip:
       usage: "/neoauth cb trip [秒數]"
       description: "手動觸發 Mojang 驗證熔斷狀態（管理員）。"
+    loginlogs:
+      usage: "/loginlogs [時間範圍/筆數]"
+      description: "查詢自己近期登入紀錄、遊玩時間與當時 IP 位址。"
+    neoauth_logs:
+      usage: "/neoauth logs [玩家] [時間範圍/筆數]"
+      description: "查詢指定玩家或自己的歷史登入紀錄（管理員）。"

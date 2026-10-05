@@ -271,7 +271,9 @@ public class ForgePlatformHelper implements IPlatformHelper {
                 String cdnPop = tw.yuaner.neoauth.util.WebSocketIpResolver.extractWsCdnPop(connObj);
                 MinecraftServer server = player.getServer();
                 int fallbackPort = server != null ? server.getPort() : 25565;
-                String serverName = tw.yuaner.neoauth.util.ServerIdentifier.resolve(logCfg.getServerName(), serverPort > 0 ? serverPort : fallbackPort);
+                int actualPort = serverPort > 0 ? serverPort : fallbackPort;
+                tw.yuaner.neoauth.util.ServerIdentifier.setServerPort(actualPort);
+                String serverName = tw.yuaner.neoauth.util.ServerIdentifier.resolve(logCfg.getServerName(), actualPort);
                 int loginOpLevel = calculatePlayerOpLevel(player);
                 
                 long logId = tw.yuaner.neoauth.DatabaseManager.insertLoginLog(username, uuidStr, ip, cdnPop, serverHost, serverIp, serverPort, loginMethod, connectionChannel, serverName, loginOpLevel);
@@ -283,6 +285,18 @@ public class ForgePlatformHelper implements IPlatformHelper {
                 }
             }
         }
+    }
+
+    @Override
+    public String getServerName(Object serverOrSource) {
+        MinecraftServer server = resolveServer(serverOrSource);
+        int port = server != null ? server.getPort() : 25565;
+        if (port > 0) {
+            tw.yuaner.neoauth.util.ServerIdentifier.setServerPort(port);
+        }
+        tw.yuaner.neoauth.config.LoginLogsConfig logCfg = tw.yuaner.neoauth.config.ConfigManager.getInstance().getLoginLogsConfig();
+        String configuredName = logCfg != null ? logCfg.getServerName() : "AUTO";
+        return tw.yuaner.neoauth.util.ServerIdentifier.resolve(configuredName, port);
     }
 
     @Override

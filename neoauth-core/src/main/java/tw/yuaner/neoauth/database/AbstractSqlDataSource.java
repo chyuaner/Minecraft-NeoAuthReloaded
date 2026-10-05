@@ -783,4 +783,118 @@ public abstract class AbstractSqlDataSource implements IDataSource {
     public void updateLoginLogLogoutTime(long logId) {
         updateLoginLogLogout(logId, 0);
     }
+
+    @Override
+    public List<LoginLogRecord> getLoginLogs(String serverName, String username, long sinceTimestamp, int limit) {
+        if (!isConnected()) {
+            return new ArrayList<>();
+        }
+        tw.yuaner.neoauth.config.LoginLogsConfig logCfg = ConfigManager.getInstance().getLoginLogsConfig();
+        String table = logCfg != null ? logCfg.getTableName() : "login_logs";
+        String colId = logCfg != null ? logCfg.getColumnId() : "id";
+        String colServerName = logCfg != null ? logCfg.getColumnServerName() : "server_name";
+        String colName = logCfg != null ? logCfg.getColumnName() : "username";
+        String colLoginTime = logCfg != null ? logCfg.getColumnLoginTime() : "login_time";
+        String colLogoutTime = logCfg != null ? logCfg.getColumnLogoutTime() : "logout_time";
+        String colIp = logCfg != null ? logCfg.getColumnIp() : "ip";
+        String colLoginMethod = logCfg != null ? logCfg.getColumnLoginMethod() : "login_method";
+        String colConnChannel = logCfg != null ? logCfg.getColumnConnectionChannel() : "connection_channel";
+        String colUuid = logCfg != null ? logCfg.getColumnUuid() : "uuid";
+        String colCdnPop = logCfg != null ? logCfg.getColumnCdnPop() : "cdn_pop";
+        String colServerHost = logCfg != null ? logCfg.getColumnServerHost() : "server_host";
+        String colServerIp = logCfg != null ? logCfg.getColumnServerIp() : "server_ip";
+        String colServerPort = logCfg != null ? logCfg.getColumnServerPort() : "server_port";
+        String colLoginOp = logCfg != null ? logCfg.getColumnLoginOpLevel() : "login_op_level";
+        String colLogoutOp = logCfg != null ? logCfg.getColumnLogoutOpLevel() : "logout_op_level";
+
+        int max = limit > 0 ? limit : 6;
+        StringBuilder sql = new StringBuilder("SELECT * FROM ").append(table);
+        List<Object> params = new ArrayList<>();
+        boolean hasWhere = false;
+
+        if (serverName != null && !serverName.isBlank() && !serverName.equals("*") && !serverName.equalsIgnoreCase("all")) {
+            sql.append(" WHERE LOWER(").append(colServerName).append(") = LOWER(?)");
+            params.add(serverName);
+            hasWhere = true;
+        }
+
+        if (username != null && !username.isBlank() && !username.equals("*") && !username.equalsIgnoreCase("all")) {
+            sql.append(hasWhere ? " AND " : " WHERE ");
+            sql.append("LOWER(").append(colName).append(") = LOWER(?)");
+            params.add(username);
+            hasWhere = true;
+        }
+
+        if (sinceTimestamp > 0) {
+            sql.append(hasWhere ? " AND " : " WHERE ");
+            sql.append(colLoginTime).append(" >= ?");
+            params.add(sinceTimestamp);
+            hasWhere = true;
+        }
+
+        sql.append(" ORDER BY ").append(colLoginTime).append(" DESC LIMIT ?");
+        params.add(max);
+
+        List<LoginLogRecord> results = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                Object p = params.get(i);
+                if (p instanceof String s) {
+                    stmt.setString(i + 1, s);
+                } else if (p instanceof Long l) {
+                    stmt.setLong(i + 1, l);
+                } else if (p instanceof Integer integer) {
+                    stmt.setInt(i + 1, integer);
+                }
+            }
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    long id = rs.getLong(colId);
+                    String srvName = getSafeString(rs, colServerName);
+                    String uName = getSafeString(rs, colName);
+                    long lTime = rs.getLong(colLoginTime);
+                    long oTimeVal = rs.getLong(colLogoutTime);
+                    Long oTime = rs.wasNull() ? null : oTimeVal;
+                    String ipVal = getSafeString(rs, colIp);
+                    String method = getSafeString(rs, colLoginMethod);
+                    String connCh = getSafeString(rs, colConnChannel);
+                    String uuid = getSafeString(rs, colUuid);
+                    String cdn = getSafeString(rs, colCdnPop);
+                    String host = getSafeString(rs, colServerHost);
+                    String sIp = getSafeString(rs, colServerIp);
+                    int sPort = getSafeInt(rs, colServerPort);
+                    int lOp = getSafeInt(rs, colLoginOp);
+                    int oOp = getSafeInt(rs, colLogoutOp);
+
+                    results.add(new LoginLogRecord(id, srvName, uName, uuid, lTime, oTime, ipVal, method, connCh, cdn, host, sIp, sPort, lOp, oOp));
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.error("NeoAuth: 查詢登入日誌失敗", e);
+            throw new DatabaseConnectionException("NeoAuth: 查詢登入日誌失敗", e);
+        }
+        return results;
+    }
+
+    @Override
+    public List<LoginLogRecord> getLoginLogs(String username, long sinceTimestamp, int limit) {
+        return getLoginLogs(null, username, sinceTimestamp, limit);
+    }
+
+    private String getSafeString(ResultSet rs, String colName) {
+        try {
+            return rs.getString(colName);
+        } catch (SQLException ignored) {
+            return null;
+        }
+    }
+
+    private int getSafeInt(ResultSet rs, String colName) {
+        try {
+            return rs.getInt(colName);
+        } catch (SQLException ignored) {
+            return 0;
+        }
+    }
 }

@@ -82,3 +82,9 @@ help:
     neoauth_cb_trip:
       usage: "/neoauth cb trip [seconds]"
       description: "Trip circuit breaker manually (Admin)."
+    loginlogs:
+      usage: "/loginlogs [range/count]"
+      description: "Query your login history, play time, and IP address."
+    neoauth_logs:
+      usage: "/neoauth logs [player] [range/count]"
+      description: "Query login history for a specific player or yourself (Admin)."

@@ -10,6 +10,35 @@ import java.nio.file.Paths;
  */
 public class ServerIdentifier {
 
+    private static volatile int currentServerPort = 0;
+
+    /**
+     * 設定目前伺服器監聽之連接埠 (由伺服器啟動或玩家連線時記錄)。
+     *
+     * @param port 伺服器通訊埠
+     */
+    public static void setServerPort(int port) {
+        if (port > 0) {
+            currentServerPort = port;
+        }
+    }
+
+    /**
+     * 取得目前伺服器監聽之連接埠。
+     */
+    public static int getServerPort() {
+        return currentServerPort;
+    }
+
+    /**
+     * 依據設定檔與當前伺服器埠號取得當前伺服器之識別名稱。
+     */
+    public static String getCurrentServerName() {
+        tw.yuaner.neoauth.config.LoginLogsConfig logCfg = tw.yuaner.neoauth.config.ConfigManager.getInstance().getLoginLogsConfig();
+        String configuredName = logCfg != null ? logCfg.getServerName() : "AUTO";
+        return resolve(configuredName, currentServerPort);
+    }
+
     /**
      * 解析當前伺服器的識別名稱。
      *
@@ -18,6 +47,9 @@ public class ServerIdentifier {
      * @return 最終解析出的伺服器識別名稱
      */
     public static String resolve(String configuredName, int port) {
+        if (port <= 0 && currentServerPort > 0) {
+            port = currentServerPort;
+        }
         String dirName = getDirectoryName();
         String hostName = getHostName();
         String portStr = port > 0 ? String.valueOf(port) : "";

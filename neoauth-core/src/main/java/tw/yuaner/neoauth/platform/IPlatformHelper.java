@@ -207,4 +207,14 @@ public interface IPlatformHelper {
     default String getCdnPop(Object player) {
         return null;
     }
+
+    /**
+     * 取得當前伺服器之識別名稱 (用於日誌記錄與多服共庫之過濾)。
+     *
+     * @param serverOrSource 伺服器物件或指令來源
+     * @return 伺服器識別名稱
+     */
+    default String getServerName(Object serverOrSource) {
+        return tw.yuaner.neoauth.util.ServerIdentifier.getCurrentServerName();
+    }
 }

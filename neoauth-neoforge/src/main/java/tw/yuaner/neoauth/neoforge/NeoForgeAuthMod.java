@@ -41,6 +41,9 @@ public class NeoForgeAuthMod {
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
         LOGGER.info("NeoAuth: 伺服器啟動中，正在初始化資料庫連線...");
+        if (event.getServer() != null) {
+            tw.yuaner.neoauth.util.ServerIdentifier.setServerPort(event.getServer().getPort());
+        }
         DatabaseManager.init();
         tw.yuaner.neoauth.util.TabIntegration.register();
     }

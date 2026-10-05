@@ -109,8 +109,20 @@ public class NeoForgeEvents {
                         .then(Commands.argument("email", StringArgumentType.greedyString())
                                 .executes(context -> executeEmailSet(context.getSource(), ArgumentTokenizer.cleanArgument(StringArgumentType.getString(context, "email")))))));
 
+        boolean isLogsEnabled = ConfigManager.getInstance().getLoginLogsConfig() != null
+                && ConfigManager.getInstance().getLoginLogsConfig().isEnabled();
+
+        // 註冊 /loginlogs (當且僅當啟用登入日誌功能時才註冊)
+        if (isLogsEnabled) {
+            dispatcher.register(Commands.literal("loginlogs")
+                    .executes(context -> executeLoginLogs(context.getSource(), null))
+                    .then(Commands.argument("args", StringArgumentType.greedyString())
+                            .suggests((c, b) -> suggestLoginLogs(c.getSource(), b))
+                            .executes(context -> executeLoginLogs(context.getSource(), StringArgumentType.getString(context, "args")))));
+        }
+
         // 註冊 /neoauth 管理指令根節點
-        dispatcher.register(Commands.literal("neoauth")
+        var neoauth = Commands.literal("neoauth")
                 .requires(source -> source.hasPermission(2))
                 .executes(context -> executeAdminHelp(context.getSource(), null))
                 .then(Commands.literal("help")
@@ -209,7 +221,17 @@ public class NeoForgeEvents {
                                         .executes(context -> executeCircuitBreakerTrip(context.getSource(), IntegerArgumentType.getInteger(context, "seconds")))))
                         .then(Commands.literal("set")
                                 .then(Commands.argument("seconds", IntegerArgumentType.integer(1))
-                                        .executes(context -> executeCircuitBreakerTrip(context.getSource(), IntegerArgumentType.getInteger(context, "seconds")))))));
+                                        .executes(context -> executeCircuitBreakerTrip(context.getSource(), IntegerArgumentType.getInteger(context, "seconds"))))));
+
+        if (isLogsEnabled) {
+            neoauth.then(Commands.literal("logs")
+                    .executes(context -> executeLoginLogs(context.getSource(), null))
+                    .then(Commands.argument("args", StringArgumentType.greedyString())
+                            .suggests((c, b) -> suggestLoginLogs(c.getSource(), b))
+                            .executes(context -> executeLoginLogs(context.getSource(), StringArgumentType.getString(context, "args")))));
+        }
+
+        dispatcher.register(neoauth);
     }
 
     private static int executeRegisterArgs(CommandSourceStack source, String rawArgs) {
@@ -675,6 +697,38 @@ public class NeoForgeEvents {
             source.sendSuccess(() -> Component.literal(msgMgr.get("admin.recent_item", data.getRealName(), timeStr, ipStr)), false);
         }
         return 1;
+    }
+
+    private static int executeLoginLogs(CommandSourceStack source, String rawArgs) {
+        if (source.getEntity() instanceof ServerPlayer player) {
+            if (!AuthManager.isLoggedIn(player.getUUID())) {
+                source.sendFailure(Component.literal(ConfigManager.getInstance().getMessagesManager().get("login.login_prompt")));
+                return 0;
+            }
+        }
+        String callerName = source.getEntity() instanceof ServerPlayer p ? p.getGameProfile().getName() : null;
+        boolean isAdmin = source.hasPermission(2);
+        String serverName = Services.PLATFORM.getServerName(source);
+        tw.yuaner.neoauth.core.LoginLogsService.QueryResult result = tw.yuaner.neoauth.core.LoginLogsService.handleCommand(callerName, isAdmin, rawArgs, serverName);
+        if (result.isSuccess()) {
+            for (String line : result.getLines()) {
+                source.sendSuccess(() -> Component.literal(line), false);
+            }
+            return 1;
+        } else {
+            for (String line : result.getLines()) {
+                source.sendFailure(Component.literal(line));
+            }
+            return 0;
+        }
+    }
+
+    private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestLoginLogs(CommandSourceStack source, com.mojang.brigadier.suggestion.SuggestionsBuilder builder) {
+        List<String> list = new ArrayList<>(tw.yuaner.neoauth.core.LoginLogsService.getSuggestions(source.hasPermission(2)));
+        if (source.hasPermission(2)) {
+            list.addAll(Services.PLATFORM.getOnlinePlayerNames(source));
+        }
+        return SharedSuggestionProvider.suggest(list, builder);
     }
 
     private static int executeAdminHelp(CommandSourceStack source, String query) {

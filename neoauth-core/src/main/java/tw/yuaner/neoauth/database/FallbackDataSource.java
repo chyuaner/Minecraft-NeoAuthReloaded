@@ -643,4 +643,25 @@ public class FallbackDataSource implements IDataSource {
             LOGGER.warn("NeoAuth: 回補登入日誌至主資料庫時發生異常 (稍後將自動重試)", e);
         }
     }
+
+    @Override
+    public List<LoginLogRecord> getLoginLogs(String serverName, String username, long sinceTimestamp, int limit) {
+        if (isPrimaryHealthy()) {
+            try {
+                List<LoginLogRecord> list = primary.getLoginLogs(serverName, username, sinceTimestamp, limit);
+                markPrimarySuccess();
+                return list;
+            } catch (DatabaseConnectionException e) {
+                markPrimaryFailure();
+                LOGGER.warn("NeoAuth: 主資料庫連線異常，啟用 SQLite 備援查詢登入紀錄: {} (伺服器: {})", username, serverName);
+                return fallback.getLoginLogs(serverName, username, sinceTimestamp, limit);
+            }
+        }
+        return fallback.getLoginLogs(serverName, username, sinceTimestamp, limit);
+    }
+
+    @Override
+    public List<LoginLogRecord> getLoginLogs(String username, long sinceTimestamp, int limit) {
+        return getLoginLogs(null, username, sinceTimestamp, limit);
+    }
 }

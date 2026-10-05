@@ -208,4 +208,29 @@ public interface IDataSource {
      */
     default void syncLoginLogs() {
     }
+
+    /**
+     * 依伺服器名稱、玩家名稱與時間範圍或筆數查詢登入日誌紀錄。
+     *
+     * @param serverName     伺服器識別名稱 (若為 null 則不限制伺服器)
+     * @param username       玩家名稱 (若為 null 則查詢全部玩家)
+     * @param sinceTimestamp 起始時間戳記 (毫秒，0 表示不限時間)
+     * @param limit          最大查詢筆數
+     * @return 登入日誌紀錄清單 (依登入時間降冪排序)
+     */
+    default List<LoginLogRecord> getLoginLogs(String serverName, String username, long sinceTimestamp, int limit) {
+        return java.util.Collections.emptyList();
+    }
+
+    /**
+     * 依玩家名稱與時間範圍或筆數查詢登入日誌紀錄 (不限伺服器相容方法)。
+     *
+     * @param username       玩家名稱 (若為 null 則查詢全部玩家)
+     * @param sinceTimestamp 起始時間戳記 (毫秒，0 表示不限時間)
+     * @param limit          最大查詢筆數
+     * @return 登入日誌紀錄清單 (依登入時間降冪排序)
+     */
+    default List<LoginLogRecord> getLoginLogs(String username, long sinceTimestamp, int limit) {
+        return getLoginLogs(null, username, sinceTimestamp, limit);
+    }
 }

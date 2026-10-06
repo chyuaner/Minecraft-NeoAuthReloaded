@@ -15,7 +15,7 @@
       "jarSourceDir": "build/libs",
       "jarPattern": "*forge-1.20.1-*.jar",
       "launchCommand": "fjordlauncher --launch Dev-120Forge",
-      "successPattern": "(Reloading ResourceManager|Sound engine started|MinecraftForge v.* Initialized)"
+      "successPattern": "(Sound engine started|Narrator library for .* initialized|Done \\([0-9\\.]+s\\)!)"
     },
     {
       "id": "neoforge-1.21.1",
@@ -26,7 +26,18 @@
       "jarSourceDir": "build/libs",
       "jarPattern": "*neoforge-1.21.1-*.jar",
       "launchCommand": "fjordlauncher --launch Dev-121NeoForge",
-      "successPattern": "(Reloading ResourceManager|Sound engine started|NeoForge Initialized)"
+      "successPattern": "(Sound engine started|Narrator library for .* initialized|Done \\([0-9\\.]+s\\)!)"
+    },
+    {
+      "id": "neoforge-1.21.1-server",
+      "name": "Dev-121NeoForge-Server",
+      "enabled": false,
+      "loader": "neoforge",
+      "minecraftDir": "/home/yuan/.local/share/FjordLauncher/instances/Dev-121NeoForge/minecraft",
+      "jarSourceDir": "build/libs",
+      "jarPattern": "*neoforge-1.21.1-*.jar",
+      "launchCommand": "./run.sh",
+      "successPattern": "Done \\([0-9\\.]+s\\)!"
     }
   ]
 }

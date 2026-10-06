@@ -17,11 +17,34 @@ import sys
 import time
 from pathlib import Path
 
-DEFAULT_SUCCESS_PATTERN = r"(Reloading ResourceManager|Sound engine started|Setting user:|MinecraftForge v.* Initialized|NeoForge Initialized)"
+DEFAULT_SUCCESS_PATTERN = (
+    r"(Sound engine started|"
+    r"Narrator library for .* initialized|"
+    r"Done \([0-9\.]+s\)!|"
+    r"Dedicated server took [0-9\.]+ seconds)"
+)
 DEFAULT_CRASH_PATTERN = (
-    r"(Crash report saved to:|Exception in thread \"main\"|Failed to start Minecraft|"
-    r"MixinApplyError|MixinTransformerError|A potential solution has been determined:|"
-    r"failed to load a valid ResourcePackInfo|Warning while loading mods)"
+    r"(Crash report saved to:|"
+    r"Exception in thread \"main\"|"
+    r"Failed to start Minecraft|"
+    r"MixinApplyError|MixinTransformerError|"
+    r"A potential solution has been determined:|"
+    r"failed to load a valid ResourcePackInfo|"
+    r"Warning while loading mods|"
+    r"Errors detected during load|"
+    r"has failed to load correctly|"
+    r"ModLoadingException|"
+    r"Failed to create mod instance|"
+    r"Missing or unsupported mandatory dependencies:|"
+    r"ModResolutionException|"
+    r"Error during pre-loading phase|"
+    r"Missing language |needs language provider |"
+    r"\[main/FATAL\]|\[Render thread/FATAL\]|\[Server thread/FATAL\]|"
+    r"Encountered an unexpected exception|"
+    r"Stopping server|"
+    r"Found [0-9]+ dependencies missing|"
+    r"Multiple problems were encountered|"
+    r"Mod file .* is not valid)"
 )
 
 
@@ -122,6 +145,9 @@ class SmokeTestRunner:
 
         mods_dir.mkdir(parents=True, exist_ok=True)
 
+        # 確保清理該實例先前殘留的進程
+        self._terminate_process(None, mc_dir, inst)
+
         # 2. 部署 JAR
         deployed_jar = self._deploy_jar(inst, mods_dir)
         if not deployed_jar:
@@ -172,6 +198,38 @@ class SmokeTestRunner:
         print(f"📦 已複製最新 JAR 至: mods/{dest_jar.name}")
         return dest_jar
 
+    def _is_mc_java_running(self, mc_dir: Path, inst: dict = None) -> bool:
+        """檢查系統中是否正有屬於該實例的 Java 進程在運行 (透過 cwd 與 cmdline 雙重匹配)"""
+        if os.name == "nt":
+            return False
+        mc_dir_str = str(mc_dir.resolve())
+        inst_dir_str = str(mc_dir.parent.resolve())
+        inst_name = inst.get("name", "") if inst else ""
+        try:
+            for pid_dir in Path("/proc").glob("[0-9]*"):
+                try:
+                    # 1. 優先檢查進程工作目錄 (cwd)
+                    cwd_link = pid_dir / "cwd"
+                    if cwd_link.is_symlink():
+                        try:
+                            if os.readlink(str(cwd_link)) == mc_dir_str:
+                                return True
+                        except Exception:
+                            pass
+
+                    # 2. 檢查命令列 (cmdline)
+                    cmdline_file = pid_dir / "cmdline"
+                    if cmdline_file.exists():
+                        cmdline = cmdline_file.read_bytes().replace(b"\x00", b" ").decode("utf-8", errors="ignore")
+                        if "java" in cmdline:
+                            if mc_dir_str in cmdline or inst_dir_str in cmdline or (inst_name and inst_name in cmdline):
+                                return True
+                except (PermissionError, ProcessLookupError, ValueError):
+                    continue
+        except Exception:
+            pass
+        return False
+
     def _launch_and_monitor(self, inst: dict, mc_dir: Path):
         inst_id = inst.get("id")
         name = inst.get("name", inst_id)
@@ -189,93 +247,125 @@ class SmokeTestRunner:
             launch_cmd = f"xvfb-run -a {launch_cmd}"
             print("🖥️ 啟用無頭模式 (xvfb-run)")
 
-        # 紀錄日誌起點與 Crash Reports
-        log_file = mc_dir / "logs" / "latest.log"
+        logs_dir = mc_dir / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        log_file = logs_dir / "latest.log"
+        stdout_log_file = logs_dir / "smoke_runner_stdout.log"
+
+        # 徹底隔離與重置日誌，防止讀取到先前執行的舊紀錄
         if log_file.exists():
             try:
                 backup_log = log_file.with_name("latest.log.prev")
                 if backup_log.exists():
                     backup_log.unlink()
-                log_file.rename(backup_log)
+                shutil.move(str(log_file), str(backup_log))
             except Exception:
                 pass
-        initial_log_offset = 0
+            # 強制將 latest.log 清空為 0 位元組（若無法 move 則直接 truncate）
+            try:
+                with open(log_file, "w", encoding="utf-8") as f:
+                    f.truncate(0)
+            except Exception:
+                pass
+
+        if stdout_log_file.exists():
+            try:
+                stdout_log_file.unlink()
+            except Exception:
+                pass
 
         crash_dir = mc_dir / "crash-reports"
         existing_crashes = set(crash_dir.glob("crash-*.txt")) if crash_dir.exists() else set()
 
         print(f"🎮 執行啟動指令: {launch_cmd}")
-        print(f"⏱️ 逾時限制: {timeout} 秒，開始監聽日誌...")
+        print(f"📁 工作目錄 (CWD): {mc_dir}")
+        print(f"⏱️ 逾時限制: {timeout} 秒，開始監聽日誌與進程狀態...")
 
         start_time = time.time()
         proc = None
         status = "TIMEOUT"
-        detail_msg = "超過等待時間未進入主選單"
+        detail_msg = "超過等待時間未達到就緒狀態"
+        stdout_fd = None
 
         try:
-            # 建立獨立進程組以利後續完全關閉
+            stdout_fd = open(stdout_log_file, "w", encoding="utf-8", errors="ignore")
+            # 建立獨立進程組以利後續完全關閉，並指定 cwd 為 mc_dir (確保 ./run.sh 正常運作)
             if os.name != "nt":
                 proc = subprocess.Popen(
                     launch_cmd,
                     shell=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
+                    cwd=str(mc_dir),
+                    stdout=stdout_fd,
+                    stderr=subprocess.STDOUT,
                     preexec_fn=os.setsid
                 )
             else:
                 proc = subprocess.Popen(
                     launch_cmd,
                     shell=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
+                    cwd=str(mc_dir),
+                    stdout=stdout_fd,
+                    stderr=subprocess.STDOUT
                 )
 
-            current_offset = initial_log_offset
+            log_offset = 0
+            stdout_offset = 0
             compiled_success = re.compile(success_pattern)
             compiled_crash = re.compile(DEFAULT_CRASH_PATTERN)
+            has_started = False
 
             while time.time() - start_time < timeout:
                 time.sleep(1.0)
                 elapsed = time.time() - start_time
 
-                # 檢查進程是否非預期過早退出
-                if proc.poll() is not None:
-                    # 啟動器本身退出了，有可能是啟動器背景化拉起遊戲，或真正崩潰
-                    pass
+                # 讀取 latest.log 與 smoke_runner_stdout.log 新增內容
+                new_logs = []
 
-                # 檢查日誌新內容
                 if log_file.exists():
                     try:
                         file_size = log_file.stat().st_size
-                        if file_size < current_offset:
-                            # 檔案被重新截斷，重設為從頭讀取
-                            current_offset = 0
-
+                        if file_size < log_offset:
+                            log_offset = 0
                         with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
-                            f.seek(current_offset)
-                            new_text = f.read()
-                            current_offset = f.tell()
-
-                            if new_text:
-                                # 檢測崩潰模式
-                                crash_match = compiled_crash.search(new_text)
-                                if crash_match:
-                                    status = "FAIL"
-                                    detail_msg = f"日誌檢測到崩潰字串: {crash_match.group(0)}"
-                                    print(f"\n💥 {detail_msg}")
-                                    break
-
-                                # 檢測成功模式
-                                success_match = compiled_success.search(new_text)
-                                if success_match:
-                                    status = "PASS"
-                                    detail_msg = f"成功進入主畫面 (命中: {success_match.group(0)})"
-                                    print(f"\n🎉 {detail_msg}")
-                                    break
-                    except Exception as e:
+                            f.seek(log_offset)
+                            chunk = f.read()
+                            log_offset = f.tell()
+                            if chunk:
+                                new_logs.append(chunk)
+                    except Exception:
                         pass
 
-                # 檢查是否有新誕生的 crash-report 檔案
+                if stdout_log_file.exists():
+                    try:
+                        file_size = stdout_log_file.stat().st_size
+                        if file_size < stdout_offset:
+                            stdout_offset = 0
+                        with open(stdout_log_file, "r", encoding="utf-8", errors="ignore") as f:
+                            f.seek(stdout_offset)
+                            chunk = f.read()
+                            stdout_offset = f.tell()
+                            if chunk:
+                                new_logs.append(chunk)
+                    except Exception:
+                        pass
+
+                combined_new_text = "\n".join(new_logs)
+
+                # 1. 致命錯誤與崩潰模式檢測 (CRASH PATTERN - 優先判定)
+                if combined_new_text:
+                    crash_match = compiled_crash.search(combined_new_text)
+                    if crash_match:
+                        status = "FAIL"
+                        matched_str = crash_match.group(0)
+                        detail_msg = f"日誌檢測到致命阻斷錯誤: {matched_str}"
+                        print(f"\n💥 {detail_msg}")
+                        # 印出匹配行前後脈絡
+                        for line in combined_new_text.splitlines():
+                            if matched_str in line:
+                                print(f"    ↳ {line.strip()}")
+                        break
+
+                # 2. 檢查是否有新誕生的 crash-report 檔案
                 if crash_dir.exists():
                     current_crashes = set(crash_dir.glob("crash-*.txt"))
                     new_crashes = current_crashes - existing_crashes
@@ -284,7 +374,6 @@ class SmokeTestRunner:
                         status = "FAIL"
                         detail_msg = f"產生新的崩潰報告: {newest_crash.name}"
                         print(f"\n💥 {detail_msg}")
-                        # 讀取崩潰報告前 10 行
                         try:
                             with open(newest_crash, "r", encoding="utf-8", errors="ignore") as cf:
                                 lines = [cf.readline().strip() for _ in range(8)]
@@ -295,12 +384,61 @@ class SmokeTestRunner:
                             pass
                         break
 
+                # 3. 成功模式檢測 (SUCCESS PATTERN - 必須真正到達就緒標誌)
+                if combined_new_text:
+                    success_match = compiled_success.search(combined_new_text)
+                    if success_match:
+                        status = "PASS"
+                        detail_msg = f"成功達到就緒狀態 (命中: {success_match.group(0)})"
+                        print(f"\n🎉 {detail_msg}")
+                        break
+
+                # 4. 偵測遊戲/伺服器是否已真正拉起運行
+                if not has_started:
+                    if (log_file.exists() and log_file.stat().st_size > 0) or self._is_mc_java_running(mc_dir, inst):
+                        has_started = True
+
+                # 5. 進程異常退出檢測 (Fail-Fast)
+                if has_started:
+                    # 遊戲已啟動後，若 Java 進程消失且非正常存活 -> 判定為崩潰退出
+                    if not self._is_mc_java_running(mc_dir, inst) and (proc.poll() is not None):
+                        time.sleep(1.0)
+                        if not self._is_mc_java_running(mc_dir, inst):
+                            status = "FAIL"
+                            exit_code = proc.poll()
+                            detail_msg = f"遊戲進程已異常退出 (Exit code: {exit_code})，未達成就緒狀態"
+                            print(f"\n💥 {detail_msg}")
+                            self._print_tail_logs(log_file, stdout_log_file)
+                            break
+                else:
+                    # 遊戲尚未確認啟動
+                    if proc.poll() is not None:
+                        if proc.poll() != 0:
+                            # 啟動命令本體回傳非 0 錯誤
+                            status = "FAIL"
+                            detail_msg = f"啟動指令執行失敗 (Exit code: {proc.poll()})"
+                            print(f"\n💥 {detail_msg}")
+                            self._print_tail_logs(log_file, stdout_log_file)
+                            break
+                        elif elapsed > 20:
+                            # 啟動器 CLI 雖回傳 0，但超過 20 秒仍無遊戲進程拉起
+                            status = "FAIL"
+                            detail_msg = "啟動指令已結束，但超過 20 秒仍未偵測到遊戲進程或日誌產生"
+                            print(f"\n💥 {detail_msg}")
+                            self._print_tail_logs(log_file, stdout_log_file)
+                            break
+
                 sys.stdout.write(f"\r⏳ 等待啟動就緒... 已耗時: {int(elapsed)}s / {timeout}s")
                 sys.stdout.flush()
 
         finally:
+            if stdout_fd and not stdout_fd.closed:
+                try:
+                    stdout_fd.close()
+                except Exception:
+                    pass
             print("\n🛑 結束實例進程...")
-            self._terminate_process(proc, mc_dir)
+            self._terminate_process(proc, mc_dir, inst)
 
         duration = round(time.time() - start_time, 1)
         self.results.append({
@@ -311,7 +449,23 @@ class SmokeTestRunner:
             "msg": detail_msg
         })
 
-    def _terminate_process(self, proc, mc_dir: Path = None):
+    def _print_tail_logs(self, log_file: Path, stdout_log_file: Path):
+        try:
+            tail_lines = []
+            if log_file.exists() and log_file.stat().st_size > 0:
+                with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
+                    tail_lines = [line.strip() for line in f.readlines()[-15:] if line.strip()]
+            elif stdout_log_file.exists():
+                with open(stdout_log_file, "r", encoding="utf-8", errors="ignore") as f:
+                    tail_lines = [line.strip() for line in f.readlines()[-15:] if line.strip()]
+            if tail_lines:
+                print("\n--- [最後日誌紀錄] ---")
+                print("\n".join(tail_lines))
+                print("----------------------\n")
+        except Exception:
+            pass
+
+    def _terminate_process(self, proc, mc_dir: Path = None, inst: dict = None):
         if proc:
             try:
                 if os.name != "nt":
@@ -330,24 +484,37 @@ class SmokeTestRunner:
             except Exception:
                 pass
 
-        # 額外防護：若啟動器將 Java 獨立開出，搜尋並終止屬於此 instance 的 Minecraft Java 進程
+        # 額外防護：搜尋並終止屬於此 instance 的 Minecraft Java 進程
         if mc_dir and os.name != "nt":
             mc_dir_str = str(mc_dir.resolve())
+            inst_dir_str = str(mc_dir.parent.resolve())
+            inst_name = inst.get("name", "") if inst else ""
             try:
                 for pid_dir in Path("/proc").glob("[0-9]*"):
                     try:
-                        cmdline_file = pid_dir / "cmdline"
-                        if cmdline_file.exists():
-                            cmdline = cmdline_file.read_bytes().replace(b"\x00", b" ").decode("utf-8", errors="ignore")
-                            if "java" in cmdline and mc_dir_str in cmdline:
-                                pid = int(pid_dir.name)
-                                print(f"🛑 終止 Minecraft 客戶端 Java 進程 (PID: {pid})...")
-                                os.kill(pid, signal.SIGTERM)
-                                time.sleep(0.5)
-                                try:
-                                    os.kill(pid, signal.SIGKILL)
-                                except ProcessLookupError:
-                                    pass
+                        pid = int(pid_dir.name)
+                        cwd_link = pid_dir / "cwd"
+                        is_match = False
+                        if cwd_link.is_symlink():
+                            try:
+                                if os.readlink(str(cwd_link)) == mc_dir_str:
+                                    is_match = True
+                            except Exception:
+                                pass
+                        if not is_match:
+                            cmdline_file = pid_dir / "cmdline"
+                            if cmdline_file.exists():
+                                cmdline = cmdline_file.read_bytes().replace(b"\x00", b" ").decode("utf-8", errors="ignore")
+                                if "java" in cmdline and (mc_dir_str in cmdline or inst_dir_str in cmdline or (inst_name and inst_name in cmdline)):
+                                    is_match = True
+                        if is_match:
+                            print(f"🛑 終止 Minecraft 客戶端 Java 進程 (PID: {pid})...")
+                            os.kill(pid, signal.SIGTERM)
+                            time.sleep(0.5)
+                            try:
+                                os.kill(pid, signal.SIGKILL)
+                            except ProcessLookupError:
+                                pass
                     except (PermissionError, ProcessLookupError, ValueError):
                         continue
             except Exception:

@@ -30,3 +30,7 @@ Thumbs.db
 
 # Local smoke test configuration
 client-smoke-test.local.json
+
+# Python cache
+__pycache__/
+*.pyc
